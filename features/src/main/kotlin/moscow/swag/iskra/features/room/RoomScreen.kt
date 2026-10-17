@@ -383,7 +383,26 @@ private fun Bubble(
                     )
                 }
                 Box {
-                    Column(
+                    val picture = message.kind.picture
+                    if (picture != null) {
+                        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+                            MediaContent(
+                                message.kind,
+                                Modifier.combinedClickable(
+                                    onClick = {},
+                                    onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
+                                    onLongClick = { menu = true },
+                                ),
+                            )
+                            picture.caption?.takeIf { message.kind !is MessageKind.Sticker }?.let { caption ->
+                                Text(
+                                    caption,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
+                                )
+                            }
+                        }
+                    } else Column(
                         Modifier
                             .widthIn(max = Dp(maxWidth.toFloat()))
                             .clip(RoundedCornerShape(Theme.Radius.bubble))

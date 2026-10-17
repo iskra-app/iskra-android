@@ -1,6 +1,7 @@
 package moscow.swag.iskra.core.media
 
 import moscow.swag.iskra.core.support.withTimeLimit
+import moscow.swag.iskra.core.timeline.Attachment
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.MediaSource
 import kotlin.time.Duration.Companion.seconds
@@ -29,6 +30,25 @@ class MediaLoader internal constructor(private val client: Client) {
             source.destroy()
         }
     }
+
+    /**
+     * Миниатюра вложения — для ленты, чтобы прокрутка мимо видео не качала видео.
+     *
+     * Сначала кадр, загруженный *отправителем*: для видео в зашифрованной комнате это единственное, что
+     * может сработать — `getMediaThumbnail` просит *сервер* уменьшить файл, а у сервера шифротекст.
+     * Фото без своего кадра уменьшается обычным путём: SDK расшифровывает и уменьшает его на устройстве.
+     */
+    suspend fun thumbnail(attachment: Attachment, size: Int): ByteArray = withTimeLimit(LIMIT) {
+        val side = size.toLong().coerceAtLeast(1).toULong()
+        attachment.thumbnailSource?.let { return@withTimeLimit client.getMediaContent(it) }
+        client.getMediaThumbnail(attachment.source, side, side)
+    }
+
+    /**
+     * Медиа целиком — фото, которое открыли, а не лента. В зашифрованной комнате SDK расшифровывает
+     * при загрузке: это открытый текст, и он отдаётся экрану, а не пишется в свой кэш.
+     */
+    suspend fun content(attachment: Attachment): ByteArray = withTimeLimit(LIMIT) { client.getMediaContent(attachment.source) }
 
     override fun equals(other: Any?) = other is MediaLoader && other.client === client
 
