@@ -1,3 +1,3 @@
-iskra 6f328759aa73b3a2ee3de0860552ed0dd0ccb6a4
+iskra 993652eab24901ec89ed6cd3367efeeac23c0556
 Sources/IskraFeatures/Resources/*.lproj
 Привезено scripts/sync-from-ios.sh. Не править руками: правка делается там и привозится.

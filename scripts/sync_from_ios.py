@@ -14,7 +14,8 @@
   * golden-фикстура blobatar → ресурсы тестов `:design`;
   * векторы NIP-44 → ресурсы тестов `:core` (до появления `:tunnel`, раздел 9.3);
   * исходники крейта `iskra-tunnel-proto` из `iskra-bridge` → `third_party/`;
-  * знак Искры (spark) → adaptive icon лаунчера.
+  * знак Искры (spark) → adaptive icon лаунчера;
+  * стикеры «Искорки» (PNG) → Java-ресурсы `:core` (демо-мир и, на этапе 6, свой набор стикеров).
 """
 
 from __future__ import annotations
@@ -347,6 +348,21 @@ def sync_fixtures(iskra: Repo, rev: str) -> None:
     write(target / "UPSTREAM", upstream_note("iskra", rev, "Tests/IskraCoreTests/Resources/nip44.vectors.json"))
 
 
+def sync_stickers(iskra: Repo, rev: str) -> None:
+    # Java-ресурсы, а не assets: их читает и приложение, и JVM-тест демо-сервера — через загрузчик классов.
+    source = "Core/Sources/IskraCore/Resources/Stickers"
+    target = ROOT / "core/src/main/resources/stickers"
+    names = [Path(path).name for path in iskra.list(source) if path.endswith(".png")]
+    if not names:
+        raise SyncError(f"в {source} нет стикеров")
+    for name in names:
+        write(target / name, iskra.read(f"{source}/{name}"))
+    for stale in target.glob("*.png"):
+        if stale.name not in names:
+            stale.unlink()
+    write(target / "UPSTREAM", upstream_note("iskra", rev, f"{source}/*.png"))
+
+
 def resolve_workspace(manifest: dict, workspace: dict) -> dict:
     """Подставляет `*.workspace = true` из корня `iskra-bridge`, чтобы копия крейта собиралась одна."""
     package = dict(manifest["package"])
@@ -477,6 +493,7 @@ def main() -> int:
         sync_strings(iskra, rev)
         sync_fixtures(iskra, rev)
         sync_icon(iskra, rev)
+        sync_stickers(iskra, rev)
         sync_proto(bridge, bridge_rev)
     except (SyncError, subprocess.CalledProcessError) as error:
         print(f"sync-from-ios: {error}", file=sys.stderr)

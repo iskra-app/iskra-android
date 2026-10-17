@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Apps/Shared/ja.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Apps/Shared/ja.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="open_chat">チャットを開く</string>

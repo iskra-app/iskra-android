@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">设置</string>
@@ -94,22 +94,6 @@
     <string name="connection_title">连接</string>
     <string name="connection_bridge">通过网桥</string>
     <string name="connection_bridge_footer">流量经由网桥而不是直接到达服务器。适用于无法访问服务器的地方。</string>
-    <string name="connection_public_section">公共网桥</string>
-    <string name="connection_public_footer">来自 github.com/iskra-app/public-bridges 列表的已验证网桥。网桥能看到什么，见下文。应用每天直接从 GitHub 下载一次列表，因此 GitHub 和您的网络能看到这次下载；如果无法连接 GitHub，则使用已保存的列表。</string>
-    <string name="connection_public_empty">列表中还没有网桥。请在下方添加您自己的网桥。</string>
-    <string name="connection_public_any_server">任意 Matrix 服务器</string>
-    <string name="connection_public_servers">仅 %s</string>
-    <string name="connection_public_operator">由 %s 维护</string>
-    <string name="connection_not_listed">已不在列表中</string>
-    <string name="connection_own_section">您的网桥</string>
-    <string name="connection_own_footer">您自己运行的网桥，或从其维护者处获得的网桥。可以保存多个——使用的是打勾的那个。</string>
-    <string name="connection_add_bridge">添加网桥</string>
-    <string name="connection_edit_bridge">编辑网桥</string>
-    <string name="connection_delete_bridge">删除</string>
-    <string name="connection_save_bridge">保存</string>
-    <string name="connection_cancel_editing">取消</string>
-    <string name="connection_bridge_name">名称</string>
-    <string name="connection_bridge_name_prompt">例如“家”</string>
     <string name="connection_status">状态</string>
     <string name="connection_status_direct">直连</string>
     <string name="connection_status_connecting">通过网桥，中继：%d。网桥尚未响应</string>
@@ -119,9 +103,10 @@
     <string name="connection_apply_now">立即重新连接</string>
     <string name="connection_address">网桥地址</string>
     <string name="connection_address_prompt">npub1… 或 64 位十六进制字符</string>
-    <string name="connection_address_footer">网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。</string>
+    <string name="connection_address_footer">默认是 Iskra 开发者运行的网桥。您自己的网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。</string>
     <string name="connection_address_bad">这看起来不像网桥密钥</string>
     <string name="connection_address_secret">这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。</string>
+    <string name="connection_default_bridge">恢复为 Iskra 网桥</string>
     <string name="connection_relays">中继</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
     <string name="connection_relays_footer">应用和网桥通过它们找到彼此。多个并不是备胎：请求会同时发往所有中继，回答来自最快的那个。留空则使用默认的三个。</string>
@@ -806,6 +791,13 @@
     <string name="sign_in_next">下一步</string>
     <string name="sign_in_what_is_matrix">什么是 Matrix？</string>
     <string name="about_matrix_title">什么是 Matrix</string>
+    <string name="about_matrix_intro">Matrix 是一种开放的方式，让聊天应用彼此交流。Iskra 就是其中之一。还有别的应用，它们彼此都能互通。</string>
+    <string name="about_matrix_email_title">像电子邮件，只不过是聊天</string>
+    <string name="about_matrix_email_body">您的账号在一台服务器上，却可以给任何其他服务器上的人发消息。电子邮件也是这样：您用 Gmail，朋友用 QQ 邮箱，邮件照样能送到。Matrix 地址看起来是这样的：@名字:服务器。</string>
+    <string name="about_matrix_nobody_title">这里没有谁说了算</string>
+    <string name="about_matrix_nobody_body">Matrix 不属于任何一家公司，没有人能关掉它、卖掉您的数据或随意改规则。服务器有成千上万台，由基金会、社区和普通人运营。您也可以自己搭一台。</string>
+    <string name="about_matrix_private_title">您的对话只属于您</string>
+    <string name="about_matrix_private_body">消息直接在您的设备上加密，只有对方才能解密。服务器负责保存和转发，但读不了内容。</string>
     <string name="servers_title">选择服务器</string>
     <string name="servers_intro">您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。</string>
     <string name="servers_matrix_org">最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。</string>

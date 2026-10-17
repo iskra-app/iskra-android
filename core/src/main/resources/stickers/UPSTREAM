@@ -1,0 +1,3 @@
+iskra 993652eab24901ec89ed6cd3367efeeac23c0556
+Core/Sources/IskraCore/Resources/Stickers/*.png
+Привезено scripts/sync-from-ios.sh. Не править руками: правка делается там и привозится.

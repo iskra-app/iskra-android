@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Sources/IskraFeatures/Resources/es.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/es.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Ajustes</string>
@@ -94,22 +94,6 @@
     <string name="connection_title">Conexión</string>
     <string name="connection_bridge">A través de un puente</string>
     <string name="connection_bridge_footer">El tráfico llega al servidor a través de un puente en lugar de ir directo. Sirve para lugares donde no se puede llegar al servidor.</string>
-    <string name="connection_public_section">Puentes públicos</string>
-    <string name="connection_public_footer">Puentes comprobados de la lista de github.com/iskra-app/public-bridges. Lo que ve un puente está más abajo. La aplicación descarga la lista una vez al día directamente de GitHub, así que GitHub y su red pueden verlo; si GitHub no responde, se usa la copia guardada.</string>
-    <string name="connection_public_empty">Aún no hay ningún puente en la lista. Añada el suyo abajo.</string>
-    <string name="connection_public_any_server">cualquier servidor de Matrix</string>
-    <string name="connection_public_servers">solo %s</string>
-    <string name="connection_public_operator">lo mantiene %s</string>
-    <string name="connection_not_listed">ya no está en la lista</string>
-    <string name="connection_own_section">Sus puentes</string>
-    <string name="connection_own_footer">Un puente que mantiene usted o que le ha dado quien lo mantiene. Puede tener varios: se usa el marcado.</string>
-    <string name="connection_add_bridge">Añadir puente</string>
-    <string name="connection_edit_bridge">Editar puente</string>
-    <string name="connection_delete_bridge">Eliminar</string>
-    <string name="connection_save_bridge">Guardar</string>
-    <string name="connection_cancel_editing">Cancelar</string>
-    <string name="connection_bridge_name">Nombre</string>
-    <string name="connection_bridge_name_prompt">Por ejemplo, «Casa»</string>
     <string name="connection_status">Estado</string>
     <string name="connection_status_direct">Directa</string>
     <string name="connection_status_connecting">A través del puente, relays: %d. El puente aún no ha respondido</string>
@@ -119,9 +103,10 @@
     <string name="connection_apply_now">Reconectar ahora</string>
     <string name="connection_address">Dirección del puente</string>
     <string name="connection_address_prompt">npub1… o 64 caracteres hex</string>
-    <string name="connection_address_footer">El puente muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».</string>
+    <string name="connection_address_footer">Por defecto aquí está el puente que mantienen los desarrolladores de Iskra. Un puente propio muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».</string>
     <string name="connection_address_bad">No parece una clave de puente</string>
     <string name="connection_address_secret">Esa es una clave secreta. Aquí hace falta la pública: la que empieza por npub.</string>
+    <string name="connection_default_bridge">Volver al puente de Iskra</string>
     <string name="connection_relays">Relays</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
     <string name="connection_relays_footer">Aquí es donde la app y el puente se encuentran. Varios no son una rueda de repuesto: la petición va a todos a la vez y la respuesta llega del que fue más rápido. Déjelo vacío para usar los tres predeterminados.</string>
@@ -806,6 +791,13 @@
     <string name="sign_in_next">Siguiente</string>
     <string name="sign_in_what_is_matrix">¿Qué es Matrix?</string>
     <string name="about_matrix_title">Qué es Matrix</string>
+    <string name="about_matrix_intro">Matrix es una forma abierta de que las apps de mensajería hablen entre sí. Iskra es una de esas apps. Hay otras, y todas se entienden entre ellas.</string>
+    <string name="about_matrix_email_title">Como el correo, pero para chats</string>
+    <string name="about_matrix_email_body">Su cuenta vive en un servidor, y puede escribir a personas de cualquier otro. Con el correo pasa lo mismo: usted usa Gmail, su amigo Outlook, y los mensajes llegan igual. Una dirección de Matrix se ve así: @nombre:servidor.</string>
+    <string name="about_matrix_nobody_title">Aquí nadie manda</string>
+    <string name="about_matrix_nobody_body">Matrix no pertenece a una sola empresa que pueda cerrar el servicio, vender sus datos o cambiar las reglas. Hay miles de servidores, y los mantienen fundaciones, comunidades y personas corrientes. También puede montar el suyo.</string>
+    <string name="about_matrix_private_title">Sus conversaciones siguen siendo suyas</string>
+    <string name="about_matrix_private_body">Los mensajes se cifran en su propio dispositivo, y solo la persona a quien escribe puede descifrarlos. El servidor los guarda y los reenvía, pero no puede leerlos.</string>
     <string name="servers_title">Elegir servidor</string>
     <string name="servers_intro">Su cuenta vive en un servidor, pero puede escribir a personas de cualquier otro, como con el correo. En todos los servidores de abajo puede crear una cuenta directamente en Iskra.</string>
     <string name="servers_matrix_org">El mayor servidor de Matrix, gestionado por la fundación que desarrolla Matrix.</string>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Настройки</string>
@@ -94,22 +94,6 @@
     <string name="connection_title">Соединение</string>
     <string name="connection_bridge">Через мост</string>
     <string name="connection_bridge_footer">Трафик к серверу пойдёт через мост, а не напрямую. Это нужно там, где сервер недоступен.</string>
-    <string name="connection_public_section">Публичные мосты</string>
-    <string name="connection_public_footer">Проверенные мосты из списка github.com/iskra-app/public-bridges. Что видит мост — ниже. Список приложение раз в сутки скачивает напрямую с GitHub, так что это видно GitHub и вашей сети; если GitHub недоступен, берётся сохранённый.</string>
-    <string name="connection_public_empty">В списке пока нет ни одного моста. Добавьте свой ниже.</string>
-    <string name="connection_public_any_server">любой сервер Matrix</string>
-    <string name="connection_public_servers">только %s</string>
-    <string name="connection_public_operator">держит %s</string>
-    <string name="connection_not_listed">больше нет в списке</string>
-    <string name="connection_own_section">Свои мосты</string>
-    <string name="connection_own_footer">Мост, который вы подняли сами или получили от того, кто его держит. Их может быть несколько — используется тот, что отмечен.</string>
-    <string name="connection_add_bridge">Добавить мост</string>
-    <string name="connection_edit_bridge">Изменить мост</string>
-    <string name="connection_delete_bridge">Удалить</string>
-    <string name="connection_save_bridge">Сохранить</string>
-    <string name="connection_cancel_editing">Отмена</string>
-    <string name="connection_bridge_name">Название</string>
-    <string name="connection_bridge_name_prompt">Например, «Дом»</string>
     <string name="connection_status">Состояние</string>
     <string name="connection_status_direct">Напрямую</string>
     <string name="connection_status_connecting">Через мост, relay: %d. Мост пока не ответил</string>
@@ -119,9 +103,10 @@
     <string name="connection_apply_now">Переподключиться сейчас</string>
     <string name="connection_address">Адрес моста</string>
     <string name="connection_address_prompt">npub1… или 64 знака hex</string>
-    <string name="connection_address_footer">Адрес мост печатает при запуске — строка «bridge address for Iskra: npub1…».</string>
+    <string name="connection_address_footer">По умолчанию здесь мост, который держат разработчики Iskra. Свой мост печатает адрес при запуске — строка «bridge address for Iskra: npub1…».</string>
     <string name="connection_address_bad">Не похоже на ключ моста</string>
     <string name="connection_address_secret">Это секретный ключ. Нужен публичный — тот, что начинается с npub.</string>
+    <string name="connection_default_bridge">Вернуть мост Iskra</string>
     <string name="connection_relays">Relay</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
     <string name="connection_relays_footer">Через них приложение и мост находят друг друга. Несколько — не запас: запрос уходит сразу на все, а ответ приходит с того, который оказался быстрее. Пусто — возьмутся три по умолчанию.</string>
@@ -806,6 +791,13 @@
     <string name="sign_in_next">Далее</string>
     <string name="sign_in_what_is_matrix">Что такое Matrix?</string>
     <string name="about_matrix_title">Что такое Matrix</string>
+    <string name="about_matrix_intro">Matrix — открытый способ, которым приложения для переписки общаются между собой. Iskra — одно из таких приложений. Есть и другие, и все они друг друга понимают.</string>
+    <string name="about_matrix_email_title">Как почта, только для чатов</string>
+    <string name="about_matrix_email_body">Аккаунт живёт на одном сервере, а писать можно людям с любого другого. С почтой так же: у вас Gmail, у друга Яндекс, а письма всё равно доходят. Адрес в Matrix выглядит так: @имя:сервер.</string>
+    <string name="about_matrix_nobody_title">Здесь никто не главный</string>
+    <string name="about_matrix_nobody_body">Matrix не принадлежит одной компании, которая может закрыть сервис, продать ваши данные или поменять правила. Серверов тысячи, и держат их фонды, сообщества и обычные люди. Можно поднять и свой.</string>
+    <string name="about_matrix_private_title">Переписка остаётся вашей</string>
+    <string name="about_matrix_private_body">Сообщения шифруются прямо на вашем устройстве, а расшифровать их может только собеседник. Сервер их хранит и пересылает, но прочитать не может.</string>
     <string name="servers_title">Выбор сервера</string>
     <string name="servers_intro">Аккаунт живёт на одном сервере, а писать можно людям с любого другого — как с почтой. На всех серверах ниже аккаунт можно создать прямо в Iskra.</string>
     <string name="servers_matrix_org">Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.</string>

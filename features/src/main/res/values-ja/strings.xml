@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">設定</string>
@@ -94,22 +94,6 @@
     <string name="connection_title">接続</string>
     <string name="connection_bridge">ブリッジ経由</string>
     <string name="connection_bridge_footer">通信は直接ではなく、ブリッジを経由してサーバーに届きます。サーバーにつながらない場所のための機能です。</string>
-    <string name="connection_public_section">公開ブリッジ</string>
-    <string name="connection_public_footer">github.com/iskra-app/public-bridges のリストにある、確認済みのブリッジです。ブリッジに何が見えるかは下に書いてあります。アプリはこのリストを 1 日に 1 回 GitHub から直接ダウンロードするため、GitHub とお使いのネットワークにはそのことがわかります。GitHub に接続できないときは保存済みのリストを使います。</string>
-    <string name="connection_public_empty">リストにはまだブリッジがありません。下で自分のブリッジを追加してください。</string>
-    <string name="connection_public_any_server">すべての Matrix サーバー</string>
-    <string name="connection_public_servers">%s のみ</string>
-    <string name="connection_public_operator">運営: %s</string>
-    <string name="connection_not_listed">リストから外れました</string>
-    <string name="connection_own_section">自分のブリッジ</string>
-    <string name="connection_own_footer">自分で運営しているブリッジや、運営者から教わったブリッジです。複数登録でき、チェックの付いたものが使われます。</string>
-    <string name="connection_add_bridge">ブリッジを追加</string>
-    <string name="connection_edit_bridge">ブリッジを編集</string>
-    <string name="connection_delete_bridge">削除</string>
-    <string name="connection_save_bridge">保存</string>
-    <string name="connection_cancel_editing">キャンセル</string>
-    <string name="connection_bridge_name">名前</string>
-    <string name="connection_bridge_name_prompt">例: 自宅</string>
     <string name="connection_status">状態</string>
     <string name="connection_status_direct">直接</string>
     <string name="connection_status_connecting">ブリッジ経由、リレー: %d。ブリッジはまだ応答していません</string>
@@ -119,9 +103,10 @@
     <string name="connection_apply_now">今すぐ再接続</string>
     <string name="connection_address">ブリッジのアドレス</string>
     <string name="connection_address_prompt">npub1… または 16 進 64 文字</string>
-    <string name="connection_address_footer">ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。</string>
+    <string name="connection_address_footer">初期設定では Iskra の開発者が運営するブリッジです。ご自身のブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。</string>
     <string name="connection_address_bad">ブリッジの鍵ではないようです</string>
     <string name="connection_address_secret">それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。</string>
+    <string name="connection_default_bridge">Iskra のブリッジに戻す</string>
     <string name="connection_relays">リレー</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
     <string name="connection_relays_footer">アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。</string>
@@ -806,6 +791,13 @@
     <string name="sign_in_next">次へ</string>
     <string name="sign_in_what_is_matrix">Matrixとは？</string>
     <string name="about_matrix_title">Matrixとは</string>
+    <string name="about_matrix_intro">Matrixは、メッセージアプリどうしが話すためのオープンな仕組みです。Iskraはそのアプリのひとつです。ほかにもアプリがあり、どれもお互いに通じ合えます。</string>
+    <string name="about_matrix_email_title">メールのように、チャットでも</string>
+    <string name="about_matrix_email_body">アカウントはひとつのサーバーにありますが、ほかのどのサーバーの人にもメッセージを送れます。メールと同じです。あなたがGmail、友だちがYahoo!メールでも、メールはちゃんと届きます。Matrixのアドレスは @名前:サーバー という形です。</string>
+    <string name="about_matrix_nobody_title">誰かひとりのものではありません</string>
+    <string name="about_matrix_nobody_body">Matrixは、サービスを終わらせたり、データを売ったり、ルールを変えたりできる一社のものではありません。サーバーは何千もあり、財団やコミュニティ、ふつうの人たちが運営しています。自分のサーバーを立てることもできます。</string>
+    <string name="about_matrix_private_title">会話はあなただけのもの</string>
+    <string name="about_matrix_private_body">メッセージはあなたの端末の上で暗号化され、解読できるのは相手だけです。サーバーはメッセージを保存して届けますが、読むことはできません。</string>
     <string name="servers_title">サーバーを選ぶ</string>
     <string name="servers_intro">アカウントは1つのサーバーにありますが、ほかのどのサーバーの人ともやり取りできます。メールと同じです。以下のサーバーなら、Iskraからそのままアカウントを作れます。</string>
     <string name="servers_matrix_org">最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。</string>
