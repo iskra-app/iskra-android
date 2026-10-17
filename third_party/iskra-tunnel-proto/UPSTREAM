@@ -1,0 +1,3 @@
+iskra-bridge cae5facd85f4b1970ac378a0944fe29f6df48d3f
+crates/iskra-tunnel-proto (MIT, см. LICENSE)
+Привезено scripts/sync-from-ios.sh. Не править руками: правка делается там и привозится.

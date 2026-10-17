@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@6f328759aa73: Apps/Shared/zh-Hans.lproj/Localizable.strings.
+     Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
+<resources>
+    <string name="open_chat">打开聊天</string>
+    <string name="send_message">发送消息</string>
+    <string name="chat">聊天</string>
+    <string name="message">消息</string>
+    <string name="choose_chats">选择聊天</string>
+    <string name="chats">聊天</string>
+    <string name="stop_sharing_location">停止共享位置</string>
+</resources>

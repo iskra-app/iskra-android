@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Только окно до первого кадра Compose: всё остальное рисует IskraTheme из :design. -->
+    <style name="Theme.Iskra" parent="android:Theme.Material.NoActionBar" />
+</resources>

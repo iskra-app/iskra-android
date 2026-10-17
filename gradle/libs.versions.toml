@@ -1,0 +1,69 @@
+[versions]
+# Сборка
+agp = "9.4.1"
+kotlin = "2.4.21"
+
+# Android: какие устройства и против какого SDK.
+#
+# minSdk 29 (Android 10) — решение автора (docs/PROMPT.md, 2.2). Его задают scoped storage без
+# WRITE_EXTERNAL_STORAGE, Keystore без старых багов, TLS 1.3 в системе и единая модель жестов.
+# Conversation-уведомления (API 30) и размытие хрома (API 31) — через проверку версии в одном
+# месте на функцию. Ниже 29 — четыре-пять процентов устройств ценой отдельных путей для хранилища
+# и медиа; не стоит. Это то же, что `Mutex` задаёт iOS 18 в Package.swift.
+minSdk = "29"
+# Последний стабильный.
+compileSdk = "37"
+targetSdk = "37"
+
+# Matrix. Тот же коммит matrix-rust-sdk (1c44fb6), что Swift-пакет 26.06.06 в
+# iskra/Core/Package.swift: у Kotlin-биндингов свои номера релизов, и 26.06.3 — тот, что собран
+# с этого коммита. Обновлять на обеих платформах вместе.
+matrixSdk = "26.06.3"
+
+coroutines = "1.11.0"
+serialization = "1.11.0"
+collectionsImmutable = "0.5.2"
+
+androidxCore = "1.19.1"
+activity = "1.13.0"
+lifecycle = "2.11.0"
+datastore = "1.2.1"
+composeBom = "2026.09.00"
+
+androidxTestExt = "1.3.0"
+androidxTestRunner = "1.7.0"
+turbine = "1.2.1"
+
+[libraries]
+matrix-sdk = { module = "org.matrix.rustcomponents:sdk-android", version.ref = "matrixSdk" }
+
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collections-immutable", version.ref = "collectionsImmutable" }
+
+androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
+androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExt" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

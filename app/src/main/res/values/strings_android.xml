@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Строки, которые нужны только Android (docs/PROMPT.md, 2.3): каналы уведомлений, foreground-сервисы.
+    Живут здесь, на семи языках, а не в iOS-репозитории. Имя приложения не переводится — как
+    CFBundleDisplayName на iOS.
+-->
+<resources>
+    <string name="app_name" translatable="false">Iskra</string>
+</resources>

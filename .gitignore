@@ -1,0 +1,29 @@
+# Gradle
+.gradle/
+build/
+.kotlin/
+local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Rust
+target/
+
+# Secrets. Nothing here should ever exist, but if it does, it must not be committed:
+# the repository will be opened with its whole history (docs/PROMPT.md, 19.2).
+*.jks
+*.keystore
+keystore.properties
+service-account*.json
+.env
+
+# macOS
+.DS_Store
+
+# Worktrees agents create for themselves. Transient, and never part of the tree.
+.claude/worktrees/

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Аналог CFBundleLocalizations: без него язык приложения не выбрать в системных настройках
+    (Android 13+). Те же семь языков, что localeFilters в app/build.gradle.kts; совпадение проверяет тест.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="ru" />
+    <locale android:name="de" />
+    <locale android:name="es" />
+    <locale android:name="fr" />
+    <locale android:name="ja" />
+    <locale android:name="zh-Hans" />
+</locale-config>
