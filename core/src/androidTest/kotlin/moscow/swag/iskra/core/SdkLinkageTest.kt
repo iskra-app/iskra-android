@@ -3,7 +3,7 @@ package moscow.swag.iskra.core
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.runner.RunWith
 import kotlin.test.Test
-import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * SDK линкуется и отвечает (docs/PROMPT.md, 20, этап 1). На JVM хоста это не проверить: в артефакте
@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 class SdkLinkageTest {
     @Test
     fun sdkLoadsAndIsTheSameCommitAsIos() {
-        assertEquals(MatrixSdk.EXPECTED_COMMIT, MatrixSdk.commit())
+        val commit = MatrixSdk.commit()
+        assertTrue(MatrixSdk.isExpectedCommit(commit), "SDK $commit, а у iOS ${MatrixSdk.EXPECTED_COMMIT}")
     }
 }

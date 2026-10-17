@@ -12,6 +12,15 @@ object MatrixSdk {
     /** Коммит, с которого собран Swift-пакет `26.06.06` в iskra/Core/Package.swift. */
     const val EXPECTED_COMMIT = "1c44fb66214667c6d00acaf72ab592493653708b"
 
-    /** Коммит библиотеки, которая на самом деле загрузилась. Первый вызов грузит нативный код. */
+    /**
+     * Коммит библиотеки, которая на самом деле загрузилась, — сокращённый (`1c44fb662`), каким его
+     * отдаёт сам SDK. Первый вызов грузит нативный код.
+     */
     fun commit(): String = org.matrix.rustcomponents.sdk.sdkGitSha()
+
+    /** Тот ли это SDK, что у iOS: сокращённый хэш — начало полного. */
+    fun isExpectedCommit(commit: String = commit()): Boolean =
+        commit.length >= MIN_SHORT_SHA && EXPECTED_COMMIT.startsWith(commit)
+
+    private const val MIN_SHORT_SHA = 7
 }

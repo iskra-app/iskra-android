@@ -1,0 +1,7 @@
+# Сканер секретов в CI (docs/PROMPT.md, 19.2). Правила по умолчанию плюс одно исключение.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Публичные тестовые векторы NIP-44 (привезены из iskra, см. UPSTREAM): ключи в них — часть спецификации, а не секреты"
+paths = ['''(^|/)core/src/test/resources/nip44\.vectors\.json$''']
