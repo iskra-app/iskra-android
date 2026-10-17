@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.MarkChatRead
 import androidx.compose.material.icons.outlined.MarkChatUnread
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -81,7 +82,7 @@ import java.time.ZoneId
 fun RoomListScreen(
     store: RoomListStore,
     onOpen: (roomId: String) -> Unit,
-    onSignOut: () -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
@@ -116,7 +117,7 @@ fun RoomListScreen(
                     state.isUpdating -> R.string.room_list_updating
                     else -> null
                 },
-                onSignOut = onSignOut,
+                onSettings = onSettings,
             )
         }
         if (!state.isLoadingInitialRooms && source.isNotEmpty()) {
@@ -187,7 +188,7 @@ fun RoomListScreen(
 }
 
 @Composable
-private fun Header(status: Int?, onSignOut: () -> Unit) {
+private fun Header(status: Int?, onSettings: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         verticalAlignment = Alignment.CenterVertically,
@@ -206,9 +207,8 @@ private fun Header(status: Int?, onSignOut: () -> Unit) {
                 )
             }
         }
-        // Временно здесь: настройки с выходом и аккаунтами — этап 8.
-        TextButton(onClick = onSignOut) {
-            Text(stringResource(R.string.account_sign_out), color = LocalAccent.current.control)
+        IconButton(onClick = onSettings) {
+            Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title), tint = LocalAccent.current.control)
         }
     }
 }

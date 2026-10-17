@@ -5,6 +5,7 @@ import moscow.swag.iskra.core.security.KeystoreSecrets
 import moscow.swag.iskra.core.security.SessionStore
 import moscow.swag.iskra.core.session.AuthenticationService
 import moscow.swag.iskra.core.support.AppEnvironment
+import moscow.swag.iskra.core.support.AppSettings
 import moscow.swag.iskra.core.support.DeviceDescription
 import moscow.swag.iskra.core.support.SdkLogging
 import moscow.swag.iskra.core.support.Strings
@@ -20,6 +21,7 @@ class AppGraph(context: Context, appVersion: String) {
         processName = context.packageName,
     )
     val secrets = KeystoreSecrets(environment.secretsDir)
+    val settings = AppSettings(context)
     val sessionStore = SessionStore(secrets)
     val authentication = AuthenticationService(
         environment = environment,

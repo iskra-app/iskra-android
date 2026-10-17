@@ -33,6 +33,10 @@ import moscow.swag.iskra.design.Theme
 import moscow.swag.iskra.core.session.UserSession
 import moscow.swag.iskra.features.room.RoomScreen
 import moscow.swag.iskra.features.rooms.RoomListScreen
+import moscow.swag.iskra.features.settings.SettingsPage
+import moscow.swag.iskra.features.settings.SettingsScreen
+import moscow.swag.iskra.features.support.FaceMode
+import moscow.swag.iskra.features.support.LocalFaceMode
 import moscow.swag.iskra.features.signin.SignInScreen
 import moscow.swag.iskra.features.support.LocalMediaLoader
 import moscow.swag.iskra.features.support.LocalOwnUserId
@@ -46,11 +50,13 @@ import moscow.swag.iskra.features.signin.WebAuthentication
 fun IskraRoot(
     model: RootModel,
     browser: WebAuthentication,
-    accent: AccentTheme = AccentTheme.Default,
-    appearance: AppearanceMode = AppearanceMode.Default,
+    /** Версия для «О приложении»: `BuildConfig` живёт в `:app`. */
+    appVersion: String = "",
 ) {
     val phase by model.phase.collectAsStateWithLifecycle()
-    IskraTheme(accent = accent, appearance = appearance) {
+    val accentName by (model.settings?.accent ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    val modeName by (model.settings?.appearance ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    IskraTheme(accent = AccentTheme.fromStorage(accentName), appearance = AppearanceMode.fromStorage(modeName)) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (val current = phase) {
                 RootModel.Phase.Starting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -78,7 +84,7 @@ fun IskraRoot(
                     LocalMediaLoader provides current.session.media,
                     LocalOwnUserId provides current.session.userId,
                 ) {
-                    SignedIn(current.session, onSignOut = model::signOut)
+                    SignedIn(current.session, model, appVersion)
                 }
             }
         }
@@ -113,13 +119,28 @@ private fun Notice(title: Int, message: Int) {
  * открытая комната — состояние, «назад» — его сброс.
  */
 @Composable
-private fun SignedIn(session: UserSession, onSignOut: () -> Unit) {
+private fun SignedIn(session: UserSession, model: RootModel, appVersion: String) {
     var openRoom by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
+    var settingsPage by rememberSaveable(session.sessionId) { mutableStateOf<SettingsPage?>(null) }
+    val settings = model.settings
+    val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(true)).collectAsStateWithLifecycle()
+    val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
     val timeline = remember(roomId) { roomId?.let(session::timeline) }
-    if (timeline != null) {
-        RoomScreen(timeline, onBack = { openRoom = null })
-    } else {
-        RoomListScreen(session.rooms, onOpen = { openRoom = it }, onSignOut = onSignOut)
+    CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
+        val page = settingsPage
+        when {
+            page != null && settings != null -> SettingsScreen(
+                session = session,
+                settings = settings,
+                page = page,
+                onNavigate = { settingsPage = it },
+                onSignOut = model::signOut,
+                onDemo = model::setDemo,
+                appVersion = appVersion,
+            )
+            timeline != null -> RoomScreen(timeline, onBack = { openRoom = null })
+            else -> RoomListScreen(session.rooms, onOpen = { openRoom = it }, onSettings = { settingsPage = SettingsPage.MAIN })
+        }
     }
 }

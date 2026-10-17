@@ -42,6 +42,19 @@ class UserSession internal constructor(
 
     private val strings = strings
 
+    /** Как человека зовут и его картинка — для шапки настроек. Читается [loadProfile]. */
+    data class Profile(val displayName: String?, val avatarUrl: String?)
+
+    private val mutableProfile = kotlinx.coroutines.flow.MutableStateFlow(Profile(null, null))
+    val profile: kotlinx.coroutines.flow.StateFlow<Profile> = mutableProfile
+
+    /** Спросить профиль у сервера (или у кэша SDK). Без сети — остаётся, каким был. */
+    suspend fun loadProfile() {
+        val name = runCatching { moscow.swag.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.displayName() } }.getOrNull()
+        val avatar = runCatching { moscow.swag.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.avatarUrl() } }.getOrNull()
+        mutableProfile.value = Profile(name ?: mutableProfile.value.displayName, avatar ?: mutableProfile.value.avatarUrl)
+    }
+
     /**
      * Переписка комнаты — для экрана, который её показывает. Свой хендл комнаты на каждую ленту:
      * закрывает его [TimelineStore.close], когда экран уходит. Null для комнаты, которой клиент не знает.
@@ -91,5 +104,9 @@ class UserSession internal constructor(
     /** Выход: сервер забывает устройство (если ответит), локально исчезает всё этого аккаунта. */
     suspend fun signOut() {
         authentication.signOut(this)
+    }
+
+    private companion object {
+        val PROFILE_LIMIT = kotlin.time.Duration.parse("15s")
     }
 }

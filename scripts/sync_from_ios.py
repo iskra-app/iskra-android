@@ -343,6 +343,9 @@ def sync_fixtures(iskra: Repo, rev: str) -> None:
     write(target / "blobatar-LICENSE.txt", iskra.read("Licenses/blobatar.txt"))
     write(target / "UPSTREAM", upstream_note("iskra", rev, "Tests/IskraDesignTests/Resources/blobatar-gen2-golden.txt (MIT, см. blobatar-LICENSE.txt)"))
 
+    # Нотис blobatar обязателен в «О приложении» (MIT): тот же файл, что у iOS.
+    write(ROOT / "features/src/main/res/raw/licence_blobatar.txt", iskra.read("Licenses/blobatar.txt"))
+
     target = ROOT / "core/src/test/resources"
     write(target / "nip44.vectors.json", iskra.read("Tests/IskraCoreTests/Resources/nip44.vectors.json"))
     write(target / "UPSTREAM", upstream_note("iskra", rev, "Tests/IskraCoreTests/Resources/nip44.vectors.json"))

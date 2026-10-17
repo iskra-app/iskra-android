@@ -32,6 +32,8 @@ dependencies {
     api(libs.compose.foundation)
     api(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)
+    // Цвет значков строки состояния под тему приложения (`WindowCompat`).
+    implementation(libs.androidx.core)
     implementation(libs.kotlinx.collections.immutable)
     debugImplementation(libs.compose.ui.tooling)
 

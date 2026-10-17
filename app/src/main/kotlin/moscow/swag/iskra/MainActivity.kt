@@ -18,7 +18,7 @@ import moscow.swag.iskra.features.signin.CustomTabsAuthentication
 class MainActivity : ComponentActivity() {
     /** Корень переживает поворот экрана: сеанс не пересобирается из-за смены конфигурации. */
     class RootHolder(application: IskraApplication, demo: Boolean) : ViewModel() {
-        val root = RootModel(application.graph.authentication, viewModelScope, demo)
+        val root = RootModel(application.graph.authentication, viewModelScope, demo, application.graph.settings)
     }
 
     private lateinit var browser: CustomTabsAuthentication
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
             override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(app, intent.getBooleanExtra(EXTRA_MOCK_BACKEND, false)) as T
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
-        setContent { IskraRoot(holder.root, browser) }
+        setContent { IskraRoot(holder.root, browser, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})") }
         handle(intent)
     }
 

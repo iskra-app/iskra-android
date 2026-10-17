@@ -59,8 +59,13 @@ enum class AvatarShape {
 /** Скругление пространства — доля размера, чтобы на крупном шрифте квадрат не стал острой плиткой. */
 private const val SPACE_CORNER = 0.28f
 
-/** Существо вместо картинки, где её нет. На iOS — переключатель в «Бета» (`BetaFeatures`), по умолчанию включён. */
-private const val DRAWS_CREATURES = true
+/**
+ * Режим лиц (`FaceMode`, «Бета»): существа вместо инициалов, и — по просьбе — даже вместо картинок.
+ * Существо растёт из идентификатора, поэтому выключенный режим — это инициалы, а не пустота.
+ */
+data class FaceMode(val creatures: Boolean = true, val forced: Boolean = false)
+
+val LocalFaceMode = compositionLocalOf { FaceMode() }
 
 /**
  * Круглое лицо: картинка, если есть; заместитель, пока она не пришла, — и он же навсегда, если её
@@ -78,9 +83,11 @@ fun Avatar(
     /** Из чего растёт существо: Matrix ID или ID комнаты. **Идентификатор, никогда имя.** */
     seed: String? = null,
 ) {
-    val image = rememberAvatarImage(url, size)
+    val faces = LocalFaceMode.current
+    // Принудительно — картинка даже не скачивается: иначе переключатель тихо стоил бы людям трафика.
+    val image = rememberAvatarImage(url.takeUnless { faces.creatures && faces.forced && seed != null }, size)
     val outline = shape.shape(size)
-    val drawsCreature = DRAWS_CREATURES && seed != null && image == null
+    val drawsCreature = faces.creatures && seed != null && image == null
     Box(
         modifier
             .size(size)
@@ -122,7 +129,8 @@ fun RoomAvatar(
     faces: List<RoomFace> = emptyList(),
 ) {
     val me = LocalOwnUserId.current
-    if (url == null && DRAWS_CREATURES && faces.isNotEmpty() && me.isNotEmpty()) {
+    val mode = LocalFaceMode.current
+    if ((url == null || mode.forced) && mode.creatures && faces.isNotEmpty() && me.isNotEmpty()) {
         // До двух других и сам читающий: группа — это люди, с которыми говоришь *ты*.
         val cluster = faces.filter { it.id != me }.take(2) + RoomFace(me, me)
         FaceCluster(cluster, size, modifier)
@@ -140,7 +148,7 @@ private fun FaceCluster(faces: List<RoomFace>, size: Dp, modifier: Modifier) {
     val places = if (faces.size == 2) TWO else THREE
     Box(modifier.size(size)) {
         faces.zip(places).forEach { (face, place) ->
-            val isCreature = face.avatarUrl == null
+            val isCreature = face.avatarUrl == null || LocalFaceMode.current.forced
             // Существу — слот попросторнее: его тело — около трёх четвертей своего квадрата.
             val inner = size * place.third * (if (isCreature) CREATURE_SLOT else 1f)
             Avatar(

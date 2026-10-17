@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import moscow.swag.iskra.core.session.AuthenticationError
 import moscow.swag.iskra.core.session.AuthenticationService
 import moscow.swag.iskra.core.session.UserSession
+import moscow.swag.iskra.core.support.AppSettings
 import moscow.swag.iskra.core.support.Log
 import moscow.swag.iskra.features.signin.SignInModel
 import moscow.swag.iskra.features.signin.WebAuthentication
@@ -28,6 +29,8 @@ class RootModel(
      * следующем запуске без флага.
      */
     private val demo: Boolean = false,
+    /** Настройки приложения: «Бета → Демо-сервер» решает, с чего начинать, наравне с флагом запуска. */
+    val settings: AppSettings? = null,
 ) {
     sealed interface Phase {
         data object Starting : Phase
@@ -49,7 +52,23 @@ class RootModel(
     val phase: StateFlow<Phase> = mutablePhase.asStateFlow()
 
     init {
-        if (demo) startDemo() else restore()
+        if (demo || settings?.demoBackend?.value == true) startDemo() else restore()
+    }
+
+    /**
+     * «Бета → Демо-сервер». Открытый сеанс кладётся (настоящий — закрывается, не выходя из аккаунта;
+     * демо — стирается целиком), и открывается другой. Настоящий аккаунт при этом не трогается.
+     */
+    fun setDemo(on: Boolean) {
+        settings?.setDemoBackend(on)
+        val current = (mutablePhase.value as? Phase.SignedIn)?.session
+        mutablePhase.value = Phase.Starting
+        scope.launch {
+            if (current != null) {
+                if (current.isDemo) current.signOut() else current.shutDown()
+            }
+            if (on) startDemo().join() else restore().join()
+        }
     }
 
     private fun startDemo() = scope.launch {
@@ -104,6 +123,8 @@ class RootModel(
 
     fun signOut() {
         val session = (mutablePhase.value as? Phase.SignedIn)?.session ?: return
+        // Выход из демо — это выход из демо: следующий запуск открывает настоящий аккаунт.
+        if (session.isDemo) settings?.setDemoBackend(false)
         scope.launch {
             session.signOut()
             mutablePhase.value = Phase.SignedOut()
