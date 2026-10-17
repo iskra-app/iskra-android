@@ -20,6 +20,8 @@ class UserSession internal constructor(
     /** Случайный ID, который называет каталоги этого аккаунта, — не Matrix ID. */
     val sessionId: String,
     strings: Strings,
+    /** Сеанс на демо-сервере: не трогает настоящий аккаунт и хранилище секретов (`DemoBackend`). */
+    val isDemo: Boolean = false,
 ) {
     val userId: String = client.userId()
     val homeserver: String = client.homeserver()
@@ -37,7 +39,7 @@ class UserSession internal constructor(
     private var closed = false
 
     init {
-        authentication.sessionOpened(sessionId)
+        if (!isDemo) authentication.sessionOpened(sessionId)
     }
 
     /**
@@ -58,7 +60,7 @@ class UserSession internal constructor(
         if (closed) return
         closed = true
         scope.cancel()
-        authentication.sessionClosed(sessionId)
+        if (!isDemo) authentication.sessionClosed(sessionId)
         client.close()
     }
 

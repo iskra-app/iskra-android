@@ -2,6 +2,7 @@ package moscow.swag.iskra.core.session
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import moscow.swag.iskra.core.mock.DemoBackend
 import moscow.swag.iskra.core.security.AccountRecord
 import moscow.swag.iskra.core.security.SessionDelegate
 import moscow.swag.iskra.core.security.SessionStore
@@ -298,6 +299,31 @@ class AuthenticationService(
         }
     }
 
+    // ---------------------------------------------------------------------------- демо
+
+    /**
+     * Сеанс на демо-сервере ([moscow.swag.iskra.core.mock.DemoBackend]). Порт `startDemoSession`.
+     *
+     * Сеанс как любой другой от [UserSession] вверх и нарочно ни на что не похожий внизу, потому что
+     * единственное, чего он не должен делать никогда, — трогать настоящий аккаунт: в хранилище секретов
+     * ничего не пишется, пароли стора случайные на этот запуск, стор опустошается перед каждым демо, а
+     * [sweepOrphanedStores] уберёт его при следующем запуске — хранилище о нём не слышало. Ограничено,
+     * как любой вход, хотя в сеть здесь ничего не ходит: зависшее демо висело бы на экране запуска.
+     */
+    suspend fun startDemoSession(): UserSession {
+        val id = DemoBackend.SESSION_ID
+        environment.sessionDirs(id).forEach { it.deleteRecursively() }
+        val client = withTimeLimit(DEMO_TIMEOUT) {
+            val homeserver = DemoBackend.homeserverUrl()
+            val client = makeClientBuilder(id, SlidingSyncVersionBuilder.NATIVE, demo = true)
+                .homeserverUrl(homeserver)
+                .build()
+            client.login(DemoBackend.USERNAME, DemoBackend.PASSWORD, DemoBackend.DEVICE_NAME, null)
+            client
+        }
+        return UserSession(client, this, id, strings, isDemo = true)
+    }
+
     // ---------------------------------------------------------------------------- выход
 
     /**
@@ -308,6 +334,12 @@ class AuthenticationService(
     suspend fun signOut(session: UserSession) {
         // Синхронизация — первой: дифф, пришедший после `logout()`, тронул бы стор, который тот удаляет.
         session.rooms.stop()
+        if (session.isDemo) {
+            // Выход из демо — это выход из демо: хранилище секретов и настоящие аккаунты не трогаются.
+            session.close()
+            environment.sessionDirs(session.sessionId).forEach { it.deleteRecursively() }
+            return
+        }
         runCatching { withTimeLimit(LOGOUT_TIMEOUT) { session.client.logout() } }
         session.close()
         forgetSession(session.sessionId)
@@ -359,7 +391,12 @@ class AuthenticationService(
      *   ответ уже записан в сеансе, а спрашивать снова — значит не пускать человека в его переписку,
      *   пока нет сети.
      */
-    private fun makeClientBuilder(sessionId: String, slidingSync: SlidingSyncVersionBuilder): ClientBuilder {
+    private fun makeClientBuilder(
+        sessionId: String,
+        slidingSync: SlidingSyncVersionBuilder,
+        /** Демо: пароли стора случайные на один запуск, в хранилище секретов не пишется ничего. */
+        demo: Boolean = false,
+    ): ClientBuilder {
         val data = environment.sessionDataDir(sessionId)
         val cache = environment.sessionCacheDir(sessionId)
         val search = environment.searchIndexDir(sessionId)
@@ -370,14 +407,15 @@ class AuthenticationService(
         // В SQLite-сторе расшифрованные сообщения и ключи Megolm, поэтому он зашифрован паролем,
         // который есть только в хранилище секретов.
         val store = SqliteStoreBuilder(data.absolutePath, cache.absolutePath)
-            .passphrase(sessionStore.storePassphrase(sessionId))
+            .passphrase(if (demo) UUID.randomUUID().toString() else sessionStore.storePassphrase(sessionId))
 
-        return ClientBuilder()
+        val builder = ClientBuilder()
             .sqliteStore(store)
             // Что сервер пишет в списке устройств. Для входа через браузер — единственный рычаг.
             .userAgent(userAgent)
-            // Единственное, что держит записанные токены правдой дольше часа. См. `SessionDelegate`.
-            .setSessionDelegate(SessionDelegate(sessionStore, sessionId))
+        // Единственное, что держит записанные токены правдой дольше часа. См. `SessionDelegate`. У демо
+        // токенов, которые стоило бы записывать, нет, и писать в хранилище секретов ему нечего.
+        return (if (demo) builder else builder.setSessionDelegate(SessionDelegate(sessionStore, sessionId)))
             // Бэкап ключей комнат и cross-signing — с самого начала. В SDK оба по умолчанию выключены,
             // и тогда потерянный телефон — это потерянная навсегда история. Код восстановления остаётся
             // ручным: это единственный секрет, который может хранить только человек.
@@ -387,10 +425,16 @@ class AuthenticationService(
             .roomKeyRecipientStrategy(EncryptionPolicy.recipients)
             .decryptionSettings(EncryptionPolicy.decryption)
             // Один процесс по умолчанию, но SDK всё равно держит межпроцессную блокировку стора:
-            // если обработку пушей когда-нибудь вынесут в отдельный процесс, токены не разойдутся.
-            .crossProcessLockConfig(CrossProcessLockConfig.MultiProcess(environment.processName))
+            // если обработку пушей когда-нибудь вынесут в отдельный процесс, токены не разойдутся. Демо
+            // — один процесс и без делегата токенов, а межпроцессная блокировка без делегата не строится.
+            .crossProcessLockConfig(
+                if (demo) CrossProcessLockConfig.SingleProcess else CrossProcessLockConfig.MultiProcess(environment.processName),
+            )
             // Поисковый индекс — вторая копия каждого прочитанного сообщения, и он шифруется так же.
-            .withSearchIndexStore(search.absolutePath, sessionStore.searchIndexPassword(sessionId))
+            .withSearchIndexStore(
+                search.absolutePath,
+                if (demo) UUID.randomUUID().toString() else sessionStore.searchIndexPassword(sessionId),
+            )
             .slidingSyncVersionBuilder(slidingSync)
             // ClientTuning: три повтора на «слишком много запросов», как в iOS; треды на клиенте.
             .requestConfig(RequestConfig(retryLimit = 3uL, timeout = null, maxConcurrentRequests = null, maxRetryTime = null))
@@ -420,6 +464,9 @@ class AuthenticationService(
 
         /** Медленный сервер успевает; молчащий не держит человека вошедшим. */
         private val LOGOUT_TIMEOUT = 10.seconds
+
+        /** Демо-вход: в сеть не ходит, но зависшее демо не должно висеть на экране запуска вечно. */
+        private val DEMO_TIMEOUT = 20.seconds
 
         /**
          * Виновата ли сеть, а не сеанс. `ClientBuildException` называет сетевые случаи прямо; у

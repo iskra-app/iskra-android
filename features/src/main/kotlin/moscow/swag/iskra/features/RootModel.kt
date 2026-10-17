@@ -22,6 +22,12 @@ import moscow.swag.iskra.features.signin.WebAuthentication
 class RootModel(
     private val authentication: AuthenticationService,
     private val scope: CoroutineScope,
+    /**
+     * Открыть демо-сервер вместо настоящего аккаунта (`--mock-backend` на iOS; здесь — extra
+     * `mock_backend` в intent запуска). Настоящий аккаунт остаётся нетронутым и вернётся при
+     * следующем запуске без флага.
+     */
+    private val demo: Boolean = false,
 ) {
     sealed interface Phase {
         data object Starting : Phase
@@ -43,7 +49,18 @@ class RootModel(
     val phase: StateFlow<Phase> = mutablePhase.asStateFlow()
 
     init {
-        restore()
+        if (demo) startDemo() else restore()
+    }
+
+    private fun startDemo() = scope.launch {
+        Log.info(Log.Category.SESSION, "открываем демо-сервер")
+        try {
+            signedIn(authentication.startDemoSession())
+        } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            Log.error(Log.Category.SESSION, "демо не открылось: ${Log.describe(error)}")
+            mutablePhase.value = Phase.SignedOut()
+        }
     }
 
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */

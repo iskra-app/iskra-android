@@ -17,8 +17,8 @@ import moscow.swag.iskra.features.signin.CustomTabsAuthentication
 
 class MainActivity : ComponentActivity() {
     /** Корень переживает поворот экрана: сеанс не пересобирается из-за смены конфигурации. */
-    class RootHolder(application: IskraApplication) : ViewModel() {
-        val root = RootModel(application.graph.authentication, viewModelScope)
+    class RootHolder(application: IskraApplication, demo: Boolean) : ViewModel() {
+        val root = RootModel(application.graph.authentication, viewModelScope, demo)
     }
 
     private lateinit var browser: CustomTabsAuthentication
@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         val app = application as IskraApplication
         holder = ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(app) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(app, intent.getBooleanExtra(EXTRA_MOCK_BACKEND, false)) as T
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
         setContent { IskraRoot(holder.root, browser) }
@@ -63,5 +63,8 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val EXTRA_PROBE = "probe"
+
+        /** `./android.sh -- --ez mock_backend true` — демо-сервер вместо аккаунта (docs/PROMPT.md, 14). */
+        const val EXTRA_MOCK_BACKEND = "mock_backend"
     }
 }
