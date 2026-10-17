@@ -30,10 +30,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -61,6 +63,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -76,6 +80,7 @@ import moscow.swag.iskra.core.timeline.DeliveryStatus
 import moscow.swag.iskra.core.timeline.HtmlWords
 import moscow.swag.iskra.core.timeline.Message
 import moscow.swag.iskra.core.timeline.MessageKind
+import moscow.swag.iskra.core.timeline.RichText
 import moscow.swag.iskra.core.timeline.TimelineRow
 import moscow.swag.iskra.core.timeline.TimelineState
 import moscow.swag.iskra.core.timeline.TimelineStore
@@ -85,6 +90,7 @@ import moscow.swag.iskra.design.Theme
 import moscow.swag.iskra.features.R
 import moscow.swag.iskra.features.support.Avatar
 import moscow.swag.iskra.features.support.AvatarShape
+import moscow.swag.iskra.features.support.LocalOwnUserId
 import moscow.swag.iskra.features.support.RoomAvatar
 import java.time.Instant
 import java.time.LocalDate
@@ -336,122 +342,208 @@ private fun Bubble(
     val own = message.isOwn
     val top = if (message.isContinuation) Theme.Spacing.withinRun else Theme.Spacing.betweenSenders / 2
     var menu by remember { mutableStateOf(false) }
+    var revealed by remember(message.id) { mutableStateOf(false) }
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
+    val ownUserId = LocalOwnUserId.current
 
     // Один корень: элемент ленты из двух корней кладёт их друг на друга в обратном порядке.
     Column {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
-        horizontalArrangement = if (own) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
-        if (!own && showsSender) {
-            if (!message.isContinued) {
-                Avatar(message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId)
-            } else {
-                Spacer(Modifier.width(Theme.Size.avatarSmall))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
+            horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close, if (own) Alignment.End else Alignment.Start),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            // Время — снаружи пузыря, со стороны, противоположной краю переписки: столбец времён
+            // тихо стоит рядом с сообщениями, а не режет их, и не спорит с последней строкой за место.
+            if (own) {
+                if (message.delivery is DeliveryStatus.Failed) FailedBadge(Modifier.align(Alignment.CenterVertically))
+                MessageMarks(message)
             }
-            Spacer(Modifier.width(Theme.Spacing.tight))
-        }
-        Box {
-            Column(
-                Modifier
-                    .widthIn(max = androidx.compose.ui.unit.Dp(maxWidth.toFloat()))
-                    .clip(RoundedCornerShape(Theme.Radius.bubble))
-                    .background(if (own) accent.bubble else MaterialTheme.colorScheme.surfaceVariant)
-                    .combinedClickable(
-                        onClick = {},
-                        onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
-                        onLongClick = { menu = true },
-                    )
-                    .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.close),
-            ) {
-                val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
-                if (showsSender && !own && !message.isContinuation) {
-                    Text(message.senderName, style = MaterialTheme.typography.labelLarge, color = accent.control, maxLines = 1)
+            // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
+            if (!own && showsSender) {
+                if (!message.isContinued) {
+                    Avatar(message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId)
+                } else {
+                    Spacer(Modifier.width(Theme.Size.avatarSmall))
                 }
-                message.replyTo?.let { reply ->
-                    Row(Modifier.padding(bottom = Theme.Spacing.tight)) {
-                        Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
-                        Spacer(Modifier.width(Theme.Spacing.close))
-                        Column {
-                            reply.senderName?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = if (own) ink else accent.control, maxLines = 1) }
-                            Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+                verticalArrangement = Arrangement.spacedBy(Theme.Spacing.withinRun),
+            ) {
+                if (showsSender && !own && !message.isContinuation) {
+                    Text(
+                        message.senderName,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = Theme.Spacing.close),
+                    )
+                }
+                Box {
+                    Column(
+                        Modifier
+                            .widthIn(max = Dp(maxWidth.toFloat()))
+                            .clip(RoundedCornerShape(Theme.Radius.bubble))
+                            .background(if (own) accent.bubble else MaterialTheme.colorScheme.surfaceVariant)
+                            .combinedClickable(
+                                onClick = { revealed = true },
+                                onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
+                                onLongClick = { menu = true },
+                            )
+                            .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.close),
+                    ) {
+                        val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
+                        message.replyTo?.let { reply ->
+                            Row(Modifier.padding(bottom = Theme.Spacing.tight)) {
+                                Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
+                                Spacer(Modifier.width(Theme.Spacing.close))
+                                Column {
+                                    reply.senderName?.let {
+                                        Text(it, style = MaterialTheme.typography.labelMedium, color = if (own) ink else accent.control, maxLines = 1)
+                                    }
+                                    Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
+                        }
+                        val words = message.richText(ownUserId)
+                        if (words != null) {
+                            Text(
+                                words.annotated(
+                                    ink = ink,
+                                    accent = if (own) ink else accent.control,
+                                    quiet = ink.copy(alpha = QUOTE_ALPHA),
+                                    mention = if (own) ink else accent.control,
+                                    revealed = revealed,
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = ink,
+                            )
+                        } else {
+                            Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
                         }
                     }
-                }
-                Text(
-                    body(message),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontStyle = if (message.kind is MessageKind.Text || message.kind is MessageKind.Notice) FontStyle.Normal else FontStyle.Italic,
-                    color = ink,
-                )
-                Row(
-                    modifier = Modifier.align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
-                ) {
-                    if (message.isEdited) Text(stringResource(R.string.message_edited), style = MaterialTheme.typography.labelSmall, color = ink)
-                    Text(clock(message.timestamp), style = MaterialTheme.typography.labelSmall, color = ink)
-                    if (own) DeliveryMark(message, ink)
+                    MessageMenu(message, menu, onDismiss = { menu = false }, onReact, onReply, onEdit, onDelete)
                 }
             }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                if (message.canReply) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.message_menu_reply)) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
-                        onClick = { menu = false; onReply(message) },
-                    )
-                }
-                if (message.canReact) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.message_menu_add_quick, QUICK_REACTION)) },
-                        onClick = { menu = false; onReact(QUICK_REACTION) },
-                    )
-                }
-                if (message.canEdit) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.message_menu_edit)) }, onClick = { menu = false; onEdit(message) })
-                }
-                if (message.canDelete) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.message_menu_delete)) }, onClick = { menu = false; onDelete() })
-                }
-            }
+            if (!own) MessageMarks(message)
         }
+        if (message.reactions.isNotEmpty()) Reactions(message, onReact)
     }
-    if (message.reactions.isNotEmpty()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.withinRun),
-            horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight, if (own) Alignment.End else Alignment.Start),
-        ) {
-            message.reactions.forEach { reaction ->
-                Text(
-                    stringResource(R.string.room_reaction_pill, reaction.key, reaction.count),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (reaction.isMine) accent.control.copy(alpha = Theme.Opacity.SELECTED_TAB) else MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(enabled = message.canReact) { onReact(reaction.key) }
-                        .padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.withinRun),
-                )
-            }
-        }
-    }
+}
+
+/** Слова пузыря с разметкой — для текста и уведомления; null для остального (вложения — словом). */
+private fun Message.richText(ownUserId: String): RichText? = when (val kind = kind) {
+    is MessageKind.Text -> RichText.of(kind.body, formattedBody, ownUserId)
+    is MessageKind.Notice -> RichText.of(kind.body, formattedBody, ownUserId)
+    else -> null
+}
+
+/**
+ * Тихий серый столбец фактов о сообщении, снаружи пузыря: «изменено», время и — у своих — как далеко
+ * ушло. Порт `MessageMarks` и `DeliveryTick`: часы → галочка → глаз. Глаз — только на новейшем
+ * прочитанном: выше поле молчит, это и есть состояние, к которому стремятся. Сбой сюда не входит —
+ * у него значок рядом с пузырём.
+ */
+@Composable
+private fun MessageMarks(message: Message) {
+    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier.padding(bottom = Theme.Spacing.tight),
+        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (message.isEdited) Text(stringResource(R.string.message_edited), style = MaterialTheme.typography.labelSmall, color = quiet)
+        Text(clock(message.timestamp), style = MaterialTheme.typography.labelSmall, color = quiet)
+        if (message.isOwn) DeliveryTick(message, quiet)
     }
 }
 
 @Composable
-private fun DeliveryMark(message: Message, ink: androidx.compose.ui.graphics.Color) {
+private fun DeliveryTick(message: Message, tint: Color) {
     val (icon, label) = when (message.delivery) {
-        DeliveryStatus.Sending -> Icons.Filled.Schedule to R.string.message_delivery_sending
-        DeliveryStatus.Sent -> Icons.Filled.Done to R.string.message_delivery_sent
-        // Глаз — одна отметка на новейшем прочитанном; выше поле молчит.
-        DeliveryStatus.Read -> if (message.carriesReadMark) Icons.Filled.DoneAll to R.string.message_delivery_read else return
-        is DeliveryStatus.Failed -> Icons.Filled.ErrorOutline to R.string.message_delivery_failed
-        null -> return
+        DeliveryStatus.Sending -> Icons.Outlined.Schedule to R.string.message_delivery_sending
+        DeliveryStatus.Sent -> Icons.Filled.Check to R.string.message_delivery_sent
+        // Взгляд, а не вторая галочка: «отправлено» и «прочитано» различимы издалека.
+        DeliveryStatus.Read -> if (message.carriesReadMark) Icons.Filled.Visibility to R.string.message_delivery_read else return
+        else -> return
     }
-    Icon(icon, contentDescription = stringResource(label), tint = ink, modifier = Modifier.size(Theme.Size.audioScrubber - Theme.Spacing.tight))
+    Icon(icon, contentDescription = stringResource(label), tint = tint, modifier = Modifier.size(Theme.Size.audioScrubber - Theme.Spacing.tight))
+}
+
+/** Не ушло: тревога, а не сноска, — значок рядом с пузырём, по его середине. */
+@Composable
+private fun FailedBadge(modifier: Modifier = Modifier) {
+    Icon(
+        Icons.Filled.ErrorOutline,
+        contentDescription = stringResource(R.string.message_delivery_failed),
+        tint = MaterialTheme.colorScheme.error,
+        modifier = modifier.size(Theme.Size.audioScrubber),
+    )
+}
+
+@Composable
+private fun MessageMenu(
+    message: Message,
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onReact: (String) -> Unit,
+    onReply: (Message) -> Unit,
+    onEdit: (Message) -> Unit,
+    onDelete: () -> Unit,
+) {
+    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
+        if (message.canReply) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_reply)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
+                onClick = { onDismiss(); onReply(message) },
+            )
+        }
+        if (message.canReact) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_add_quick, QUICK_REACTION)) },
+                onClick = { onDismiss(); onReact(QUICK_REACTION) },
+            )
+        }
+        if (message.canEdit) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_edit)) },
+                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                onClick = { onDismiss(); onEdit(message) },
+            )
+        }
+        if (message.canDelete) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.message_menu_delete)) },
+                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                onClick = { onDismiss(); onDelete() },
+            )
+        }
+    }
+}
+
+@Composable
+private fun Reactions(message: Message, onReact: (String) -> Unit) {
+    val accent = LocalAccent.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.withinRun),
+        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight, if (message.isOwn) Alignment.End else Alignment.Start),
+    ) {
+        message.reactions.forEach { reaction ->
+            Text(
+                stringResource(R.string.room_reaction_pill, reaction.key, reaction.count),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (reaction.isMine) accent.control.copy(alpha = Theme.Opacity.SELECTED_TAB) else MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(enabled = message.canReact) { onReact(reaction.key) }
+                    .padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.withinRun),
+            )
+        }
+    }
 }
 
 /** Слова пузыря. Вложения пока — словом («Фото»), сами картинки и плееры — этап 6. */
@@ -623,3 +715,6 @@ private const val QUICK_REACTION = "❤️"
 private const val HISTORY_PREFETCH = 5
 
 private const val COMPOSER_LINES = 6
+
+/** Цитата в сообщении — тише слов вокруг. */
+private const val QUOTE_ALPHA = 0.7f
