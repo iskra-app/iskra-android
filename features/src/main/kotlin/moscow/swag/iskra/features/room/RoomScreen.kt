@@ -81,6 +81,7 @@ import moscow.swag.iskra.core.timeline.HtmlWords
 import moscow.swag.iskra.core.timeline.Message
 import moscow.swag.iskra.core.timeline.MessageKind
 import moscow.swag.iskra.core.timeline.RichText
+import moscow.swag.iskra.core.timeline.SendFailure
 import moscow.swag.iskra.core.timeline.TimelineRow
 import moscow.swag.iskra.core.timeline.TimelineState
 import moscow.swag.iskra.core.timeline.TimelineStore
@@ -301,6 +302,15 @@ private fun Conversation(
                     onReply = onReply,
                     onEdit = onEdit,
                     onDelete = { scope.launch { store.delete(row.message.id) } },
+                    onUnsent = { action ->
+                        scope.launch {
+                            when (action) {
+                                UnsentAction.RETRY -> store.retrySending(row.message.id)
+                                UnsentAction.SEND_ANYWAY -> store.sendAnyway(row.message.id)
+                                UnsentAction.DISCARD -> store.discard(row.message.id)
+                            }
+                        }
+                    },
                 )
                 is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()))
                 is TimelineRow.DayDividerRow -> DayLine(row.divider.date)
@@ -337,6 +347,7 @@ private fun Bubble(
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
     onDelete: () -> Unit,
+    onUnsent: (UnsentAction) -> Unit = {},
 ) {
     val accent = LocalAccent.current
     val own = message.isOwn
@@ -356,7 +367,9 @@ private fun Bubble(
             // Время — снаружи пузыря, со стороны, противоположной краю переписки: столбец времён
             // тихо стоит рядом с сообщениями, а не режет их, и не спорит с последней строкой за место.
             if (own) {
-                if (message.delivery is DeliveryStatus.Failed) FailedBadge(Modifier.align(Alignment.CenterVertically))
+                (message.delivery as? DeliveryStatus.Failed)?.let { failed ->
+                    FailedBadge(failed.reason, onUnsent, Modifier.align(Alignment.CenterVertically))
+                }
                 MessageMarks(message)
             }
             // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
@@ -492,14 +505,49 @@ private fun DeliveryTick(message: Message, tint: Color) {
     Icon(icon, contentDescription = stringResource(label), tint = tint, modifier = Modifier.size(Theme.Size.audioScrubber - Theme.Spacing.tight))
 }
 
-/** Не ушло: тревога, а не сноска, — значок рядом с пузырём, по его середине. */
+/** Что можно сделать с неушедшим сообщением. */
+internal enum class UnsentAction { RETRY, SEND_ANYWAY, DISCARD }
+
+/**
+ * Не ушло: тревога, а не сноска, — значок рядом с пузырём, по его середине. Нажатие объясняет, *что*
+ * не так, — причина и есть то, что делать, — и предлагает только честные действия: «ещё раз» — где
+ * препятствие может уйти, «всё равно» — где решение о доверии за человеком, «удалить» — всегда.
+ */
 @Composable
-private fun FailedBadge(modifier: Modifier = Modifier) {
-    Icon(
-        Icons.Filled.ErrorOutline,
-        contentDescription = stringResource(R.string.message_delivery_failed),
-        tint = MaterialTheme.colorScheme.error,
-        modifier = modifier.size(Theme.Size.audioScrubber),
+private fun FailedBadge(reason: SendFailure, onAction: (UnsentAction) -> Unit, modifier: Modifier = Modifier) {
+    var open by remember { mutableStateOf(false) }
+    IconButton(onClick = { open = true }, modifier = modifier.size(Theme.Size.minimumTapTarget)) {
+        Icon(
+            Icons.Filled.ErrorOutline,
+            contentDescription = stringResource(R.string.message_delivery_failed),
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(Theme.Size.audioScrubber),
+        )
+    }
+    if (!open) return
+    fun act(action: UnsentAction) {
+        open = false
+        onAction(action)
+    }
+    AlertDialog(
+        onDismissRequest = { open = false },
+        title = { Text(stringResource(R.string.room_send_failed_title)) },
+        text = { Text(stringResource(reason.explanation)) },
+        confirmButton = {
+            when {
+                reason.canSendAnyway -> TextButton(onClick = { act(UnsentAction.SEND_ANYWAY) }) {
+                    Text(stringResource(R.string.message_delivery_send_anyway))
+                }
+                reason.canRetry -> TextButton(onClick = { act(UnsentAction.RETRY) }) {
+                    Text(stringResource(R.string.message_delivery_send_again))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { act(UnsentAction.DISCARD) }) {
+                Text(stringResource(R.string.message_delivery_discard), color = MaterialTheme.colorScheme.error)
+            }
+        },
     )
 }
 

@@ -29,6 +29,9 @@ import org.matrix.rustcomponents.sdk.ComposerDraft
 import org.matrix.rustcomponents.sdk.ComposerDraftType
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.EventOrTransactionId
+import org.matrix.rustcomponents.sdk.EventSendState
+import org.matrix.rustcomponents.sdk.QueueWedgeError
+import org.matrix.rustcomponents.sdk.SendHandle
 import org.matrix.rustcomponents.sdk.MessageLikeEventType
 import org.matrix.rustcomponents.sdk.ReceiptType
 import org.matrix.rustcomponents.sdk.Room
@@ -555,6 +558,62 @@ class TimelineStore internal constructor(
             Log.error(Log.Category.TIMELINE, "реакция не ушла: ${Log.describe(error)}")
             fail(TimelineFailure.REACTION)
         }
+    }
+
+    /**
+     * Отправить застрявшее ещё раз. Сбой стопорит одним из двух способов, и человек их не различит:
+     * SDK приостановил очередь комнаты или отставил одно сообщение. Снимаются оба. Ничего своего не
+     * составляется: это то сообщение, что уже лежит в зашифрованной очереди.
+     */
+    suspend fun retrySending(messageId: String) {
+        runCatching { room.enableSendQueue(true) }
+        val handle = sendHandle(messageId) ?: return
+        runCatching { withTimeLimit(SDK_LIMIT) { handle.tryResend() } }
+    }
+
+    /**
+     * Выбросить неушедшее. Ничего не удаляется на сервере и никому не сообщается: событие никуда не
+     * дошло. Без подтверждения, в отличие от удаления: то необратимо для всей комнаты, а это — нет.
+     */
+    suspend fun discard(messageId: String) {
+        val handle = sendHandle(messageId) ?: return
+        runCatching { withTimeLimit(SDK_LIMIT) { handle.abort() } }
+    }
+
+    /**
+     * Отправить всё равно — решение о доверии, всегда человека: отозвать подтверждение тех, чьи
+     * ключи сменились, или довериться устройствам, которые владелец не подтвердил.
+     */
+    suspend fun sendAnyway(messageId: String) {
+        val (handle, wedge) = failedSend(messageId) ?: return
+        runCatching { room.enableSendQueue(true) }
+        try {
+            withTimeLimit(SDK_LIMIT) {
+                when (wedge) {
+                    is QueueWedgeError.IdentityViolations -> room.withdrawVerificationAndResend(wedge.users, handle)
+                    is QueueWedgeError.InsecureDevices -> room.ignoreDeviceTrustAndResend(wedge.userDeviceMap, handle)
+                    else -> handle.tryResend()
+                }
+            }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "«отправить всё равно» не прошло: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+        }
+    }
+
+    /** Хендл локального эха — у пришедших с сервера его нет: повторять нечего. */
+    private fun sendHandle(messageId: String): SendHandle? = items.firstNotNullOfOrNull { item ->
+        val event = item.asEvent() ?: return@firstNotNullOfOrNull null
+        if (TimelineMapper.identifier(event.eventOrTransactionId) != messageId) return@firstNotNullOfOrNull null
+        event.lazyProvider.getSendHandle()
+    }
+
+    private fun failedSend(messageId: String): Pair<SendHandle, QueueWedgeError>? = items.firstNotNullOfOrNull { item ->
+        val event = item.asEvent() ?: return@firstNotNullOfOrNull null
+        if (TimelineMapper.identifier(event.eventOrTransactionId) != messageId) return@firstNotNullOfOrNull null
+        val failed = event.localSendState as? EventSendState.SendingFailed ?: return@firstNotNullOfOrNull null
+        event.lazyProvider.getSendHandle()?.let { it to failed.error }
     }
 
     fun clearFailure() = mutableState.update { it.copy(failure = null) }
