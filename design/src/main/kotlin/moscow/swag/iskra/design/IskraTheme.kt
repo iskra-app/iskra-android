@@ -36,6 +36,6 @@ fun IskraTheme(
         LocalAccent provides colors,
         LocalReduceMotion provides reduceMotionHere(),
     ) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = IskraTypography, content = content)
     }
 }
