@@ -10,6 +10,7 @@ import moscow.swag.iskra.core.security.toRustSession
 import moscow.swag.iskra.core.security.toStored
 import moscow.swag.iskra.core.support.AppEnvironment
 import moscow.swag.iskra.core.support.Log
+import moscow.swag.iskra.core.support.Strings
 import moscow.swag.iskra.core.support.TimeoutError
 import moscow.swag.iskra.core.support.withTimeLimit
 import org.matrix.rustcomponents.sdk.Client
@@ -53,6 +54,8 @@ class AuthenticationService(
     private val deviceName: String,
     /** `Iskra/<версия> (<модель>; Android <версия>)` — см. `DeviceDescription`. */
     private val userAgent: String,
+    /** Слова, которые рождаются в `:core`: «Фото» в строке списка, «Без названия». */
+    private val strings: Strings,
 ) : SignInFlow<UserSession> {
     /** Состояние входа меняется только под этим замком — аналог `actor` в iOS. */
     private val mutex = Mutex()
@@ -97,7 +100,7 @@ class AuthenticationService(
     suspend fun restoreSession(sessionId: String? = null): UserSession? {
         val id = sessionId ?: sessionStore.activeSessionId() ?: return null
         val client = restoreClient(id) ?: return null
-        return UserSession(client, this, id)
+        return UserSession(client, this, id, strings)
     }
 
     internal suspend fun restoreClient(sessionId: String): Client? {
@@ -303,6 +306,8 @@ class AuthenticationService(
      * вышел. Ограничено: сервер, который молчит, не держит человека вошедшим, пока думает.
      */
     suspend fun signOut(session: UserSession) {
+        // Синхронизация — первой: дифф, пришедший после `logout()`, тронул бы стор, который тот удаляет.
+        session.rooms.stop()
         runCatching { withTimeLimit(LOGOUT_TIMEOUT) { session.client.logout() } }
         session.close()
         forgetSession(session.sessionId)
@@ -335,7 +340,7 @@ class AuthenticationService(
         pendingSessionId = null
         pendingOAuth = null
         pendingSso = null
-        return UserSession(client, this, sessionId)
+        return UserSession(client, this, sessionId, strings)
     }
 
     /** Куда направить клиент: адрес и — с мостом, на этапе 9, — прокси рядом с ним. */

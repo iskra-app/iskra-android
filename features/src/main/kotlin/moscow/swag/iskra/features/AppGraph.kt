@@ -7,6 +7,7 @@ import moscow.swag.iskra.core.session.AuthenticationService
 import moscow.swag.iskra.core.support.AppEnvironment
 import moscow.swag.iskra.core.support.DeviceDescription
 import moscow.swag.iskra.core.support.SdkLogging
+import moscow.swag.iskra.core.support.Strings
 
 /**
  * Граф объектов приложения. DI-фреймворка нет, как и на iOS: всё собирается здесь, один раз на
@@ -25,6 +26,7 @@ class AppGraph(context: Context, appVersion: String) {
         sessionStore = sessionStore,
         deviceName = context.getString(moscow.swag.iskra.core.R.string.device_android),
         userAgent = DeviceDescription.userAgent(appVersion),
+        strings = Strings.of(context),
     )
 
     init {

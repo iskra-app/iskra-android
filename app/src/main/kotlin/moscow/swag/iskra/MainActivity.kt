@@ -22,18 +22,31 @@ class MainActivity : ComponentActivity() {
     }
 
     private lateinit var browser: CustomTabsAuthentication
+    private lateinit var holder: RootHolder
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val app = application as IskraApplication
-        val holder = ViewModelProvider(this, object : ViewModelProvider.Factory {
+        holder = ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(app) as T
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
         setContent { IskraRoot(holder.root, browser) }
         handle(intent)
+    }
+
+    // Синхронизация живёт, пока приложение видно: onStart/onStop, а не onResume/onPause — диалог
+    // поверх или разделённый экран не повод её гасить.
+    override fun onStart() {
+        super.onStart()
+        holder.root.setForeground(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        holder.root.setForeground(false)
     }
 
     override fun onNewIntent(intent: Intent) {

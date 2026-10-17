@@ -25,8 +25,8 @@ import moscow.swag.iskra.design.AppearanceMode
 import moscow.swag.iskra.design.IskraTheme
 import moscow.swag.iskra.design.LocalAccent
 import moscow.swag.iskra.design.PrimaryActionButton
-import moscow.swag.iskra.design.SecondaryActionButton
 import moscow.swag.iskra.design.Theme
+import moscow.swag.iskra.features.rooms.RoomListScreen
 import moscow.swag.iskra.features.signin.SignInScreen
 import moscow.swag.iskra.features.signin.WebAuthentication
 
@@ -66,14 +66,7 @@ fun IskraRoot(
                     }
                 }
 
-                // Этап 2: вошли — и пока только это. Список чатов — этап 3.
-                is RootModel.Phase.SignedIn -> Centered {
-                    Text(current.session.userId, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
-                    Text(current.session.homeserver, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-                    SecondaryActionButton(onClick = model::signOut, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.account_sign_out))
-                    }
-                }
+                is RootModel.Phase.SignedIn -> RoomListScreen(current.session.rooms, onSignOut = model::signOut)
             }
         }
     }

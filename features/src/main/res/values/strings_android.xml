@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строки, нужные только Android (CLAUDE.md). Знаки, которые не переводятся, — translatable="false". -->
+<resources>
+    <!-- Упоминание рядом со значком непрочитанного: «@», как на iOS. -->
+    <string name="room_list_mention_mark" translatable="false">@</string>
+</resources>

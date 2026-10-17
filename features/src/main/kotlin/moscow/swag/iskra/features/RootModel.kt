@@ -48,7 +48,35 @@ class RootModel(
 
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */
     fun signInModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = { mutablePhase.value = Phase.SignedIn(it) })
+        SignInModel(authentication, browser, scope, onSignedIn = ::signedIn)
+
+    /** На экране ли приложение. Вне экрана синхронизация спит — сообщения приносят пуши (этап 7). */
+    private var isForeground = true
+
+    fun setForeground(foreground: Boolean) {
+        if (isForeground == foreground) return
+        isForeground = foreground
+        val session = (mutablePhase.value as? Phase.SignedIn)?.session ?: return
+        scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
+    }
+
+    /**
+     * Сеанс открыт — и синхронизация запускается *здесь*, явным вызовом, а не `LaunchedEffect` на
+     * экране списка, который кто-нибудь разумно уберёт (docs/PROMPT.md, 4.2).
+     */
+    private fun signedIn(session: UserSession) {
+        mutablePhase.value = Phase.SignedIn(session)
+        scope.launch {
+            try {
+                session.rooms.start()
+                if (!isForeground) session.rooms.pause()
+            } catch (error: Exception) {
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                // Стор уже записал, что не так; список останется в загрузке до повтора.
+                Log.error(Log.Category.ROOMS, "синхронизация не запустилась: ${Log.describe(error)}")
+            }
+        }
+    }
 
     /** «Повторить» на экране без сети: та же попытка, никто не разлогинен. */
     fun retry() {
@@ -90,7 +118,7 @@ class RootModel(
             try {
                 val session = authentication.restoreSession(id) ?: continue
                 authentication.setActiveAccount(id)
-                mutablePhase.value = Phase.SignedIn(session)
+                signedIn(session)
                 return@launch
             } catch (_: AuthenticationError.NetworkUnavailable) {
                 // Никогда не экран входа. Сеть одна на все аккаунты, следующего пробовать незачем.
