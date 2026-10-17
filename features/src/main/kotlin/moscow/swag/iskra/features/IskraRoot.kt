@@ -15,7 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -27,6 +30,8 @@ import moscow.swag.iskra.design.IskraTheme
 import moscow.swag.iskra.design.LocalAccent
 import moscow.swag.iskra.design.PrimaryActionButton
 import moscow.swag.iskra.design.Theme
+import moscow.swag.iskra.core.session.UserSession
+import moscow.swag.iskra.features.room.RoomScreen
 import moscow.swag.iskra.features.rooms.RoomListScreen
 import moscow.swag.iskra.features.signin.SignInScreen
 import moscow.swag.iskra.features.support.LocalMediaLoader
@@ -73,7 +78,7 @@ fun IskraRoot(
                     LocalMediaLoader provides current.session.media,
                     LocalOwnUserId provides current.session.userId,
                 ) {
-                    RoomListScreen(current.session.rooms, onSignOut = model::signOut)
+                    SignedIn(current.session, onSignOut = model::signOut)
                 }
             }
         }
@@ -100,5 +105,21 @@ private fun Notice(title: Int, message: Int) {
     ) {
         Text(stringResource(title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(stringResource(message), style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
+    }
+}
+
+/**
+ * Вошли: список чатов и открытая переписка поверх него. Навигации-фреймворка нет, как и на iOS:
+ * открытая комната — состояние, «назад» — его сброс.
+ */
+@Composable
+private fun SignedIn(session: UserSession, onSignOut: () -> Unit) {
+    var openRoom by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
+    val roomId = openRoom
+    val timeline = remember(roomId) { roomId?.let(session::timeline) }
+    if (timeline != null) {
+        RoomScreen(timeline, onBack = { openRoom = null })
+    } else {
+        RoomListScreen(session.rooms, onOpen = { openRoom = it }, onSignOut = onSignOut)
     }
 }

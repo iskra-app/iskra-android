@@ -3,4 +3,8 @@
 <resources>
     <!-- Упоминание рядом со значком непрочитанного: «@», как на iOS. -->
     <string name="room_list_mention_mark" translatable="false">@</string>
+    <!-- Действие от третьего лица (`/me`): «* Аня машет рукой». Знаки, не слова. -->
+    <string name="room_emote" translatable="false">* %1$s %2$s</string>
+    <!-- Пилюля реакции: эмодзи и сколько человек его поставили. -->
+    <string name="room_reaction_pill" translatable="false">%1$s %2$d</string>
 </resources>

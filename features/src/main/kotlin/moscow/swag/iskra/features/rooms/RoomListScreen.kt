@@ -62,6 +62,7 @@ import java.time.ZoneId
 @Composable
 fun RoomListScreen(
     store: RoomListStore,
+    onOpen: (roomId: String) -> Unit,
     onSignOut: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -94,7 +95,7 @@ fun RoomListScreen(
                                 onDecline = { scope.launch { store.decline(room.id) } },
                             )
                         } else {
-                            RoomRow(room = room, now = now)
+                            RoomRow(room = room, now = now, onOpen = { onOpen(room.id) })
                         }
                     }
                 }
@@ -163,12 +164,12 @@ private fun Empty() {
 }
 
 @Composable
-private fun RoomRow(room: RoomSummary, now: Instant) {
+private fun RoomRow(room: RoomSummary, now: Instant, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = {}, onClickLabel = room.name)
+            .clickable(onClick = onOpen, onClickLabel = room.name)
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
         verticalAlignment = Alignment.CenterVertically,

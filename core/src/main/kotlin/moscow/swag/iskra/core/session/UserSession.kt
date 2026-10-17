@@ -7,6 +7,7 @@ import kotlinx.coroutines.cancel
 import moscow.swag.iskra.core.media.MediaLoader
 import moscow.swag.iskra.core.rooms.RoomListStore
 import moscow.swag.iskra.core.support.Strings
+import moscow.swag.iskra.core.timeline.TimelineStore
 import org.matrix.rustcomponents.sdk.Client
 
 /**
@@ -38,6 +39,25 @@ class UserSession internal constructor(
 
     /** Список чатов и цикл синхронизации под ним. Запускает его тот, кто показывает список. */
     val rooms = RoomListStore(client, strings, scope)
+
+    private val strings = strings
+
+    /**
+     * Переписка комнаты — для экрана, который её показывает. Свой хендл комнаты на каждую ленту:
+     * закрывает его [TimelineStore.close], когда экран уходит. Null для комнаты, которой клиент не знает.
+     */
+    fun timeline(roomId: String): TimelineStore? {
+        val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
+        return TimelineStore(
+            room = room,
+            roomId = roomId,
+            ownUserId = userId,
+            strings = strings,
+            scope = scope,
+            onDraftChanged = { rooms.noteDraft(roomId, it) },
+            onOwnMessagesRead = { rooms.noteRead(roomId, it) },
+        )
+    }
 
     @Volatile
     private var closed = false
