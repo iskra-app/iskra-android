@@ -28,6 +28,7 @@ androidxCore = "1.19.1"
 activity = "1.13.0"
 lifecycle = "2.11.0"
 datastore = "1.2.1"
+browser = "1.10.0"
 composeBom = "2026.09.00"
 
 androidxTestExt = "1.3.0"
@@ -47,6 +48,8 @@ androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidxCore
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }

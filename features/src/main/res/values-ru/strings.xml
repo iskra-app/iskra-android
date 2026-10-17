@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra не смогла подготовить защищённое хранилище на этом устройстве, поэтому безопасно войти не получится.</string>
     <string name="sign_in_problem_unreachable">Не удалось связаться с этим адресом. Проверьте соединение и попробуйте снова.</string>
     <string name="sign_in_problem_bridge_unavailable">Мост не включился, а напрямую Iskra не пойдёт, пока мост включён. Проверьте адрес моста и relay в настройках соединения.</string>
-    <string name="sign_in_bridge_offer">Если сервер заблокирован там, где вы сейчас, до него можно дотянуться через мост.</string>
+    <string name="sign_in_bridge_offer">Если напрямую соединиться не получается, попробуйте через мост.</string>
     <string name="sign_in_try_through_bridge">Включить мост и попробовать снова</string>
     <string name="sign_in_problem_unsupported_method">Этот сервис использует способ входа, который Iskra пока не поддерживает.</string>
     <string name="session_offline_title">Нет соединения</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">Аккаунт живёт на одном сервере, а писать можно людям с любого другого — как с почтой. На всех серверах ниже аккаунт можно создать прямо в Iskra.</string>
     <string name="servers_matrix_org">Самый большой сервер Matrix. Его держит фонд, который развивает сам Matrix.</string>
     <string name="servers_matrix_org_where">Великобритания</string>
-    <string name="servers_matrix_org_blocked">Недоступен из России, но работает через мост</string>
+    <string name="servers_matrix_org_blocked">Из России может быть недоступен</string>
     <string name="servers_tchncs">Один из старейших общественных серверов. Владелец держит и другие свободные сервисы.</string>
     <string name="servers_tchncs_where">Германия</string>
     <string name="servers_quassel">Открытый сервер для повседневного общения, бесплатный для всех.</string>

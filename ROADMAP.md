@@ -44,11 +44,28 @@
 
 ## 2. Вход и сессия
 
-- [ ] `AuthenticationService`: `.well-known`, OIDC (Custom Tabs), legacy SSO, пароль, регистрация
-      через `prompt=create`; единственное место сборки `ClientBuilder`
-- [ ] `SessionStore` по аккаунтам в Keystore + Tink; ключ nostr отдельно
-- [ ] Восстановление сессии, выход, таймауты, `SDKLogging` (не выше `info`)
-- [ ] Пробы `signin` и `verify-storage`; сервер входа (`SignInMockServer`)
+- [x] `AuthenticationService`: поиск по `.well-known`, OIDC и legacy SSO (Custom Tabs + intent-filter
+      на `moscow.swag.iskra:/oauth-callback`), пароль, регистрация через `prompt=create`; единственное
+      место сборки `ClientBuilder` (стор и индекс зашифрованы, делегат токенов, `EncryptionPolicy`,
+      бэкап ключей и cross-signing включены, `.native`/`.discoverNative`)
+- [x] Секреты по аккаунтам: `SessionStore` поверх `KeystoreSecrets` (AES-GCM ключом Keystore,
+      StrongBox если есть, имя записи в AAD); `SessionDelegate` — один на клиент
+- [x] Восстановление (офлайн ≠ выход, `M_UNKNOWN_TOKEN` — выход), выход, уборка сирот при запуске,
+      все ожидания под `withTimeLimit`
+- [x] `SdkLogging` (`INFO`, logcat и кольцевые файлы), `Log` с `describe` без содержимого ошибок
+- [x] Экран входа (адрес → «Войти»/«Создать аккаунт» → форма), `RootModel` с фазами
+      «запуск / вход / нет сети / вошли»
+- [x] Пробы `signin` и `verify-storage` (тот же код, что экран); на эмуляторе matrix.org находится,
+      круг через Keystore проходит
+- [x] Тесты: `SessionStoreTest`, `AuthenticationErrorsTest`, `LogTest`, `SignInModelTest`,
+      `KeystoreSecretsTest` (инструментальный)
+- [ ] Ключ nostr в отдельном alias Keystore — вместе с мостом (этап 9)
+- [ ] Сервер входа (`SignInMockServer`) — нужен листенер loopback, приходит с транспортом
+- [ ] Выбор сервера из списка (`ServerPickerView`) и «Что такое Matrix?»
+- [ ] Логотип над экраном входа
+- [ ] Предложение «включить мост и попробовать снова» — этап 9
+- [ ] Проверить, что `matrix_sdk::client=trace`/`http_client=debug`, которые SDK включает сам поверх
+      `INFO`, не пишут тела запросов
 - [ ] *Готово:* вход в matrix.org на телефоне, перезапуск восстанавливает сессию, выход чистит всё
 
 ## 3. Список чатов

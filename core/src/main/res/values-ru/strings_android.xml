@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строки только Android (docs/PROMPT.md, 2.3). Русский пишется первым. -->
+<resources>
+    <!-- Имя устройства в списке сеансов, как device.iOS и device.mac на iOS. -->
+    <string name="device_android">Iskra на Android</string>
+</resources>

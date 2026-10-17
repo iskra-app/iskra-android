@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra konnte auf diesem Gerät keinen geschützten Speicher einrichten und kann Sie deshalb nicht sicher anmelden.</string>
     <string name="sign_in_problem_unreachable">Diese Adresse ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal.</string>
     <string name="sign_in_problem_bridge_unavailable">Die Bridge ist nicht hochgekommen, und solange sie eingeschaltet ist, verbindet sich Iskra nicht direkt. Prüfen Sie Adresse und Relays der Bridge in den Verbindungseinstellungen.</string>
-    <string name="sign_in_bridge_offer">Ist der Server dort gesperrt, wo Sie gerade sind, erreicht man ihn über eine Bridge trotzdem.</string>
+    <string name="sign_in_bridge_offer">Klappt die direkte Verbindung nicht, versuchen Sie es über eine Bridge.</string>
     <string name="sign_in_try_through_bridge">Bridge einschalten und erneut versuchen</string>
     <string name="sign_in_problem_unsupported_method">Dieser Dienst nutzt eine Anmeldeart, die Iskra noch nicht unterstützt.</string>
     <string name="session_offline_title">Keine Verbindung</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">Ihr Konto liegt auf einem Server, schreiben können Sie aber Menschen auf jedem anderen – wie bei E-Mail. Auf allen Servern unten können Sie direkt in Iskra ein Konto anlegen.</string>
     <string name="servers_matrix_org">Der größte Matrix-Server, betrieben von der Stiftung, die Matrix selbst entwickelt.</string>
     <string name="servers_matrix_org_where">Vereinigtes Königreich</string>
-    <string name="servers_matrix_org_blocked">In Russland gesperrt, aber über eine Bridge erreichbar</string>
+    <string name="servers_matrix_org_blocked">Aus Russland möglicherweise nicht erreichbar</string>
     <string name="servers_tchncs">Einer der ältesten Community-Server. Der Betreiber stellt auch andere freie Dienste bereit.</string>
     <string name="servers_tchncs_where">Deutschland</string>
     <string name="servers_quassel">Ein offener Server für den Alltag, kostenlos für alle.</string>

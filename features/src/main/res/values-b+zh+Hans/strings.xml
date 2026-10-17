@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra 无法在这台设备上准备安全存储，因此无法安全地登录。</string>
     <string name="sign_in_problem_unreachable">无法连接到这个地址。请检查网络后再试一次。</string>
     <string name="sign_in_problem_bridge_unavailable">网桥没有启动，而在网桥开启时，Iskra 不会直接连接。请在连接设置中检查网桥地址和中继。</string>
-    <string name="sign_in_bridge_offer">如果服务器在您所在的地方被封锁，可以通过网桥连接。</string>
+    <string name="sign_in_bridge_offer">如果无法直接连接，请尝试通过网桥连接。</string>
     <string name="sign_in_try_through_bridge">开启网桥并重试</string>
     <string name="sign_in_problem_unsupported_method">该服务使用的登录方式 Iskra 暂不支持。</string>
     <string name="session_offline_title">无连接</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。</string>
     <string name="servers_matrix_org">最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。</string>
     <string name="servers_matrix_org_where">英国</string>
-    <string name="servers_matrix_org_blocked">在俄罗斯被封锁，但可以通过网桥使用</string>
+    <string name="servers_matrix_org_blocked">从俄罗斯可能无法访问</string>
     <string name="servers_tchncs">最早的社区服务器之一。运营者还提供其他自由服务。</string>
     <string name="servers_tchncs_where">德国</string>
     <string name="servers_quassel">面向日常交流的开放服务器，对所有人免费。</string>

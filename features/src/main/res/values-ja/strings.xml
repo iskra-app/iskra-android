@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra はこのデバイスに安全な保存領域を用意できなかったため、安全にサインインできません。</string>
     <string name="sign_in_problem_unreachable">このアドレスに接続できませんでした。接続を確認して、もう一度お試しください。</string>
     <string name="sign_in_problem_bridge_unavailable">ブリッジを起動できませんでした。ブリッジがオンの間、Iskra は直接接続しません。接続設定でブリッジのアドレスとリレーを確認してください。</string>
-    <string name="sign_in_bridge_offer">今いる場所でサーバーがブロックされていても、ブリッジ経由ならつながります。</string>
+    <string name="sign_in_bridge_offer">直接つながらない場合は、ブリッジ経由をお試しください。</string>
     <string name="sign_in_try_through_bridge">ブリッジをオンにして再試行</string>
     <string name="sign_in_problem_unsupported_method">このサービスは、Iskra がまだ対応していないサインイン方法を使っています。</string>
     <string name="session_offline_title">接続がありません</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">アカウントは1つのサーバーにありますが、ほかのどのサーバーの人ともやり取りできます。メールと同じです。以下のサーバーなら、Iskraからそのままアカウントを作れます。</string>
     <string name="servers_matrix_org">最大のMatrixサーバーです。Matrix自体を開発している財団が運営しています。</string>
     <string name="servers_matrix_org_where">イギリス</string>
-    <string name="servers_matrix_org_blocked">ロシアではブロックされていますが、ブリッジ経由で使えます</string>
+    <string name="servers_matrix_org_blocked">ロシアからはつながらないことがあります</string>
     <string name="servers_tchncs">最も古いコミュニティサーバーの1つです。運営者はほかの自由なサービスも提供しています。</string>
     <string name="servers_tchncs_where">ドイツ</string>
     <string name="servers_quassel">日常の会話のための開かれたサーバーです。誰でも無料で使えます。</string>

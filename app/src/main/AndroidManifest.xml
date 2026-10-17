@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!--
         Бэкап выключен целиком (docs/PROMPT.md, 5.1). Это аналог `ThisDeviceOnly` на iOS: зашифрованный
         стор уехал бы в облако, а ключ из Keystore — нет, и восстановленное приложение открылось бы
@@ -24,10 +27,23 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!--
+                Возврат из браузера после входа: AppEnvironment.OAUTH_REDIRECT_URI. Схема — clientUri
+                задом наперёд, иначе сервер с MAS её не примет. singleTask — чтобы вернулась та же activity,
+                что ждёт callback. Хоста нет намеренно: адрес возврата ровно такой, каким его ждёт сервер
+                (как на iOS), поэтому AppLinkUrlError здесь — не ошибка.
+            -->
+            <intent-filter tools:ignore="AppLinkUrlError">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="moscow.swag.iskra" android:path="/oauth-callback" />
             </intent-filter>
         </activity>
     </application>

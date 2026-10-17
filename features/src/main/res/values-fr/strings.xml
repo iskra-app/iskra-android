@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra n’a pas pu préparer de stockage sécurisé sur cet appareil et ne peut donc pas vous connecter en toute sécurité.</string>
     <string name="sign_in_problem_unreachable">Impossible de joindre cette adresse. Vérifiez la connexion et réessayez.</string>
     <string name="sign_in_problem_bridge_unavailable">Le pont n’a pas démarré, et Iskra ne passera pas en direct tant que le pont est activé. Vérifiez l’adresse du pont et les relais dans les réglages de connexion.</string>
-    <string name="sign_in_bridge_offer">Si le serveur est bloqué là où vous êtes, un pont peut quand même l’atteindre.</string>
+    <string name="sign_in_bridge_offer">Si la connexion directe ne fonctionne pas, essayez de passer par un pont.</string>
     <string name="sign_in_try_through_bridge">Activer le pont et réessayer</string>
     <string name="sign_in_problem_unsupported_method">Ce service utilise un mode de connexion qu’Iskra ne prend pas encore en charge.</string>
     <string name="session_offline_title">Pas de connexion</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">Votre compte vit sur un serveur, mais vous pouvez écrire aux personnes de n’importe quel autre, comme avec l’e-mail. Sur tous les serveurs ci-dessous, vous pouvez créer un compte directement dans Iskra.</string>
     <string name="servers_matrix_org">Le plus grand serveur Matrix, géré par la fondation qui développe Matrix.</string>
     <string name="servers_matrix_org_where">Royaume-Uni</string>
-    <string name="servers_matrix_org_blocked">Bloqué en Russie, mais fonctionne via un pont</string>
+    <string name="servers_matrix_org_blocked">Peut être injoignable depuis la Russie</string>
     <string name="servers_tchncs">L’un des plus anciens serveurs communautaires. Son propriétaire héberge aussi d’autres services libres.</string>
     <string name="servers_tchncs_where">Allemagne</string>
     <string name="servers_quassel">Un serveur ouvert pour les conversations de tous les jours, gratuit pour tous.</string>

@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra couldn’t set up secure storage on this device, so it can’t sign you in safely.</string>
     <string name="sign_in_problem_unreachable">Something went wrong reaching that address. Check your connection and try again.</string>
     <string name="sign_in_problem_bridge_unavailable">The bridge didn’t come up, and Iskra won’t go direct while the bridge is on. Check the bridge address and relays in Connection settings.</string>
-    <string name="sign_in_bridge_offer">If the server is blocked where you are, a bridge can still reach it.</string>
+    <string name="sign_in_bridge_offer">If a direct connection doesn’t work, try going through a bridge.</string>
     <string name="sign_in_try_through_bridge">Turn on the bridge and try again</string>
     <string name="sign_in_problem_unsupported_method">That service uses a way of signing in that Iskra doesn’t support yet.</string>
     <string name="session_offline_title">No connection</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">Your account lives on one server, and you can write to people on any other — just like email. On every server below you can create an account right in Iskra.</string>
     <string name="servers_matrix_org">The largest Matrix server, run by the foundation that develops Matrix itself.</string>
     <string name="servers_matrix_org_where">United Kingdom</string>
-    <string name="servers_matrix_org_blocked">Blocked in Russia, but works through a bridge</string>
+    <string name="servers_matrix_org_blocked">May be unreachable from Russia</string>
     <string name="servers_tchncs">One of the oldest community servers. Its owner runs other free services too.</string>
     <string name="servers_tchncs_where">Germany</string>
     <string name="servers_quassel">An open server for everyday conversation, free for everyone.</string>

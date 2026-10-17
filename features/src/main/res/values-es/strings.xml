@@ -211,7 +211,7 @@
     <string name="sign_in_problem_storage_unavailable">Iskra no ha podido preparar un almacenamiento seguro en este dispositivo, así que no puede iniciar su sesión de forma segura.</string>
     <string name="sign_in_problem_unreachable">No se ha podido conectar con esa dirección. Compruebe la conexión e inténtelo de nuevo.</string>
     <string name="sign_in_problem_bridge_unavailable">El puente no ha arrancado, e Iskra no irá directamente mientras el puente esté activado. Compruebe la dirección del puente y los relays en los ajustes de conexión.</string>
-    <string name="sign_in_bridge_offer">Si el servidor está bloqueado donde se encuentra, se puede llegar a él a través de un puente.</string>
+    <string name="sign_in_bridge_offer">Si la conexión directa no funciona, pruebe a través de un puente.</string>
     <string name="sign_in_try_through_bridge">Activar el puente e intentarlo de nuevo</string>
     <string name="sign_in_problem_unsupported_method">Este servicio usa una forma de iniciar sesión que Iskra aún no admite.</string>
     <string name="session_offline_title">Sin conexión</string>
@@ -810,7 +810,7 @@
     <string name="servers_intro">Su cuenta vive en un servidor, pero puede escribir a personas de cualquier otro, como con el correo. En todos los servidores de abajo puede crear una cuenta directamente en Iskra.</string>
     <string name="servers_matrix_org">El mayor servidor de Matrix, gestionado por la fundación que desarrolla Matrix.</string>
     <string name="servers_matrix_org_where">Reino Unido</string>
-    <string name="servers_matrix_org_blocked">Bloqueado en Rusia, pero funciona a través de un puente</string>
+    <string name="servers_matrix_org_blocked">Puede no estar accesible desde Rusia</string>
     <string name="servers_tchncs">Uno de los servidores comunitarios más antiguos. Su dueño mantiene también otros servicios libres.</string>
     <string name="servers_tchncs_where">Alemania</string>
     <string name="servers_quassel">Un servidor abierto para conversar a diario, gratis para todos.</string>
