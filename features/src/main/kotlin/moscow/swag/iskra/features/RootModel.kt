@@ -45,7 +45,20 @@ class RootModel(
          */
         data object Offline : Phase
 
+        /**
+         * Только что вошли, и сеанс уже синхронизируется — а экран спрашивает, что это устройство может
+         * прочесть (резервная копия, код, другое устройство). Только после *входа*: при запуске уже
+         * вошедшего эту работу делает баннер в списке.
+         */
+        data class SettingUp(val session: UserSession) : Phase
+
         data class SignedIn(val session: UserSession) : Phase
+    }
+
+    /** Настройка восстановления закончилась — в переписку. */
+    fun finishSetup() {
+        val session = (mutablePhase.value as? Phase.SettingUp)?.session ?: return
+        mutablePhase.value = Phase.SignedIn(session)
     }
 
     private val mutablePhase = MutableStateFlow<Phase>(Phase.Starting)
@@ -61,7 +74,7 @@ class RootModel(
      */
     fun setDemo(on: Boolean) {
         settings?.setDemoBackend(on)
-        val current = (mutablePhase.value as? Phase.SignedIn)?.session
+        val current = sessionNow
         mutablePhase.value = Phase.Starting
         scope.launch {
             if (current != null) {
@@ -84,7 +97,7 @@ class RootModel(
 
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */
     fun signInModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = ::signedIn)
+        SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) })
 
     /** На экране ли приложение. Вне экрана синхронизация спит — сообщения приносят пуши (этап 7). */
     private var isForeground = true
@@ -92,7 +105,7 @@ class RootModel(
     fun setForeground(foreground: Boolean) {
         if (isForeground == foreground) return
         isForeground = foreground
-        val session = (mutablePhase.value as? Phase.SignedIn)?.session ?: return
+        val session = sessionNow ?: return
         scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
     }
 
@@ -100,9 +113,14 @@ class RootModel(
      * Сеанс открыт — и синхронизация запускается *здесь*, явным вызовом, а не `LaunchedEffect` на
      * экране списка, который кто-нибудь разумно уберёт (docs/PROMPT.md, 4.2).
      */
-    private fun signedIn(session: UserSession) {
-        mutablePhase.value = Phase.SignedIn(session)
+    private fun signedIn(session: UserSession, settingUp: Boolean = false) {
+        // Демо не о чем спрашивать: его ключи живут один запуск.
+        mutablePhase.value = if (settingUp && !session.isDemo) Phase.SettingUp(session) else Phase.SignedIn(session)
         scope.launch {
+            // Подтверждение и резервная копия слушают с первого мгновения сеанса: запрос «это ты?»
+            // с другого устройства может прийти до того, как человек откроет настройки.
+            launch { session.verification.listen() }
+            session.recovery.load()
             try {
                 session.rooms.start()
                 if (!isForeground) session.rooms.pause()
@@ -121,8 +139,16 @@ class RootModel(
         restore()
     }
 
+    /** Открытый сеанс — в переписке или ещё на настройке восстановления. */
+    private val sessionNow: UserSession?
+        get() = when (val phase = mutablePhase.value) {
+            is Phase.SignedIn -> phase.session
+            is Phase.SettingUp -> phase.session
+            else -> null
+        }
+
     fun signOut() {
-        val session = (mutablePhase.value as? Phase.SignedIn)?.session ?: return
+        val session = sessionNow ?: return
         // Выход из демо — это выход из демо: следующий запуск открывает настоящий аккаунт.
         if (session.isDemo) settings?.setDemoBackend(false)
         scope.launch {

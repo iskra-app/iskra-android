@@ -32,6 +32,10 @@ import moscow.swag.iskra.design.PrimaryActionButton
 import moscow.swag.iskra.design.Theme
 import moscow.swag.iskra.core.session.UserSession
 import moscow.swag.iskra.features.room.RoomScreen
+import moscow.swag.iskra.features.recovery.RecoveryBanner
+import moscow.swag.iskra.features.recovery.RecoverySetupModel
+import moscow.swag.iskra.features.recovery.RecoverySetupScreen
+import moscow.swag.iskra.features.recovery.VerificationDialog
 import moscow.swag.iskra.features.rooms.RoomListScreen
 import moscow.swag.iskra.features.settings.SettingsPage
 import moscow.swag.iskra.features.settings.SettingsScreen
@@ -78,6 +82,11 @@ fun IskraRoot(
                     PrimaryActionButton(onClick = model::retry, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.session_try_again))
                     }
+                }
+
+                is RootModel.Phase.SettingUp -> {
+                    val setup = remember(current.session) { RecoverySetupModel(current.session) }
+                    RecoverySetupScreen(setup, onDone = model::finishSetup)
                 }
 
                 is RootModel.Phase.SignedIn -> CompositionLocalProvider(
@@ -127,9 +136,15 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
     val timeline = remember(roomId) { roomId?.let(session::timeline) }
+    var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
         when {
+            // Баннер «старые сообщения заперты» ведёт сюда: тот же экран, что после входа.
+            unlocking -> {
+                val setup = remember(session) { RecoverySetupModel(session) }
+                RecoverySetupScreen(setup, onDone = { unlocking = false })
+            }
             page != null && settings != null -> SettingsScreen(
                 session = session,
                 settings = settings,
@@ -140,7 +155,14 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
                 appVersion = appVersion,
             )
             timeline != null -> RoomScreen(timeline, onBack = { openRoom = null })
-            else -> RoomListScreen(session.rooms, onOpen = { openRoom = it }, onSettings = { settingsPage = SettingsPage.MAIN })
+            else -> RoomListScreen(
+                session.rooms,
+                onOpen = { openRoom = it },
+                onSettings = { settingsPage = SettingsPage.MAIN },
+                banner = { RecoveryBanner(session) { unlocking = true } },
+            )
         }
+        // Своё другое устройство спрашивает «это ты?» — где бы человек ни был.
+        if (!unlocking) VerificationDialog(session.verification)
     }
 }

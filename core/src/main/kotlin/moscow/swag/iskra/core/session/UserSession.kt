@@ -34,6 +34,15 @@ class UserSession internal constructor(
      */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
+    /** Резервная копия переписки и код восстановления. */
+    val recovery = RecoveryStore(client.encryption(), scope)
+
+    /**
+     * Подтверждение устройств в обе стороны. С сеансом, а не с экраном: входящий запрос приходит,
+     * пока человек читает чат, и должен куда-то попасть.
+     */
+    val verification = VerificationStore(client, userId, scope)
+
     /** Картинки: аватарки сейчас, вложения — с лентой. */
     val media = MediaLoader(client)
 
@@ -84,6 +93,8 @@ class UserSession internal constructor(
      * Так переключаются аккаунты и так приложение готовится к обновлению.
      */
     suspend fun shutDown() {
+        verification.stop()
+        recovery.stop()
         rooms.stop()
         close()
     }

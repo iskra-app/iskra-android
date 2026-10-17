@@ -333,6 +333,8 @@ class AuthenticationService(
      */
     suspend fun signOut(session: UserSession) {
         // Синхронизация — первой: дифф, пришедший после `logout()`, тронул бы стор, который тот удаляет.
+        session.verification.stop()
+        session.recovery.stop()
         session.rooms.stop()
         if (session.isDemo) {
             // Выход из демо — это выход из демо: хранилище секретов и настоящие аккаунты не трогаются.

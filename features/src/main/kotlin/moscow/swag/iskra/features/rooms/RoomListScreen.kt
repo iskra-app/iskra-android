@@ -84,6 +84,8 @@ fun RoomListScreen(
     onOpen: (roomId: String) -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Что показать над списком — «старые сообщения заперты» и подобное. */
+    banner: @Composable () -> Unit = {},
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -120,6 +122,7 @@ fun RoomListScreen(
                 onSettings = onSettings,
             )
         }
+        if (!showingArchive) banner()
         if (!state.isLoadingInitialRooms && source.isNotEmpty()) {
             EntryField(
                 value = query,

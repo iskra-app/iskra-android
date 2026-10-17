@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import moscow.swag.iskra.core.session.UserSession
 import moscow.swag.iskra.core.support.AppSettings
 import moscow.swag.iskra.design.AccentTheme
@@ -66,7 +68,7 @@ import moscow.swag.iskra.features.R
 import moscow.swag.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, APPEARANCE, BETA, ABOUT }
+enum class SettingsPage { MAIN, SECURITY, APPEARANCE, BETA, ABOUT }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -89,6 +91,7 @@ fun SettingsScreen(
             title = when (page) {
                 SettingsPage.MAIN -> R.string.settings_title
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
+                SettingsPage.SECURITY -> R.string.settings_security
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
             },
@@ -98,6 +101,7 @@ fun SettingsScreen(
             when (page) {
                 SettingsPage.MAIN -> Main(session, onNavigate, onSignOut)
                 SettingsPage.APPEARANCE -> Appearance(settings)
+                SettingsPage.SECURITY -> Security(session)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo)
                 SettingsPage.ABOUT -> About(appVersion)
             }
@@ -134,6 +138,7 @@ private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSi
         Text(session.userId, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     HorizontalDivider()
+    Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) }
     Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) }
     Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) }
     Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) }
@@ -328,4 +333,96 @@ private fun Licence(resource: Int) {
         modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
     )
     HorizontalDivider(Modifier.padding(horizontal = Theme.Spacing.roomy))
+}
+
+/**
+ * Безопасность (`SecurityView`) отвечает на один вопрос — «прочитаю ли я всё это на новом телефоне», —
+ * и словами человека: «резервная копия», «код восстановления». Код показывается один раз, на экране,
+ * который закрывается единственной кнопкой «Я сохранил код».
+ */
+@Composable
+private fun Security(session: UserSession) {
+    val recovery = session.recovery
+    val protection by recovery.protection.collectAsStateWithLifecycle()
+    val verified by recovery.isDeviceVerified.collectAsStateWithLifecycle()
+    val working by recovery.isWorking.collectAsStateWithLifecycle()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var code by remember { mutableStateOf<moscow.swag.iskra.core.session.RecoveryKey?>(null) }
+    var typed by remember { mutableStateOf("") }
+    var confirmingNew by remember { mutableStateOf(false) }
+    var failure by remember { mutableStateOf<moscow.swag.iskra.core.session.AccountActionFailure?>(null) }
+    LaunchedEffect(recovery) { recovery.load() }
+
+    val shown = code
+    if (shown != null) {
+        Column(Modifier.padding(Theme.Spacing.generous), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy), horizontalAlignment = Alignment.CenterHorizontally) {
+            moscow.swag.iskra.features.recovery.RecoveryCode(shown, onSaved = { code = null })
+        }
+        return
+    }
+
+    val (title, help) = when (protection) {
+        moscow.swag.iskra.core.session.HistoryProtection.ON -> R.string.encryption_on to R.string.encryption_on_help
+        moscow.swag.iskra.core.session.HistoryProtection.KEY_NEEDED -> R.string.encryption_key_needed to R.string.encryption_key_needed_help
+        else -> R.string.encryption_off to R.string.encryption_off_help
+    }
+    Column(Modifier.padding(Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+        Text(stringResource(title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(help), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Column(Modifier.padding(horizontal = Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+        when (protection) {
+            moscow.swag.iskra.core.session.HistoryProtection.OFF, moscow.swag.iskra.core.session.HistoryProtection.UNKNOWN ->
+                moscow.swag.iskra.design.PrimaryActionButton(
+                    onClick = { scope.launch { code = recovery.protectHistory() ?: run { failure = recovery.failure; null } } },
+                    enabled = !working,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.encryption_protect)) }
+            moscow.swag.iskra.core.session.HistoryProtection.KEY_NEEDED -> {
+                moscow.swag.iskra.design.EntryField(value = typed, onValueChange = { typed = it }, placeholder = stringResource(R.string.encryption_key_placeholder))
+                moscow.swag.iskra.design.PrimaryActionButton(
+                    onClick = { scope.launch { if (recovery.restore(typed)) typed = "" else failure = recovery.failure } },
+                    enabled = typed.isNotBlank() && !working,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.encryption_restore)) }
+            }
+            moscow.swag.iskra.core.session.HistoryProtection.ON -> {
+                moscow.swag.iskra.design.SecondaryActionButton(onClick = { confirmingNew = true }, enabled = !working, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.encryption_new_key))
+                }
+                Text(stringResource(R.string.encryption_new_key_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+    if (!verified) {
+        SectionTitle(R.string.encryption_device_unverified)
+        Column(Modifier.padding(horizontal = Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+            Text(stringResource(R.string.verification_why), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            moscow.swag.iskra.design.SecondaryActionButton(onClick = { scope.launch { session.verification.start() } }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.verification_verify))
+            }
+        }
+    }
+
+    if (confirmingNew) {
+        AlertDialog(
+            onDismissRequest = { confirmingNew = false },
+            title = { Text(stringResource(R.string.recovery_new_title)) },
+            text = { Text(stringResource(R.string.recovery_new_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmingNew = false
+                    scope.launch { code = recovery.makeNewKey() ?: run { failure = recovery.failure; null } }
+                }) { Text(stringResource(R.string.recovery_new_confirm)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmingNew = false }) { Text(stringResource(R.string.room_list_swipe_cancel)) } },
+        )
+    }
+    failure?.let {
+        AlertDialog(
+            onDismissRequest = { failure = null },
+            confirmButton = { TextButton(onClick = { failure = null }) { Text(stringResource(android.R.string.ok)) } },
+            text = { Text(stringResource(it.explanation)) },
+        )
+    }
 }
