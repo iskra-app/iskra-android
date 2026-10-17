@@ -32,7 +32,8 @@
       `CONTRIBUTING`, `SECURITY`, `docs/PROMPT.md`
 - [ ] Тест «SDK линкуется и отвечает» (`SdkLinkageTest`) пройден на эмуляторе
 - [ ] Пустое приложение запущено на телефоне на русском и английском
-- [ ] lint/detekt-правило на числовые литералы в `padding`/`size`/`RoundedCornerShape` вне `:design`
+- [x] Нет размеров числом вне `:design` (`SourceRulesTest.noLiteralSizesOutsideDesign` — тест по исходникам
+      вместо detekt: правило одно, и ради него не нужен ещё один инструмент)
 - [ ] Проверка ELF `LOAD`-сегментов `.so` на 16 KB (`llvm-objdump -p`) в CI — вместе с NDK на этапе 9
 - [ ] Workflow релиза: тег `v*` на `main`, проверка, что репозиторий публичный, подпись v2+v3,
       `SHA256SUMS`, `release.json` на семи языках

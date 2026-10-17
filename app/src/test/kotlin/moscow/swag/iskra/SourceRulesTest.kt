@@ -31,6 +31,23 @@ class SourceRulesTest {
     }
 
     /**
+     * Размеры — только из `Theme` (docs/PROMPT.md, 6.2). `.padding(12.dp)` на экране — это баг, который
+     * ждёт, когда разойдётся с соседним. Внутри `:design` числа живут в `Theme.kt`; вне его литерал
+     * в `dp` не пишется вовсе.
+     */
+    @Test
+    fun noLiteralSizesOutsideDesign() {
+        val literal = Regex("""\b\d+(\.\d+)?f?\.dp\b""")
+        val offenders = kotlinSources("features", "app").flatMap { file ->
+            file.readLines().mapIndexedNotNull { index, line ->
+                val code = line.substringBefore("//")
+                if (literal.containsMatchIn(code)) "${file.relativeTo(root)}:${index + 1}" else null
+            }
+        }
+        assertEquals(emptyList(), offenders, "размер числом вместо Theme")
+    }
+
+    /**
      * Бэкап выключен целиком (docs/PROMPT.md, 5.1): иначе зашифрованный стор уедет в облако без
      * ключа Keystore, и восстановленное приложение откроется с мусором.
      */
