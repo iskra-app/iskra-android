@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import moscow.swag.iskra.core.media.MediaLoader
 import moscow.swag.iskra.core.rooms.RoomListStore
 import moscow.swag.iskra.core.support.Strings
 import org.matrix.rustcomponents.sdk.Client
@@ -31,6 +32,9 @@ class UserSession internal constructor(
      * переносятся туда сразу (docs/PROMPT.md, 4.1). Живёт, пока жив сеанс.
      */
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    /** Картинки: аватарки сейчас, вложения — с лентой. */
+    val media = MediaLoader(client)
 
     /** Список чатов и цикл синхронизации под ним. Запускает его тот, кто показывает список. */
     val rooms = RoomListStore(client, strings, scope)

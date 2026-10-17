@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -28,6 +29,8 @@ import moscow.swag.iskra.design.PrimaryActionButton
 import moscow.swag.iskra.design.Theme
 import moscow.swag.iskra.features.rooms.RoomListScreen
 import moscow.swag.iskra.features.signin.SignInScreen
+import moscow.swag.iskra.features.support.LocalMediaLoader
+import moscow.swag.iskra.features.support.LocalOwnUserId
 import moscow.swag.iskra.features.signin.WebAuthentication
 
 /**
@@ -66,7 +69,12 @@ fun IskraRoot(
                     }
                 }
 
-                is RootModel.Phase.SignedIn -> RoomListScreen(current.session.rooms, onSignOut = model::signOut)
+                is RootModel.Phase.SignedIn -> CompositionLocalProvider(
+                    LocalMediaLoader provides current.session.media,
+                    LocalOwnUserId provides current.session.userId,
+                ) {
+                    RoomListScreen(current.session.rooms, onSignOut = model::signOut)
+                }
             }
         }
     }

@@ -46,13 +46,15 @@ import moscow.swag.iskra.design.PrimaryActionButton
 import moscow.swag.iskra.design.SecondaryActionButton
 import moscow.swag.iskra.design.Theme
 import moscow.swag.iskra.features.R
+import moscow.swag.iskra.features.support.AvatarShape
+import moscow.swag.iskra.features.support.RoomAvatar
 import java.time.Instant
 import java.time.ZoneId
 
 /**
  * Список чатов (`RoomListView` на iOS, docs/PROMPT.md, 12.2). Пока — основа этапа 3: заголовок со
- * статусом, строки с последним сообщением, непрочитанное, приглашения. Свайпы, папки, поиск,
- * подглядывание и лица (blobatar) — следующие пункты.
+ * статусом, строки с последним сообщением, лица, непрочитанное, приглашения. Свайпы, папки, поиск
+ * и подглядывание — следующие пункты.
  *
  * Синхронизацию запускает не этот экран: [RoomListStore.start] зовёт корень, явно, когда сеанс
  * открылся (docs/PROMPT.md, 4.2: не побочным эффектом composable).
@@ -280,32 +282,16 @@ private fun Badge(room: RoomSummary) {
     }
 }
 
-/**
- * Лицо чата. Пока — круг акцента с первой буквой имени: настоящие лица (картинки через
- * `MediaLoader` и blobatar на golden-фикстуре) — отдельные пункты этапа 3.
- */
 @Composable
 private fun Face(room: RoomSummary) {
-    val accent = LocalAccent.current
-    Box(
-        Modifier.size(Theme.Size.roomAvatar).clip(CircleShape).background(accent.control),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            room.name.initial(),
-            style = MaterialTheme.typography.titleLarge,
-            color = accent.foreground,
-        )
-    }
-}
-
-/** Первая буква имени — первый *видимый* знак, а не половина суррогатной пары или эмодзи. */
-private fun String.initial(): String {
-    val trimmed = trimStart('#', '@', '!')
-    if (trimmed.isEmpty()) return ""
-    val iterator = java.text.BreakIterator.getCharacterInstance()
-    iterator.setText(trimmed)
-    return trimmed.substring(0, iterator.next()).uppercase()
+    RoomAvatar(
+        name = room.name,
+        url = room.avatarUrl,
+        size = Theme.Size.roomAvatar,
+        shape = if (room.isSpace) AvatarShape.ROUNDED_SQUARE else AvatarShape.CIRCLE,
+        seed = room.avatarSeed,
+        faces = room.faces,
+    )
 }
 
 @Composable
