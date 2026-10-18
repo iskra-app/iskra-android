@@ -310,7 +310,7 @@ private fun Conversation(
     val list = rememberLazyListState()
     val newestFirst = remember(state.rows) { state.rows.asReversed() }
     var viewing by remember { mutableStateOf<String?>(null) }
-    val photos = remember(state.rows) { state.rows.mapNotNull { (it as? TimelineRow.MessageRow)?.message }.viewable() }
+    val photos = remember(state.rows) { state.rows.flatMap { (it as? TimelineRow.MessageRow)?.message?.members.orEmpty() }.viewable() }
     viewing?.let { id -> MediaViewer(photos, id, onClose = { viewing = null }) }
 
     // У начала истории — следующая страница. Прокрутка просит *следующие*; первую попросил `open()`.
@@ -353,7 +353,7 @@ private fun Conversation(
                         onReply = onReply,
                         onEdit = onEdit,
                         onDelete = { scope.launch { store.delete(row.message.id) } },
-                        onOpen = { viewing = row.message.id },
+                        onOpen = { id -> viewing = id },
                     onVote = { answers -> scope.launch { store.vote(row.message.id, answers) } },
                     onEndPoll = { scope.launch { store.endPoll(row.message.id) } },
                         onUnsent = { action ->
@@ -445,7 +445,7 @@ private fun Bubble(
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
     onDelete: () -> Unit,
-    onOpen: () -> Unit = {},
+    onOpen: (String) -> Unit = {},
     onVote: (List<String>) -> Unit = {},
     onEndPoll: () -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
@@ -499,7 +499,24 @@ private fun Bubble(
                 }
                 Box {
                     val picture = message.kind.picture
-                    if (picture != null) {
+                    val album = message.album
+                    if (album != null) {
+                        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+                            AlbumContent(
+                                album,
+                                onOpen = onOpen,
+                                onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
+                                onLongPress = { menu = true },
+                            )
+                            message.albumCaption?.let { caption ->
+                                Text(
+                                    caption,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
+                                )
+                            }
+                        }
+                    } else if (picture != null) {
                         Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
                             MediaContent(
                                 message.kind,
@@ -509,7 +526,7 @@ private fun Bubble(
                                     ),
                                     onClick = {
                                         when (message.kind) {
-                                            is MessageKind.Image, is MessageKind.Video -> onOpen()
+                                            is MessageKind.Image, is MessageKind.Video -> onOpen(message.id)
                                             is MessageKind.VideoNote -> noteTaps++
                                             else -> Unit
                                         }

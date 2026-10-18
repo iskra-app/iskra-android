@@ -458,7 +458,8 @@ class TimelineStore internal constructor(
     }
 
     private fun rebuildRows() {
-        val rows = TimelineRows.rows(memo.mapped(items, ownUserId, strings))
+        // Альбомы — последним проходом: заходы, даты и «прочитано» считаются по отдельным сообщениям.
+        val rows = Album.grouping(TimelineRows.rows(memo.mapped(items, ownUserId, strings)))
         latestRows = rows
 
         rows.lastOrNull { it.message?.isOwn == true && it.message?.delivery == DeliveryStatus.Read }?.message?.timestamp?.let { read ->

@@ -69,6 +69,14 @@ class Attachment internal constructor(
     override fun hashCode() = mediaId.hashCode() * 31 + filename.hashCode()
 }
 
+/** Подпись под картинкой или видео; у остального — null. */
+val MessageKind.caption: String?
+    get() = when (this) {
+        is MessageKind.Image -> attachment.caption
+        is MessageKind.Video -> attachment.caption
+        else -> null
+    }
+
 /** Что сообщение есть на самом деле. Экран выбирает по этому пузырь. */
 sealed interface MessageKind {
     data class Text(val body: String) : MessageKind
@@ -149,7 +157,18 @@ data class Message(
     val carriesReadMark: Boolean = false,
     val thread: ThreadSummaryPreview? = null,
     val threadRootId: String? = null,
+    /**
+     * Фото и видео, отправленные вместе, — у первого сообщения альбома (`Album`); у остальных и у
+     * одиночных — null. Строка альбома — его первое сообщение.
+     */
+    val album: List<Message>? = null,
 ) {
+    /** Все сообщения, за которые стоит эта строка: альбома или только оно само. */
+    val members: List<Message> get() = album ?: listOf(this)
+
+    /** Подпись альбома — первой картинки, единственной, у которой она может быть. */
+    val albumCaption: String? get() = album?.firstOrNull()?.kind?.caption
+
     val isDeleted: Boolean get() = kind == MessageKind.Deleted
 
     private val isOnServer: Boolean get() = delivery == null || delivery == DeliveryStatus.Sent || delivery == DeliveryStatus.Read
