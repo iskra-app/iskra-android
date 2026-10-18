@@ -149,6 +149,8 @@ fun RoomScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     mediaSettings: () -> MediaSettings = { MediaSettings.DEFAULT },
+    /** Событие, к которому вести сразу после открытия: найденное поиском. */
+    initialJump: String? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -162,7 +164,7 @@ fun RoomScreen(
     // Кого позвали из списка «@»: рядом с черновиком, а не в нём (`ComposerMention`).
     var mentions by remember(store.roomId) { mutableStateOf<List<ComposerMention>>(emptyList()) }
     // К какому сообщению вести ленту: нажали на закреплённое или на цитату в ответе.
-    var jumpTo by remember(store.roomId) { mutableStateOf<String?>(null) }
+    var jumpTo by remember(store.roomId) { mutableStateOf(initialJump) }
     var candidates by remember(store.roomId) { mutableStateOf<List<MentionCandidate>>(emptyList()) }
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
@@ -405,14 +407,25 @@ private fun Conversation(
     // Переход к сообщению: прокрутить к его строке (или к альбому, где оно лежит) и коротко подсветить.
     // Только в загруженном; не нашлось — ничего не делать, а не прыгать куда попало.
     var highlighted by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(jumpTo) {
+    // Не нашлось в загруженном — догрузить историю, страница за страницей, но не без конца: найденное
+    // в марте сообщение не повод листать всю комнату с её основания.
+    var pagesAsked by remember(jumpTo) { mutableIntStateOf(0) }
+    LaunchedEffect(jumpTo, newestFirst) {
         val target = jumpTo ?: return@LaunchedEffect
-        // Сброс — в конце: сброшенный ключ отменил бы этот же эффект до прокрутки.
-        try {
-            val index = newestFirst.indexOfFirst { row ->
-                (row as? TimelineRow.MessageRow)?.message?.members?.any { it.id == target } == true
+        val index = newestFirst.indexOfFirst { row ->
+            (row as? TimelineRow.MessageRow)?.message?.members?.any { it.id == target } == true
+        }
+        if (index < 0) {
+            if (state.canLoadMore && pagesAsked < MAX_JUMP_PAGES) {
+                pagesAsked++
+                store.loadMore()
+            } else {
+                onJump(null)
             }
-            if (index < 0) return@LaunchedEffect
+            return@LaunchedEffect
+        }
+        // Сброс — после: сброшенный ключ отменил бы этот же эффект до прокрутки.
+        try {
             list.animateScrollToItem(index)
             highlighted = newestFirst[index].id
             delay(HIGHLIGHT_MS)
@@ -549,6 +562,9 @@ private const val FLOATING_DATE_HOLD_MS = 1200L
 
 /** Сколько горит подсветка сообщения, к которому привели. */
 private const val HIGHLIGHT_MS = 1500L
+
+/** Сколько страниц истории догрузить, ища сообщение, к которому ведут. */
+private const val MAX_JUMP_PAGES = 10
 
 /** Сколько вложений за раз — столько же, сколько у системного выбора и в альбоме. */
 private const val MAX_ATTACHMENTS = 10

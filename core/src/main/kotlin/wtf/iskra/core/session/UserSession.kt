@@ -51,6 +51,9 @@ class UserSession internal constructor(
 
     private val strings = strings
 
+    /** Поиск по своим сообщениям — по локальному индексу, на сервер не уходит. */
+    val search = wtf.iskra.core.search.SearchStore(client, scope, strings)
+
     /** Как человека зовут и его картинка — для шапки настроек. Читается [loadProfile]. */
     data class Profile(val displayName: String?, val avatarUrl: String?)
 

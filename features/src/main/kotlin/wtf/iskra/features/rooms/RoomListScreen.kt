@@ -1,5 +1,8 @@
 package wtf.iskra.features.rooms
 
+import wtf.iskra.core.search.SearchHit
+import wtf.iskra.core.search.SearchState
+import wtf.iskra.core.search.SearchStore
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.MarkEmailRead
@@ -54,6 +57,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -96,12 +100,17 @@ fun RoomListScreen(
     modifier: Modifier = Modifier,
     /** Что показать над списком — «старые сообщения заперты» и подобное. */
     banner: @Composable () -> Unit = {},
+    /** Поиск по сообщениям — под совпавшими названиями; null — только названия. */
+    search: SearchStore? = null,
+    onOpenAt: (roomId: String, eventId: String) -> Unit = { room, _ -> onOpen(room) },
 ) {
     val state by store.state.collectAsStateWithLifecycle()
+    val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
     val typing by store.typingRoomIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     var query by rememberSaveable { mutableStateOf("") }
+    LaunchedEffect(query) { search?.search(query) }
     var showingArchive by rememberSaveable { mutableStateOf(false) }
     var leaving by remember { mutableStateOf<RoomSummary?>(null) }
     BackHandler(enabled = showingArchive) { showingArchive = false }
@@ -170,6 +179,16 @@ fun RoomListScreen(
                             RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, onOpen = { onOpen(room.id) })
                         }
                     }
+                    // Сообщения — под названиями: сначала «где», потом «что сказано».
+                    if (query.isNotBlank()) {
+                        val names = (state.rooms + state.archivedRooms).associate { it.id to it.name }
+                        items(found.hits, key = { "hit:" + it.id }) { hit ->
+                            SearchHitRow(hit, names[hit.roomId], now) { onOpenAt(hit.roomId, hit.id) }
+                        }
+                        if (found.foundNothing && shown.isEmpty()) {
+                            item(key = "nothing") { Empty(R.string.room_search_empty_title, null) }
+                        }
+                    }
                 }
             }
         }
@@ -228,7 +247,7 @@ private fun Header(status: Int?, onSettings: () -> Unit) {
 }
 
 @Composable
-private fun Empty(title: Int, message: Int) {
+private fun Empty(title: Int, message: Int?) {
     Box(Modifier.fillMaxSize().padding(Theme.Spacing.generous), contentAlignment = Alignment.Center) {
         Column(
             verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
@@ -239,12 +258,14 @@ private fun Empty(title: Int, message: Int) {
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
-            Text(
-                stringResource(message),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+            if (message != null) {
+                Text(
+                    stringResource(message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
@@ -316,6 +337,25 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
     }
     RoomMenu(room, menu, onDismiss = { menu = false }, actions)
     }
+    }
+}
+
+/** Найденное сообщение: чат и время, кто сказал и сами слова. Нажатие открывает чат на нём. */
+@Composable
+private fun SearchHitRow(hit: SearchHit, roomName: String?, now: Instant, onClick: () -> Unit) {
+    val locale = LocalConfiguration.current.locales[0]
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(roomName ?: hit.senderName, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(RoomTime.label(hit.timestamp, now, ZoneId.systemDefault(), locale), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(hit.senderName, style = MaterialTheme.typography.labelMedium, color = LocalAccent.current.control, maxLines = 1)
+        Text(hit.excerpt, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

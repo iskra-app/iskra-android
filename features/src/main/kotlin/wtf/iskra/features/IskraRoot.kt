@@ -132,6 +132,8 @@ private fun Notice(title: Int, message: Int) {
 @Composable
 private fun SignedIn(session: UserSession, model: RootModel, appVersion: String) {
     var openRoom by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
+    // Найденное поиском: открыть комнату — и на этом сообщении.
+    var openEvent by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
     var settingsPage by rememberSaveable(session.sessionId) { mutableStateOf<SettingsPage?>(null) }
     val settings = model.settings
     val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(true)).collectAsStateWithLifecycle()
@@ -158,12 +160,21 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
             )
             timeline != null -> RoomScreen(
                 timeline,
-                onBack = { openRoom = null },
+                onBack = {
+                    openRoom = null
+                    openEvent = null
+                },
                 mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
+                initialJump = openEvent,
             )
             else -> RoomListScreen(
                 session.rooms,
                 onOpen = { openRoom = it },
+                search = session.search,
+                onOpenAt = { room, event ->
+                    openEvent = event
+                    openRoom = room
+                },
                 onSettings = { settingsPage = SettingsPage.MAIN },
                 banner = { RecoveryBanner(session) { unlocking = true } },
             )
