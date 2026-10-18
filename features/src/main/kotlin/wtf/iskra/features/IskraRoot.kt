@@ -43,6 +43,7 @@ import wtf.iskra.features.support.FaceMode
 import wtf.iskra.features.support.LocalFaceMode
 import wtf.iskra.features.signin.SignInScreen
 import wtf.iskra.features.support.LocalMediaLoader
+import wtf.iskra.features.support.LocalAppSettings
 import wtf.iskra.features.support.LocalOwnUserId
 import wtf.iskra.features.signin.WebAuthentication
 
@@ -92,6 +93,7 @@ fun IskraRoot(
                 is RootModel.Phase.SignedIn -> CompositionLocalProvider(
                     LocalMediaLoader provides current.session.media,
                     LocalOwnUserId provides current.session.userId,
+                    LocalAppSettings provides model.settings,
                 ) {
                     SignedIn(current.session, model, appVersion)
                 }

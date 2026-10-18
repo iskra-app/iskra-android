@@ -44,6 +44,9 @@ val LocalMediaLoader = compositionLocalOf<MediaLoader?> { null }
 /** Кто читает: его лицо стоит в кластере группы рядом с остальными. */
 val LocalOwnUserId = compositionLocalOf { "" }
 
+/** Настройки приложения — для того, что экран читает и пишет по ходу (недавние реакции). */
+val LocalAppSettings = compositionLocalOf<wtf.iskra.core.support.AppSettings?> { null }
+
 /** Два силуэта: круг — человек или чат, скруглённый квадрат — пространство, видно до всяких слов. */
 enum class AvatarShape {
     CIRCLE,

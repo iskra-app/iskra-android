@@ -1,5 +1,12 @@
 package wtf.iskra.features.room
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import wtf.iskra.features.support.LocalAppSettings
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -453,7 +460,8 @@ private fun Bubble(
     val accent = LocalAccent.current
     val own = message.isOwn
     val top = if (message.isContinuation) Theme.Spacing.withinRun else Theme.Spacing.betweenSenders / 2
-    var menu by remember { mutableStateOf(false) }
+    var menuAnchor by remember { mutableStateOf<Rect?>(null) }
+    var confirm by remember { mutableStateOf<Confirm?>(null) }
     var revealed by remember(message.id) { mutableStateOf(false) }
     var noteTaps by remember(message.id) { mutableIntStateOf(0) }
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
@@ -497,112 +505,209 @@ private fun Bubble(
                         modifier = Modifier.padding(start = Theme.Spacing.close),
                     )
                 }
-                Box {
-                    val picture = message.kind.picture
-                    val album = message.album
-                    if (album != null) {
-                        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
-                            AlbumContent(
-                                album,
-                                onOpen = onOpen,
-                                onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
-                                onLongPress = { menu = true },
-                            )
-                            message.albumCaption?.let { caption ->
-                                Text(
-                                    caption,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
-                                )
-                            }
-                        }
-                    } else if (picture != null) {
-                        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
-                            MediaContent(
-                                message.kind,
-                                Modifier.combinedClickable(
-                                    onClickLabel = stringResource(
-                                        if (message.kind is MessageKind.VideoNote) R.string.message_media_play else R.string.message_media_open_full_screen,
-                                    ),
-                                    onClick = {
-                                        when (message.kind) {
-                                            is MessageKind.Image, is MessageKind.Video -> onOpen(message.id)
-                                            is MessageKind.VideoNote -> noteTaps++
-                                            else -> Unit
-                                        }
-                                    },
-                                    onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
-                                    onLongClick = { menu = true },
-                                ),
-                                messageId = message.id,
-                                noteTaps = noteTaps,
-                            )
-                            picture.caption?.takeIf { message.kind !is MessageKind.Sticker }?.let { caption ->
-                                Text(
-                                    caption,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
-                                )
-                            }
-                        }
-                    } else Column(
-                        Modifier
-                            .widthIn(max = Dp(maxWidth.toFloat()))
-                            .clip(RoundedCornerShape(Theme.Radius.bubble))
-                            .background(if (own) accent.bubble else MaterialTheme.colorScheme.surfaceVariant)
-                            .combinedClickable(
-                                onClick = { revealed = true },
-                                onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
-                                onLongClick = { menu = true },
-                            )
-                            .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.close),
+                val anchor = remember { AnchorBox() }
+                Box(Modifier.onGloballyPositioned { anchor.rect = it.boundsInWindow() }) {
+                    BubbleBody(
+                        message = message,
+                        interactive = true,
+                        revealed = revealed,
+                        noteTaps = noteTaps,
+                        onReveal = { revealed = true },
+                        onNoteTap = { noteTaps++ },
+                        onOpen = onOpen,
+                        onVote = onVote,
+                        onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
+                        onLongPress = { menuAnchor = anchor.rect },
+                    )
+                }
+                menuAnchor?.let { rect ->
+                    MessageMenu(
+                        message = message,
+                        anchor = rect,
+                        onDismiss = { menuAnchor = null },
+                        onReact = onReact,
+                        onReply = onReply,
+                        onEdit = onEdit,
+                        onAskDelete = { confirm = Confirm.DELETE },
+                        onAskEndPoll = { confirm = Confirm.END_POLL },
                     ) {
-                        val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
-                        message.replyTo?.let { reply ->
-                            Row(Modifier.padding(bottom = Theme.Spacing.tight)) {
-                                Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
-                                Spacer(Modifier.width(Theme.Spacing.close))
-                                Column {
-                                    reply.senderName?.let {
-                                        Text(it, style = MaterialTheme.typography.labelMedium, color = if (own) ink else accent.control, maxLines = 1)
-                                    }
-                                    Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
-                            }
-                        }
-                        val words = message.richText(ownUserId)
-                        val poll = (message.kind as? MessageKind.Poll)?.poll
-                        if (poll != null) {
-                            PollContent(poll, ink = ink, fill = if (own) ink else accent.control, onVote = onVote)
-                        } else if (message.kind.isAttachmentRow) {
-                            AttachmentContent(
-                                message,
-                                ink = ink,
-                                fill = if (own) ink else accent.color,
-                                onFill = if (own) accent.bubble else accent.foreground,
-                            )
-                        } else if (words != null) {
-                            Text(
-                                words.annotated(
-                                    ink = ink,
-                                    accent = if (own) ink else accent.control,
-                                    quiet = ink.copy(alpha = QUOTE_ALPHA),
-                                    mention = if (own) ink else accent.control,
-                                    revealed = revealed,
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = ink,
-                            )
-                        } else {
-                            Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
-                        }
+                        BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
                     }
-                    MessageMenu(message, menu, onDismiss = { menu = false }, onReact, onReply, onEdit, onDelete, onEndPoll)
+                }
+                confirm?.let { asked ->
+                    ConfirmDialog(
+                        title = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_title else R.string.poll_end_confirm_title,
+                        text = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_message else R.string.poll_end_confirm_message,
+                        confirm = if (asked == Confirm.DELETE) R.string.message_menu_delete else R.string.poll_end,
+                        dismiss = R.string.poll_cancel,
+                        onConfirm = {
+                            confirm = null
+                            if (asked == Confirm.DELETE) onDelete() else onEndPoll()
+                        },
+                        onDismiss = { confirm = null },
+                    )
                 }
             }
             if (!own) MessageMarks(message)
         }
         if (message.reactions.isNotEmpty()) Reactions(message, onReact)
+    }
+}
+
+/** Что пузырь спрашивает, прежде чем сделать необратимое. */
+private enum class Confirm { DELETE, END_POLL }
+
+@Composable
+private fun ConfirmDialog(title: Int, text: Int, confirm: Int, dismiss: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(title)) },
+        text = { Text(stringResource(text)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(confirm), color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(dismiss)) } },
+    )
+}
+
+/** Где пузырь на экране — без состояния: пишется на каждом кадре прокрутки, читается раз, при нажатии. */
+private class AnchorBox {
+    var rect: Rect = Rect.Zero
+}
+
+/** Без жестов, когда пузырь — копия в меню: там он показывает, о чём меню, а не отвечает на нажатия. */
+private fun Modifier.bubbleGestures(
+    interactive: Boolean,
+    onClickLabel: String? = null,
+    onClick: () -> Unit,
+    onDoubleClick: () -> Unit,
+    onLongClick: () -> Unit,
+): Modifier = if (!interactive) this else combinedClickable(
+    onClickLabel = onClickLabel,
+    onClick = onClick,
+    onDoubleClick = onDoubleClick,
+    onLongClick = onLongClick,
+)
+
+/**
+ * Сам пузырь: альбом, картинка или слова. Рисуется дважды — в ленте и поднятым в меню долгого
+ * нажатия (`interactive = false`), поэтому всё, что он делает, приходит снаружи.
+ */
+@Composable
+private fun BubbleBody(
+    message: Message,
+    interactive: Boolean,
+    revealed: Boolean,
+    noteTaps: Int,
+    onReveal: () -> Unit = {},
+    onNoteTap: () -> Unit = {},
+    onOpen: (String) -> Unit = {},
+    onVote: (List<String>) -> Unit = {},
+    onDoubleTap: () -> Unit = {},
+    onLongPress: () -> Unit = {},
+) {
+    val accent = LocalAccent.current
+    val own = message.isOwn
+    val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
+    val ownUserId = LocalOwnUserId.current
+    val picture = message.kind.picture
+    val album = message.album
+    if (album != null) {
+        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+            AlbumContent(
+                album,
+                onOpen = { if (interactive) onOpen(it) },
+                onDoubleTap = onDoubleTap,
+                onLongPress = onLongPress,
+            )
+            message.albumCaption?.let { caption ->
+                Text(
+                    caption,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
+                )
+            }
+        }
+    } else if (picture != null) {
+        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+            MediaContent(
+                message.kind,
+                Modifier.bubbleGestures(
+                    interactive = interactive,
+                    onClickLabel = stringResource(
+                        if (message.kind is MessageKind.VideoNote) R.string.message_media_play else R.string.message_media_open_full_screen,
+                    ),
+                    onClick = {
+                        when (message.kind) {
+                            is MessageKind.Image, is MessageKind.Video -> onOpen(message.id)
+                            is MessageKind.VideoNote -> onNoteTap()
+                            else -> Unit
+                        }
+                    },
+                    onDoubleClick = onDoubleTap,
+                    onLongClick = onLongPress,
+                ),
+                messageId = message.id,
+                noteTaps = noteTaps,
+            )
+            picture.caption?.takeIf { message.kind !is MessageKind.Sticker }?.let { caption ->
+                Text(
+                    caption,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
+                )
+            }
+        }
+    } else Column(
+        Modifier
+            .widthIn(max = Dp(maxWidth.toFloat()))
+            .clip(RoundedCornerShape(Theme.Radius.bubble))
+            .background(if (own) accent.bubble else MaterialTheme.colorScheme.surfaceVariant)
+            .bubbleGestures(
+interactive = interactive,
+                onClick = onReveal,
+                onDoubleClick = onDoubleTap,
+                onLongClick = onLongPress,
+            )
+            .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.close),
+    ) {
+        val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
+        message.replyTo?.let { reply ->
+            Row(Modifier.padding(bottom = Theme.Spacing.tight)) {
+                Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
+                Spacer(Modifier.width(Theme.Spacing.close))
+                Column {
+                    reply.senderName?.let {
+                        Text(it, style = MaterialTheme.typography.labelMedium, color = if (own) ink else accent.control, maxLines = 1)
+                    }
+                    Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+        }
+        val words = message.richText(ownUserId)
+        val poll = (message.kind as? MessageKind.Poll)?.poll
+        if (poll != null) {
+            PollContent(poll, ink = ink, fill = if (own) ink else accent.control, onVote = onVote)
+        } else if (message.kind.isAttachmentRow) {
+            AttachmentContent(
+                message,
+                ink = ink,
+                fill = if (own) ink else accent.color,
+                onFill = if (own) accent.bubble else accent.foreground,
+            )
+        } else if (words != null) {
+            Text(
+                words.annotated(
+                    ink = ink,
+                    accent = if (own) ink else accent.control,
+                    quiet = ink.copy(alpha = QUOTE_ALPHA),
+                    mention = if (own) ink else accent.control,
+                    revealed = revealed,
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                color = ink,
+            )
+        } else {
+            Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
+        }
     }
 }
 
@@ -691,69 +796,55 @@ private fun FailedBadge(reason: SendFailure, onAction: (UnsentAction) -> Unit, m
     )
 }
 
+/**
+ * Меню долгого нажатия: собирает, что можно сделать с этим сообщением, и отдаёт `MessageMenuOverlay`.
+ * Удаление и конец опроса — необратимы для всей комнаты, поэтому спрашиваются (`onAskDelete`,
+ * `onAskEndPoll`): меню к тому времени уже закрыто, вопрос задаёт пузырь.
+ */
 @Composable
 private fun MessageMenu(
     message: Message,
-    expanded: Boolean,
+    anchor: Rect,
     onDismiss: () -> Unit,
     onReact: (String) -> Unit,
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
-    onDelete: () -> Unit,
-    onEndPoll: () -> Unit,
+    onAskDelete: () -> Unit,
+    onAskEndPoll: () -> Unit,
+    lifted: @Composable () -> Unit,
 ) {
-    var confirmEnd by remember { mutableStateOf(false) }
-    if (confirmEnd) {
-        AlertDialog(
-            onDismissRequest = { confirmEnd = false },
-            title = { Text(stringResource(R.string.poll_end_confirm_title)) },
-            text = { Text(stringResource(R.string.poll_end_confirm_message)) },
-            confirmButton = {
-                TextButton(onClick = { confirmEnd = false; onEndPoll() }) {
-                    Text(stringResource(R.string.poll_end), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmEnd = false }) { Text(stringResource(R.string.poll_cancel)) }
-            },
-        )
+    val context = LocalContext.current
+    val settings = LocalAppSettings.current
+    val recent by (settings?.recentReactions ?: remember { kotlinx.coroutines.flow.MutableStateFlow(emptyList<String>()) }).collectAsStateWithLifecycle()
+    val ownUserId = LocalOwnUserId.current
+    val copyable = message.richText(ownUserId)?.text ?: message.editableText
+    val actions = buildList {
+        if (message.canReply) add(MenuAction(stringResource(R.string.message_menu_reply), Icons.AutoMirrored.Filled.Reply) { onReply(message) })
+        if (copyable != null) {
+            add(
+                MenuAction(stringResource(R.string.message_menu_copy), Icons.Filled.ContentCopy) {
+                    context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(null, copyable))
+                },
+            )
+        }
+        if (message.canEdit) add(MenuAction(stringResource(R.string.message_menu_edit), Icons.Filled.Edit) { onEdit(message) })
+        if (message.canEndPoll) add(MenuAction(stringResource(R.string.poll_end), Icons.Filled.Done, run = onAskEndPoll))
+        if (message.canDelete) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
     }
-    DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
-        if (message.canReply) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.message_menu_reply)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null) },
-                onClick = { onDismiss(); onReply(message) },
-            )
-        }
-        if (message.canReact) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.message_menu_add_quick, QUICK_REACTION)) },
-                onClick = { onDismiss(); onReact(QUICK_REACTION) },
-            )
-        }
-        if (message.canEdit) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.message_menu_edit)) },
-                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
-                onClick = { onDismiss(); onEdit(message) },
-            )
-        }
-        if (message.canEndPoll) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.poll_end)) },
-                leadingIcon = { Icon(Icons.Filled.Done, contentDescription = null) },
-                onClick = { onDismiss(); confirmEnd = true },
-            )
-        }
-        if (message.canDelete) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.message_menu_delete)) },
-                leadingIcon = { Icon(Icons.Filled.Delete, contentDescription = null) },
-                onClick = { onDismiss(); onDelete() },
-            )
-        }
-    }
+    MessageMenuOverlay(
+        anchor = anchor,
+        alignEnd = message.isOwn,
+        mine = message.reactions.filter { it.isMine }.map { it.key }.toSet(),
+        canReact = message.canReact,
+        actions = actions,
+        recent = recent,
+        onReact = { emoji ->
+            settings?.rememberReaction(emoji)
+            onReact(emoji)
+        },
+        onDismiss = onDismiss,
+        lifted = lifted,
+    )
 }
 
 @Composable
@@ -950,7 +1041,7 @@ private fun Failed(onRetry: () -> Unit) {
     }
 }
 
-/** Двойное нажатие — как в Telegram: сердце. Своё меню реакций — следующим пунктом. */
+/** Двойное нажатие — как в Telegram: сердце (`QuickReaction.default`). Выбор в настройках — позже. */
 private const val QUICK_REACTION = "❤️"
 
 /** За сколько строк до начала просить следующую страницу. */

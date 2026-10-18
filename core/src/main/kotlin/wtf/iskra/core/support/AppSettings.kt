@@ -47,6 +47,17 @@ class AppSettings(context: Context) {
     /** Существа даже вместо картинок — просьба, а не умолчание. */
     val forceCreatures: StateFlow<Boolean> = mutableForceCreatures.asStateFlow()
 
+    private val mutableRecentReactions = MutableStateFlow(RecentReactions.list(preferences.getString(RECENT_REACTIONS, null).orEmpty()))
+
+    /** Эмодзи, за которыми человек тянулся недавно, — вверху панели эмодзи (`RecentEmoji`). */
+    val recentReactions: StateFlow<List<String>> = mutableRecentReactions.asStateFlow()
+
+    fun rememberReaction(emoji: String) {
+        val stored = RecentReactions.adding(emoji, preferences.getString(RECENT_REACTIONS, null).orEmpty())
+        preferences.edit().putString(RECENT_REACTIONS, stored).apply()
+        mutableRecentReactions.value = RecentReactions.list(stored)
+    }
+
     /** Что делать с фото и видео по дороге наружу. Читается в момент отправки. */
     val media: StateFlow<MediaSettings> = mutableMedia.asStateFlow()
 
@@ -87,5 +98,6 @@ class AppSettings(context: Context) {
         const val MEDIA_STRIPS = "media.stripsMetadata"
         const val MEDIA_COMPRESSES = "media.compresses"
         const val MEDIA_COMPRESSION = "media.compression"
+        const val RECENT_REACTIONS = "reactions.recent"
     }
 }
