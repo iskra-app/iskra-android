@@ -33,6 +33,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.media3.common.Player
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import wtf.iskra.core.timeline.Attachment
@@ -148,6 +150,8 @@ private object Thumbnails {
  * Кружочек, который играет там же, где лежит. Первое нажатие качает и запускает, следующие —
  * пауза и дальше; доиграл — снова кадр и значок. Динамик один: заговорило другое — кружок умолкает.
  */
+// ContentFrame и выбор декодеров Media3 помечены нестабильными: их API ещё меняется между версиями.
+@OptIn(UnstableApi::class)
 @Composable
 private fun VideoNote(messageId: String, attachment: Attachment, taps: Int, modifier: Modifier) {
     var wanted by remember(messageId) { mutableStateOf(false) }

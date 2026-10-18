@@ -13,6 +13,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.mediacodec.MediaCodecUtil
@@ -59,6 +61,8 @@ internal sealed interface VideoLoad {
  * его кусками, а не держит в памяти целиком. Живёт ровно столько, сколько тот, кто позвал: уходит —
  * плеер отпускается и папка удаляется. Что пережило падение, подметает `sweep` при запуске.
  */
+// ContentFrame и выбор декодеров Media3 помечены нестабильными: их API ещё меняется между версиями.
+@OptIn(UnstableApi::class)
 @Composable
 internal fun rememberVideo(attachment: Attachment, wanted: Boolean): VideoLoad {
     val context = LocalContext.current
@@ -129,6 +133,8 @@ private class Holder {
  * Аппаратный декодер, который не создался, ExoPlayer меняет на следующий сам (`decoderFallback`).
  * Упавший посреди файла — нет: такой плеер пересобирается только на программных (`softwareOnly`).
  */
+// ContentFrame и выбор декодеров Media3 помечены нестабильными: их API ещё меняется между версиями.
+@OptIn(UnstableApi::class)
 private fun player(context: Context, uri: Uri, softwareOnly: Boolean): Player {
     val renderers = DefaultRenderersFactory(context).setEnableDecoderFallback(true)
     if (softwareOnly) {

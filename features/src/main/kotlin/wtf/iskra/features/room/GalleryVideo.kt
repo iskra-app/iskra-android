@@ -46,6 +46,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntSize
 import androidx.media3.common.Player
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.ContentFrame
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import kotlinx.coroutines.delay
@@ -63,6 +65,8 @@ import kotlin.math.max
  *
  * Плеер отдаётся наверх (`onPlayer`): кнопки — в подвале, который не едет вместе со страницей.
  */
+// ContentFrame и выбор декодеров Media3 помечены нестабильными: их API ещё меняется между версиями.
+@OptIn(UnstableApi::class)
 @Composable
 internal fun VideoPage(
     message: Message,
