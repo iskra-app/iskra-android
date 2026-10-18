@@ -203,6 +203,8 @@ fun RoomScreen(
     val hasPinned = state.pinnedIds.isNotEmpty()
     LaunchedEffect(pinnedStore, hasPinned) { if (hasPinned) pinnedStore.start() }
     var showsPinned by remember(store.roomId) { mutableStateOf(false) }
+    // Читающий у живого конца: только там строка «печатает…» может менять высоту ленты.
+    var atLiveEnd by remember(store.roomId) { mutableStateOf(true) }
     if (showsPinned) {
         PinnedMessages(
             pinnedStore,
@@ -275,6 +277,7 @@ fun RoomScreen(
                     onJump = { jumpTo = it },
                     onReply = { replyingTo = it; editing = null },
                     onOpenThread = onOpenThread,
+                    onAtLiveEnd = { atLiveEnd = it },
                     onEdit = { message ->
                         editing = message
                         replyingTo = null
@@ -285,7 +288,10 @@ fun RoomScreen(
                 )
             }
         }
-        if (state.typing.isNotEmpty()) {
+        // Строка под лентой сжимает её окно, а лента держит низ — у прокрученного вверх читателя всё,
+        // что он видит, прыгало на строку каждый раз, как кто-то начинал или бросал писать (вторая
+        // причина «скачущей ленты» на iOS). Поэтому только у конца переписки; выше — в шапке.
+        if (state.typing.isNotEmpty() && atLiveEnd) {
             Text(
                 if (state.typing.size == 1 && !state.header.isOneToOne) {
                     stringResource(R.string.room_typing_by, state.typing[0])
@@ -477,9 +483,15 @@ private fun Conversation(
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
     onOpenThread: ((Message) -> Unit)? = null,
+    onAtLiveEnd: (Boolean) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
+    LaunchedEffect(list) {
+        snapshotFlow { list.firstVisibleItemIndex == 0 && list.firstVisibleItemScrollOffset == 0 }
+            .distinctUntilChanged()
+            .collect(onAtLiveEnd)
+    }
     val newestFirst = remember(state.rows) { state.rows.asReversed() }
     // Переход к сообщению: прокрутить к его строке (или к альбому, где оно лежит) и коротко подсветить.
     // Только в загруженном; не нашлось — ничего не делать, а не прыгать куда попало.
@@ -530,8 +542,9 @@ private fun Conversation(
     // Новое у живого конца: если читающий был там, лента идёт за ним. Список держит место за ключом
     // прежней нижней строки, и без этого новое сообщение вставало бы ниже края экрана. Читающий,
     // ушедший в историю, остаётся где был — его место не трогают.
+    // По ключу рисования: эхо, сменившее наш пузырь, — та же строка, и второй прокрутки не просит.
     val newest = newestFirst.firstOrNull()
-    LaunchedEffect(newest?.id) {
+    LaunchedEffect(newest?.let(state::viewKey)) {
         if (list.firstVisibleItemIndex <= 1 || newest?.message?.isOwn == true) list.animateScrollToItem(0)
     }
 
