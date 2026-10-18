@@ -29,6 +29,8 @@ activity = "1.13.0"
 lifecycle = "2.11.0"
 datastore = "1.2.1"
 browser = "1.10.0"
+# Поворот оригинала перед отправкой фото (MediaPreparation). Apache 2.0.
+exifinterface = "1.4.2"
 composeBom = "2026.09.00"
 # Видео и кружочки (docs/PROMPT.md, раздел 10): ExoPlayer и его поверхность для Compose. Apache 2.0.
 media3 = "1.11.1"
@@ -50,6 +52,7 @@ androidx-core = { module = "androidx.core:core-ktx", version.ref = "androidxCore
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }

@@ -5,6 +5,8 @@ import android.content.SharedPreferences
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import wtf.iskra.core.media.MediaCompression
+import wtf.iskra.core.media.MediaSettings
 
 /**
  * Настройки приложения, а не аккаунта: оформление, бета-функции. Не секреты — поэтому обычные
@@ -24,6 +26,13 @@ class AppSettings(context: Context) {
     private val mutableDemo = flag(DEMO, false)
     private val mutableCreatures = flag(CREATURES, true)
     private val mutableForceCreatures = flag(FORCE_CREATURES, false)
+    private val mutableMedia = MutableStateFlow(
+        MediaSettings(
+            stripsMetadata = preferences.getBoolean(MEDIA_STRIPS, MediaSettings.STRIPS_METADATA_BY_DEFAULT),
+            compresses = preferences.getBoolean(MEDIA_COMPRESSES, MediaSettings.COMPRESSES_BY_DEFAULT),
+            compression = MediaCompression.of(preferences.getString(MEDIA_COMPRESSION, null)) ?: MediaSettings.COMPRESSION_BY_DEFAULT,
+        ),
+    )
 
     /** Имя акцента для хранения (`AccentTheme.storageName`); null — по умолчанию. */
     val accent: StateFlow<String?> = mutableAccent.asStateFlow()
@@ -37,6 +46,18 @@ class AppSettings(context: Context) {
 
     /** Существа даже вместо картинок — просьба, а не умолчание. */
     val forceCreatures: StateFlow<Boolean> = mutableForceCreatures.asStateFlow()
+
+    /** Что делать с фото и видео по дороге наружу. Читается в момент отправки. */
+    val media: StateFlow<MediaSettings> = mutableMedia.asStateFlow()
+
+    fun setMedia(settings: MediaSettings) {
+        preferences.edit()
+            .putBoolean(MEDIA_STRIPS, settings.stripsMetadata)
+            .putBoolean(MEDIA_COMPRESSES, settings.compresses)
+            .putString(MEDIA_COMPRESSION, settings.compression.storageName)
+            .apply()
+        mutableMedia.value = settings
+    }
 
     fun setAccent(name: String) = save(ACCENT, name, mutableAccent)
     fun setAppearance(name: String) = save(APPEARANCE, name, mutableAppearance)
@@ -61,5 +82,10 @@ class AppSettings(context: Context) {
         const val DEMO = "beta.mockBackend"
         const val CREATURES = "beta.blobatar"
         const val FORCE_CREATURES = "beta.blobatar.force"
+
+        // Ключи — те же, что у iOS (`MediaSettings.*Key`).
+        const val MEDIA_STRIPS = "media.stripsMetadata"
+        const val MEDIA_COMPRESSES = "media.compresses"
+        const val MEDIA_COMPRESSION = "media.compression"
     }
 }

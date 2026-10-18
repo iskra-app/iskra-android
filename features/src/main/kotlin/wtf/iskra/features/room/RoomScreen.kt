@@ -1,5 +1,12 @@
 package wtf.iskra.features.room
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.platform.LocalContext
+import wtf.iskra.core.media.MediaSettings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -118,7 +125,12 @@ import wtf.iskra.core.R as CoreR
  * плавающая дата — следующими пунктами.
  */
 @Composable
-fun RoomScreen(store: TimelineStore, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun RoomScreen(
+    store: TimelineStore,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    mediaSettings: () -> MediaSettings = { MediaSettings.DEFAULT },
+) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
@@ -131,6 +143,12 @@ fun RoomScreen(store: TimelineStore, onBack: () -> Unit, modifier: Modifier = Mo
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var draftLoaded by remember(store.roomId) { mutableStateOf(false) }
+    var attachments by remember(store.roomId) { mutableStateOf<List<Uri>>(emptyList()) }
+    val context = LocalContext.current
+    // Системный выбор: без разрешения на всю галерею, до десяти за раз (docs/PROMPT.md, 11.5).
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)) { picked ->
+        attachments = (attachments + picked).distinct().take(MAX_ATTACHMENTS)
+    }
 
     LaunchedEffect(store) {
         if (draft.isEmpty()) store.draft()?.let { draft = it }
@@ -180,6 +198,9 @@ fun RoomScreen(store: TimelineStore, onBack: () -> Unit, modifier: Modifier = Mo
                 },
                 replyingTo = replyingTo,
                 editing = editing,
+                attachments = attachments,
+                onAttach = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onRemoveAttachment = { uri -> attachments = attachments - uri },
                 onCancel = {
                     if (editing != null) draft = ""
                     replyingTo = null
@@ -189,11 +210,28 @@ fun RoomScreen(store: TimelineStore, onBack: () -> Unit, modifier: Modifier = Mo
                     val text = draft
                     val reply = replyingTo
                     val edit = editing
+                    val photos = attachments
                     draft = ""
                     replyingTo = null
                     editing = null
+                    attachments = emptyList()
                     scope.launch {
-                        if (edit != null) store.edit(edit.id, text) else store.send(text, reply?.id)
+                        when {
+                            edit != null -> store.edit(edit.id, text)
+                            photos.isNotEmpty() -> {
+                                // Вложения вперёд; слова — подписью под первым, в том же событии.
+                                val settings = mediaSettings()
+                                var captioned = false
+                                photos.forEachIndexed { index, uri ->
+                                    val (bytes, name) = readPicked(context, uri) ?: return@forEachIndexed
+                                    val caption = text.takeIf { !captioned && it.isNotBlank() }
+                                    val sent = store.sendPhoto(bytes, name, settings, caption, reply?.id.takeIf { index == 0 })
+                                    if (sent && caption != null) captioned = true
+                                }
+                                if (!captioned && text.isNotBlank()) store.send(text, reply?.id)
+                            }
+                            else -> store.send(text, reply?.id)
+                        }
                         store.clearDraft()
                     }
                 },
@@ -388,6 +426,9 @@ private val TimelineRow.date: Instant?
     }
 
 private const val FLOATING_DATE_HOLD_MS = 1200L
+
+/** Сколько вложений за раз — столько же, сколько у системного выбора и в альбоме. */
+private const val MAX_ATTACHMENTS = 10
 
 /** Строки ядра для служебных строк — из ресурсов, на языке приложения. */
 @Composable
@@ -801,11 +842,16 @@ private fun Composer(
     onTextChange: (String) -> Unit,
     replyingTo: Message?,
     editing: Message?,
+    attachments: List<Uri>,
+    onAttach: () -> Unit,
+    onRemoveAttachment: (Uri) -> Unit,
     onCancel: () -> Unit,
     onSend: () -> Unit,
 ) {
     val accent = LocalAccent.current
+    val canSend = text.isNotBlank() || (editing == null && attachments.isNotEmpty())
     Column(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight)) {
+        if (attachments.isNotEmpty() && editing == null) PendingAttachments(attachments, onRemoveAttachment)
         val context = replyingTo ?: editing
         if (context != null) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Theme.Spacing.close)) {
@@ -824,6 +870,12 @@ private fun Composer(
             }
         }
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+            // В правке вложению взяться неоткуда: правится слово, а не событие.
+            if (editing == null) {
+                IconButton(onClick = onAttach, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach), tint = accent.control)
+                }
+            }
             OutlinedTextField(
                 value = text,
                 onValueChange = onTextChange,
@@ -835,9 +887,9 @@ private fun Composer(
             )
             IconButton(
                 onClick = onSend,
-                enabled = text.isNotBlank(),
+                enabled = canSend,
                 modifier = Modifier.padding(bottom = Theme.Spacing.tight).clip(CircleShape).background(
-                    if (text.isNotBlank()) accent.control else MaterialTheme.colorScheme.surfaceVariant,
+                    if (canSend) accent.control else MaterialTheme.colorScheme.surfaceVariant,
                 ),
             ) {
                 Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send), tint = accent.foreground)

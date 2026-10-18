@@ -154,7 +154,11 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
                 onDemo = model::setDemo,
                 appVersion = appVersion,
             )
-            timeline != null -> RoomScreen(timeline, onBack = { openRoom = null })
+            timeline != null -> RoomScreen(
+                timeline,
+                onBack = { openRoom = null },
+                mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
+            )
             else -> RoomListScreen(
                 session.rooms,
                 onOpen = { openRoom = it },

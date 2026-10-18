@@ -3,6 +3,7 @@ package wtf.iskra.core.timeline
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -12,6 +13,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import wtf.iskra.core.media.MediaSettings
+import wtf.iskra.core.media.PhotoPreparation
 import wtf.iskra.core.R
 import wtf.iskra.core.rooms.PrivacyStatus
 import wtf.iskra.core.rooms.RoomFace
@@ -30,6 +34,7 @@ import org.matrix.rustcomponents.sdk.ComposerDraftType
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.EventOrTransactionId
 import org.matrix.rustcomponents.sdk.EventSendState
+import org.matrix.rustcomponents.sdk.ImageInfo
 import org.matrix.rustcomponents.sdk.QueueWedgeError
 import org.matrix.rustcomponents.sdk.SendHandle
 import org.matrix.rustcomponents.sdk.MessageLikeEventType
@@ -46,6 +51,8 @@ import org.matrix.rustcomponents.sdk.TimelineFocus
 import org.matrix.rustcomponents.sdk.TimelineItem
 import org.matrix.rustcomponents.sdk.TimelineListener
 import org.matrix.rustcomponents.sdk.TypingNotificationsListener
+import org.matrix.rustcomponents.sdk.UploadParameters
+import org.matrix.rustcomponents.sdk.UploadSource
 import org.matrix.rustcomponents.sdk.messageEventContentFromMarkdown
 import uniffi.matrix_sdk_ui.TimelineReadReceiptTracking
 import kotlin.time.Duration.Companion.seconds
@@ -519,6 +526,65 @@ class TimelineStore internal constructor(
             if (error is CancellationException) throw error
             Log.error(Log.Category.TIMELINE, "сообщение не отправилось: ${Log.describe(error)}")
             fail(TimelineFailure.SEND)
+        }
+    }
+
+    /**
+     * Отправить фото — байтами, а не путём (`send(photo:)` на iOS): открытый текст на диск не
+     * ложится, и нет файла, чью жизнь надо угадывать. Через эту функцию проходит **каждый** путь
+     * фото наружу — выбор, вставка, пересылка: подготовка по `MediaSettings` здесь, а не у экрана.
+     *
+     * Не очистилось, когда просили очистить, — не уходит вовсе (false). `caption` — подпись в том же
+     * событии, что фото.
+     */
+    suspend fun sendPhoto(original: ByteArray, filename: String, settings: MediaSettings, caption: String? = null, replyingTo: String? = null): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        // Не на главном потоке: перерисовать двенадцать мегапикселей — сотни миллисекунд.
+        val prepared = withContext(Dispatchers.Default) { PhotoPreparation.prepare(original, filename, settings) }
+        if (prepared == null) {
+            Log.error(Log.Category.MEDIA, "фото не отправлено: метаданные не убрались")
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val parameters = UploadParameters(
+            source = UploadSource.Data(prepared.bytes, prepared.filename),
+            caption = caption?.trim()?.ifEmpty { null },
+            formattedCaption = null,
+            mentions = null,
+            inReplyTo = replyingTo?.let(::eventId),
+        )
+        val info = ImageInfo(
+            height = prepared.height.toULong(),
+            width = prepared.width.toULong(),
+            mimetype = prepared.mimeType,
+            size = prepared.bytes.size.toULong(),
+            thumbnailInfo = null,
+            thumbnailSource = null,
+            blurhash = prepared.blurhash,
+            isAnimated = false,
+        )
+        return try {
+            val handle = withTimeLimit(SDK_LIMIT) { timeline.sendImage(parameters, null, info) }
+            // Загрузка идёт в очереди SDK; ждать её здесь — держать экран. Сбой видно на пузыре.
+            scope.launch {
+                try {
+                    handle.join()
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    Log.error(Log.Category.MEDIA, "фото не загрузилось: ${Log.describe(error)}")
+                } finally {
+                    handle.destroy()
+                }
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "фото не отправилось: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
         }
     }
 
