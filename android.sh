@@ -25,4 +25,10 @@ case "$flavor" in foss) task=installFossDebug ;; gms) task=installGmsDebug ;; es
 
 ./gradlew "$task" --console=plain -q
 "$adb" shell am force-stop wtf.iskra.dev || true
+# force-stop возвращается раньше, чем процесс умер: запуск следом попадает в старый экземпляр,
+# и extras (демо) теряются. Ждём, пока процесса не станет.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+    "$adb" shell pidof wtf.iskra.dev >/dev/null 2>&1 || break
+    sleep 0.5
+done
 "$adb" shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity "$@"

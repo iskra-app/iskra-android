@@ -262,6 +262,9 @@ private fun Conversation(
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
     val newestFirst = remember(state.rows) { state.rows.asReversed() }
+    var viewing by remember { mutableStateOf<String?>(null) }
+    val photos = remember(state.rows) { state.rows.mapNotNull { (it as? TimelineRow.MessageRow)?.message }.viewable() }
+    viewing?.let { id -> MediaViewer(photos, id, onClose = { viewing = null }) }
 
     // У начала истории — следующая страница. Прокрутка просит *следующие*; первую попросил `open()`.
     val nearTop by remember {
@@ -302,6 +305,7 @@ private fun Conversation(
                     onReply = onReply,
                     onEdit = onEdit,
                     onDelete = { scope.launch { store.delete(row.message.id) } },
+                    onOpen = { viewing = row.message.id },
                     onUnsent = { action ->
                         scope.launch {
                             when (action) {
@@ -347,6 +351,7 @@ private fun Bubble(
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
     onDelete: () -> Unit,
+    onOpen: () -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
 ) {
     val accent = LocalAccent.current
@@ -402,7 +407,8 @@ private fun Bubble(
                             MediaContent(
                                 message.kind,
                                 Modifier.combinedClickable(
-                                    onClick = {},
+                                    onClickLabel = stringResource(R.string.message_media_open_full_screen),
+                                    onClick = { if (message.kind is MessageKind.Image) onOpen() },
                                     onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
                                     onLongClick = { menu = true },
                                 ),

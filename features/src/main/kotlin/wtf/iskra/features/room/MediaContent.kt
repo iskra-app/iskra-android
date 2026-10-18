@@ -49,7 +49,7 @@ internal val MessageKind.picture: Attachment?
  * чтобы лента не прыгала, когда байты придут; до них — тихая плашка, а не спиннер.
  *
  * Стикер — без подложки: это сказанное, а не вложение. Кружочек — круг. Видео — кадр и значок;
- * плеер — следующим пунктом этапа 6.
+ * плеер — следующим пунктом этапа 6. Фото открывается на весь экран — `MediaViewer`.
  */
 @Composable
 internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier) {
@@ -88,7 +88,7 @@ internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier) {
 }
 
 /** Размер места под картинку: ширина пузыря-картинки, высота по пропорции, но не выше потолка. */
-private fun frame(kind: MessageKind, attachment: Attachment): DpSize = when (kind) {
+internal fun frame(kind: MessageKind, attachment: Attachment): DpSize = when (kind) {
     is MessageKind.Sticker -> DpSize(Theme.Size.sticker, Theme.Size.sticker)
     is MessageKind.VideoNote -> DpSize(Theme.Size.videoNote, Theme.Size.videoNote)
     else -> {
@@ -108,7 +108,7 @@ private const val MAX_RATIO = 3f
  * текст, и на диск приложения он не пишется — кэш на диске один, зашифрованный стор SDK.
  */
 @Composable
-private fun rememberThumbnail(attachment: Attachment, side: Dp): ImageBitmap? {
+internal fun rememberThumbnail(attachment: Attachment, side: Dp): ImageBitmap? {
     val loader = LocalMediaLoader.current
     val pixels = with(LocalDensity.current) { side.roundToPx() }
     val key = "${attachment.mediaId}@$pixels"
