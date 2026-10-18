@@ -22,6 +22,11 @@ class AppGraph(context: Context, appVersion: String) {
     )
     val secrets = KeystoreSecrets(environment.secretsDir)
     val settings = AppSettings(context)
+
+    init {
+        // Открытые прошлым запуском файлы — открытый текст на диске; чужое приложение их давно прочло.
+        wtf.iskra.features.support.FileOpener.sweep(context)
+    }
     val sessionStore = SessionStore(secrets)
     val authentication = AuthenticationService(
         environment = environment,

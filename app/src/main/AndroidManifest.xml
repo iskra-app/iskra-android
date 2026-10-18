@@ -46,5 +46,19 @@
                 <data android:scheme="wtf.iskra" android:path="/oauth-callback" />
             </intent-filter>
         </activity>
+
+        <!--
+            Присланный файл, открытый в другом приложении (FileOpener): только cache/opened, только на
+            чтение и только тому, кому выдан интент. Наружу провайдер не торчит.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>

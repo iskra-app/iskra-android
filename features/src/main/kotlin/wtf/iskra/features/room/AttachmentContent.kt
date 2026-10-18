@@ -29,6 +29,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import wtf.iskra.features.support.FileOpener
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,8 +60,8 @@ internal val MessageKind.isAttachmentRow: Boolean
 
 /**
  * Файл, место, голосовое, музыка — строкой в пузыре. Кружок слева — то, что нажимают: у голосового
- * он играет, у места — открывает карту. Файл пока только называется: открыть его — значит положить
- * расшифрованное на диск, и это приходит вместе с файлом, который живёт ровно столько, сколько нужен.
+ * он играет, у места — открывает карту, у файла — отдаёт его приложению, которое выберет человек
+ * (`FileOpener`).
  */
 @Composable
 internal fun AttachmentContent(message: Message, ink: Color, fill: Color, onFill: Color) {
@@ -64,13 +70,22 @@ internal fun AttachmentContent(message: Message, ink: Color, fill: Color, onFill
         is MessageKind.Audio -> Playable(message, kind.attachment, null, ink, fill, onFill)
         is MessageKind.File -> {
             val context = LocalContext.current
+            val loader = LocalMediaLoader.current
+            val scope = rememberCoroutineScope()
+            val opening by FileOpener.opening.collectAsStateWithLifecycle()
+            var failed by remember(message.id) { mutableStateOf(false) }
             Line(
-                icon = Icons.AutoMirrored.Filled.InsertDriveFile,
+                icon = if (failed) Icons.Filled.ErrorOutline else Icons.AutoMirrored.Filled.InsertDriveFile,
                 title = kind.attachment.filename,
                 detail = kind.attachment.size?.let { Formatter.formatShortFileSize(context, it) },
                 ink = ink,
                 fill = fill,
                 onFill = onFill,
+                busy = opening == kind.attachment.mediaId,
+                clickLabel = stringResource(R.string.message_media_open_file),
+                onClick = loader?.let { mediaLoader ->
+                    { scope.launch { failed = !FileOpener.open(context, kind.attachment, mediaLoader) } }
+                },
             )
         }
         is MessageKind.Location -> {
@@ -106,14 +121,22 @@ private fun Line(
     ink: Color,
     fill: Color,
     onFill: Color,
+    busy: Boolean = false,
+    clickLabel: String? = null,
     onClick: (() -> Unit)? = null,
 ) {
     Row(
-        Modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        Modifier.then(if (onClick != null) Modifier.clickable(enabled = !busy, onClickLabel = clickLabel, onClick = onClick) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
     ) {
-        Circle(fill) { Icon(icon, contentDescription = null, tint = onFill) }
+        Circle(fill) {
+            if (busy) {
+                CircularProgressIndicator(Modifier.size(Theme.Size.voiceButton), color = onFill, strokeWidth = Theme.Size.waveformBar)
+            } else {
+                Icon(icon, contentDescription = null, tint = onFill)
+            }
+        }
         Column(Modifier.width(Theme.Size.audioTrack)) {
             Text(title, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (detail != null) Text(detail, style = MaterialTheme.typography.labelMedium, color = ink.copy(alpha = QUIET))

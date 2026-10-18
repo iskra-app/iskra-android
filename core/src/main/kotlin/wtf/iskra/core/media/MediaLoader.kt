@@ -4,6 +4,8 @@ import wtf.iskra.core.support.withTimeLimit
 import wtf.iskra.core.timeline.Attachment
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.MediaSource
+import java.io.File
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -50,11 +52,40 @@ class MediaLoader internal constructor(private val client: Client) {
      */
     suspend fun content(attachment: Attachment): ByteArray = withTimeLimit(LIMIT) { client.getMediaContent(attachment.source) }
 
+    /**
+     * Файл целиком — на диск, в `directory`, под именем отправителя: его будет читать *другое*
+     * приложение, и оно читает после того, как эта функция вернулась. Открытый текст на диске, и
+     * убирает его тот, кто дал папку (`FileOpener`), а не SDK: SDK удалил бы его из-под читателя.
+     */
+    suspend fun file(attachment: Attachment, directory: File): File = withTimeLimit(FILE_LIMIT) {
+        directory.mkdirs()
+        val target = File(directory, safeName(attachment.filename))
+        val handle = client.getMediaFile(attachment.source, attachment.filename, attachment.mimeType ?: OCTET_STREAM, true, directory.path)
+        try {
+            if (!handle.persist(target.path)) File(handle.path()).copyTo(target, overwrite = true)
+        } finally {
+            handle.destroy()
+        }
+        target
+    }
+
     override fun equals(other: Any?) = other is MediaLoader && other.client === client
 
     override fun hashCode() = System.identityHashCode(client)
 
     private companion object {
         val LIMIT = 30.seconds
+
+        /** Файл может быть большим, а сеть — медленной. */
+        val FILE_LIMIT = 10.minutes
+
+        const val OCTET_STREAM = "application/octet-stream"
+        const val FALLBACK_NAME = "file"
+
+        /** Имя от отправителя — не путь: без каталогов и точек в начале, и не пустое. */
+        fun safeName(name: String): String =
+            name.substringAfterLast('/').substringAfterLast('\\').trimStart('.').take(MAX_NAME).ifBlank { FALLBACK_NAME }
+
+        const val MAX_NAME = 120
     }
 }
