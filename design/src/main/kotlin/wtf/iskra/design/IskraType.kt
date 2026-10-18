@@ -8,6 +8,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
+import kotlin.math.exp
 
 /**
  * Шрифт приложения — Inter (SIL OFL 1.1, `Licenses/inter.txt`). Весь текст: типографика Material ниже
@@ -33,9 +35,16 @@ private val WEIGHTS: List<FontWeight>
         FontWeight.SemiBold, FontWeight.Bold, FontWeight.ExtraBold, FontWeight.Black,
     )
 
-/** Типографика Material 3, где каждый стиль — Inter; размеры и интервалы — Material, пока не свои. */
+/**
+ * Типографика Material 3, где каждый стиль — Inter; размеры — Material, межбуквенное — своё.
+ *
+ * Разрядка Material (+0.1…+0.5 sp) рассчитана на Roboto, и Inter с ней рассыпается — текст выглядел
+ * реже, чем на iPhone. Вместо неё — динамические метрики самого Inter (rsms.me/inter/dynmetrics):
+ * трекинг в em = a + b·e^(c·кегль). Мелкое почти без разрядки, крупное — плотнее: 16 sp — −0.011 em,
+ * 22 sp — −0.018 em, заголовки — к −0.022 em. Как SF набирает текст по размеру на iOS.
+ */
 internal val IskraTypography: Typography = Typography().let { base ->
-    fun TextStyle.inter() = copy(fontFamily = Inter)
+    fun TextStyle.inter() = copy(fontFamily = Inter, letterSpacing = interTracking(fontSize.value).em)
     Typography(
         displayLarge = base.displayLarge.inter(),
         displayMedium = base.displayMedium.inter(),
@@ -54,3 +63,10 @@ internal val IskraTypography: Typography = Typography().let { base ->
         labelSmall = base.labelSmall.inter(),
     )
 }
+
+/** Трекинг Inter для кегля в sp, в em. Коэффициенты — из «Dynamic Metrics» Inter. */
+internal fun interTracking(size: Float): Float = TRACKING_A + TRACKING_B * exp(TRACKING_C * size)
+
+private const val TRACKING_A = -0.0223f
+private const val TRACKING_B = 0.185f
+private const val TRACKING_C = -0.1745f
