@@ -1,5 +1,6 @@
 package wtf.iskra.features.room
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
 import android.Manifest
 import android.content.pm.PackageManager
@@ -160,6 +161,8 @@ fun RoomScreen(
     var field by rememberSaveable(store.roomId, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
     // Кого позвали из списка «@»: рядом с черновиком, а не в нём (`ComposerMention`).
     var mentions by remember(store.roomId) { mutableStateOf<List<ComposerMention>>(emptyList()) }
+    // К какому сообщению вести ленту: нажали на закреплённое или на цитату в ответе.
+    var jumpTo by remember(store.roomId) { mutableStateOf<String?>(null) }
     var candidates by remember(store.roomId) { mutableStateOf<List<MentionCandidate>>(emptyList()) }
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
@@ -193,7 +196,7 @@ fun RoomScreen(
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, onBack)
         HorizontalDivider()
-        state.latestPinned?.let { pinned -> PinnedStrip(pinned) }
+        state.latestPinned?.let { pinned -> PinnedStrip(pinned, onClick = { jumpTo = pinned.id }) }
         Box(Modifier.weight(1f)) {
             when {
                 state.didFailToLoad -> Failed { scope.launch { store.retryLoading() } }
@@ -204,6 +207,8 @@ fun RoomScreen(
                 else -> Conversation(
                     state = state,
                     store = store,
+                    jumpTo = jumpTo,
+                    onJump = { jumpTo = it },
                     onReply = { replyingTo = it; editing = null },
                     onEdit = { message ->
                         editing = message
@@ -389,12 +394,33 @@ private fun Header(state: TimelineState, onBack: () -> Unit) {
 private fun Conversation(
     state: TimelineState,
     store: TimelineStore,
+    jumpTo: String?,
+    onJump: (String?) -> Unit,
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
     val newestFirst = remember(state.rows) { state.rows.asReversed() }
+    // Переход к сообщению: прокрутить к его строке (или к альбому, где оно лежит) и коротко подсветить.
+    // Только в загруженном; не нашлось — ничего не делать, а не прыгать куда попало.
+    var highlighted by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(jumpTo) {
+        val target = jumpTo ?: return@LaunchedEffect
+        // Сброс — в конце: сброшенный ключ отменил бы этот же эффект до прокрутки.
+        try {
+            val index = newestFirst.indexOfFirst { row ->
+                (row as? TimelineRow.MessageRow)?.message?.members?.any { it.id == target } == true
+            }
+            if (index < 0) return@LaunchedEffect
+            list.animateScrollToItem(index)
+            highlighted = newestFirst[index].id
+            delay(HIGHLIGHT_MS)
+            highlighted = null
+        } finally {
+            onJump(null)
+        }
+    }
     var viewing by remember { mutableStateOf<String?>(null) }
     val photos = remember(state.rows) { state.rows.flatMap { (it as? TimelineRow.MessageRow)?.message?.members.orEmpty() }.viewable() }
     viewing?.let { id -> MediaViewer(photos, id, onClose = { viewing = null }) }
@@ -443,6 +469,8 @@ private fun Conversation(
                     onVote = { answers -> scope.launch { store.vote(row.message.id, answers) } },
                     onEndPoll = { scope.launch { store.endPoll(row.message.id) } },
                     isPinned = row.message.id in state.pinnedIds,
+                    highlighted = highlighted == row.id,
+                    onQuote = { id -> onJump(id) },
                     onPin = { pinned -> scope.launch { store.setPinned(row.message.id, pinned) } },
                         onUnsent = { action ->
                             scope.launch {
@@ -519,6 +547,9 @@ private val TimelineRow.date: Instant?
 
 private const val FLOATING_DATE_HOLD_MS = 1200L
 
+/** Сколько горит подсветка сообщения, к которому привели. */
+private const val HIGHLIGHT_MS = 1500L
+
 /** Сколько вложений за раз — столько же, сколько у системного выбора и в альбоме. */
 private const val MAX_ATTACHMENTS = 10
 
@@ -548,6 +579,8 @@ private fun Bubble(
     onEndPoll: () -> Unit = {},
     isPinned: Boolean = false,
     onPin: (Boolean) -> Unit = {},
+    highlighted: Boolean = false,
+    onQuote: (String) -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
 ) {
     val accent = LocalAccent.current
@@ -560,8 +593,12 @@ private fun Bubble(
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
     val ownUserId = LocalOwnUserId.current
 
+    val wash by animateColorAsState(
+        if (highlighted) LocalAccent.current.control.copy(alpha = Theme.Opacity.SELECTED_TAB) else Color.Transparent,
+        label = "highlight",
+    )
     // Один корень: элемент ленты из двух корней кладёт их друг на друга в обратном порядке.
-    Column {
+    Column(Modifier.background(wash)) {
         SwipeToReply(towardStart = own, enabled = message.canReply, onReply = { onReply(message) }) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
@@ -612,6 +649,7 @@ private fun Bubble(
                             onVote = onVote,
                             onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
                             onLongPress = { menuAnchor = anchor.rect },
+                            onQuote = onQuote,
                         )
                     }
                     menuAnchor?.let { rect ->
@@ -656,11 +694,11 @@ private fun Bubble(
  * Показывает самое свежее из того, что уже в ленте.
  */
 @Composable
-private fun PinnedStrip(message: Message) {
+private fun PinnedStrip(message: Message, onClick: () -> Unit) {
     val accent = LocalAccent.current
     Column {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(accent.control))
@@ -724,6 +762,7 @@ private fun BubbleBody(
     onVote: (List<String>) -> Unit = {},
     onDoubleTap: () -> Unit = {},
     onLongPress: () -> Unit = {},
+    onQuote: (String) -> Unit = {},
 ) {
     val accent = LocalAccent.current
     val own = message.isOwn
@@ -792,7 +831,11 @@ interactive = interactive,
     ) {
         val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
         message.replyTo?.let { reply ->
-            Row(Modifier.padding(bottom = Theme.Spacing.tight)) {
+            Row(
+                Modifier
+                    .padding(bottom = Theme.Spacing.tight)
+                    .then(if (interactive) Modifier.clickable(onClickLabel = reply.senderName) { onQuote(reply.eventId) } else Modifier),
+            ) {
                 Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
                 Spacer(Modifier.width(Theme.Spacing.close))
                 Column {
