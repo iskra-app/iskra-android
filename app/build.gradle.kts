@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "moscow.swag.iskra"
+    namespace = "wtf.iskra"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         // Тот же, что bundle ID на iOS. `app_id` pusher'а — другая строка
-        // (`moscow.swag.iskra-android`, PushRegistration.APP_ID): в applicationId дефис запрещён.
-        applicationId = "moscow.swag.iskra"
+        // (`wtf.iskra-android`, PushRegistration.APP_ID): в applicationId дефис запрещён.
+        applicationId = "wtf.iskra"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         // Синхронно с iOS (MARKETING_VERSION в Apps/project.yml). versionCode растёт монотонно и

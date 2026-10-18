@@ -720,7 +720,7 @@ Presence, список устройств (`GET /devices`, `POST /delete_devices
 
 ## 10. Пуш-уведомления
 
-Документ: `docs/PUSH-GATEWAY.md`. Своя инфраструктура: Sygnal на `push.iskra.swag.moscow`.
+Документ: `docs/PUSH-GATEWAY.md`. Своя инфраструктура: Sygnal на `push.iskra.wtf`.
 
 ### 10.1. Что едет в пуше
 
@@ -731,16 +731,16 @@ Google/Apple) нести хоть какой-то текст сообщения.
 
 ### 10.2. Два транспорта, два flavor'а
 
-**`app_id` pusher'а — `moscow.swag.iskra-android`** (решение автора), в обоих flavor'ах и в обеих
+**`app_id` pusher'а — `wtf.iskra-android`** (решение автора), в обоих flavor'ах и в обеих
 сборках (debug и release). Это строка для Matrix и Sygnal, **не** `applicationId`: в
 `applicationId` дефис запрещён (каждый сегмент — Java-идентификатор), поэтому пакет остаётся
-`moscow.swag.iskra` (раздел 19), а `app_id` живёт константой `PushRegistration.APP_ID` с
+`wtf.iskra` (раздел 19), а `app_id` живёт константой `PushRegistration.APP_ID` с
 комментарием, почему они разные. Разведения sandbox/production, как у APNs, у FCM нет: один
-проект Firebase обслуживает и `moscow.swag.iskra`, и `moscow.swag.iskra.dev` (оба пакета
+проект Firebase обслуживает и `wtf.iskra`, и `wtf.iskra.dev` (оба пакета
 зарегистрированы в проекте), поэтому `app_id` один.
 
-- **`gms`**: FCM. В `sygnal.yaml` на `push.iskra.swag.moscow` — новый вход
-  `moscow.swag.iskra-android:` с `type: gcm`, `api_version: v1`, `project_id` и
+- **`gms`**: FCM. В `sygnal.yaml` на `push.iskra.wtf` — новый вход
+  `wtf.iskra-android:` с `type: gcm`, `api_version: v1`, `project_id` и
   `service_account_file` сервисного ключа Firebase (ключ — только на сервере, не в репозитории).
   `google-services.json` в репозитории допустим (он не секрет), но лежит только в `app/src/gms/`.
   FCM-сообщение — **data-only, high priority**: Android будит `FirebaseMessagingService` даже у
@@ -1288,13 +1288,13 @@ iOS запускается с аргументами (`--probe-signin`, `--verif
 intent'е** у debug-сборки (и у release, если проба не трогает ничего опасного):
 
 ```sh
-adb shell am start -n moscow.swag.iskra/.MainActivity --es probe signin --es address matrix.org
-adb shell am start -n moscow.swag.iskra/.MainActivity --es probe verify-storage
-adb shell am start -n moscow.swag.iskra/.MainActivity --es probe notification
-adb shell am start -n moscow.swag.iskra/.MainActivity --es probe bridge --es npub npub1… --es homeserver matrix.org
-adb shell am start -n moscow.swag.iskra/.MainActivity --ez mock-backend true
-adb shell am start -n moscow.swag.iskra/.MainActivity --es mock-signin "password slow"
-adb shell am start -n moscow.swag.iskra/.MainActivity --es probe update   # что нашла бы проверка обновлений, без установки
+adb shell am start -n wtf.iskra/.MainActivity --es probe signin --es address matrix.org
+adb shell am start -n wtf.iskra/.MainActivity --es probe verify-storage
+adb shell am start -n wtf.iskra/.MainActivity --es probe notification
+adb shell am start -n wtf.iskra/.MainActivity --es probe bridge --es npub npub1… --es homeserver matrix.org
+adb shell am start -n wtf.iskra/.MainActivity --ez mock-backend true
+adb shell am start -n wtf.iskra/.MainActivity --es mock-signin "password slow"
+adb shell am start -n wtf.iskra/.MainActivity --es probe update   # что нашла бы проверка обновлений, без установки
 adb logcat -s Iskra:*
 ```
 
@@ -1353,9 +1353,9 @@ adb logcat -s Iskra:*
 переносится в другую организацию: старые версии ищут обновления только там (GitHub перенаправляет
 после переименования, но полагаться на это не стоит).
 
-- `applicationId` — `moscow.swag.iskra` (тот же, что bundle ID на iOS); debug —
-  `moscow.swag.iskra.dev` (`applicationIdSuffix`), чтобы стоять рядом с релизом. `app_id` pusher'а —
-  другая строка, `moscow.swag.iskra-android` (раздел 10.2).
+- `applicationId` — `wtf.iskra` (тот же, что bundle ID на iOS); debug —
+  `wtf.iskra.dev` (`applicationIdSuffix`), чтобы стоять рядом с релизом. `app_id` pusher'а —
+  другая строка, `wtf.iskra-android` (раздел 10.2).
 - Flavor'ы `gms` (FCM) и `foss` (UnifiedPush, никаких библиотек Google). В каждом релизе оба.
   Имя файла говорит, что внутри:
   `iskra-<версия>-gms-arm64-v8a.apk`, `iskra-<версия>-foss-arm64-v8a.apk`,
@@ -1576,7 +1576,7 @@ workflow релиза — их проще завести на пустом пр�
 | Исходный код | Оба репозитория закрыты; автор откроет их вместе, под одной лицензией, **до первого релиза**. Общее вендорится. Релизы — в самом `iskra-app/iskra-android` | 2.3, 19, 19.2 |
 | minSdk | 29 (Android 10) | 2.2 |
 | Material You | Да: акцент `system` («Как в системе»), меняет только акцент | 6.5 |
-| `app_id` на шлюзе | `moscow.swag.iskra-android` (отличается от `applicationId` `moscow.swag.iskra`) | 10.2 |
+| `app_id` на шлюзе | `wtf.iskra-android` (отличается от `applicationId` `wtf.iskra`) | 10.2 |
 | Голосовые | Как на iOS: AAC/m4a, 24 кГц, моно, 48 кбит/с | 11.3 |
 
 Остаются открытыми: **лицензия — общая для обоих репозиториев, решит автор при открытии**, агент её

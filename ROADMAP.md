@@ -45,7 +45,7 @@
 ## 2. Вход и сессия
 
 - [x] `AuthenticationService`: поиск по `.well-known`, OIDC и legacy SSO (Custom Tabs + intent-filter
-      на `moscow.swag.iskra:/oauth-callback`), пароль, регистрация через `prompt=create`; единственное
+      на `wtf.iskra:/oauth-callback`), пароль, регистрация через `prompt=create`; единственное
       место сборки `ClientBuilder` (стор и индекс зашифрованы, делегат токенов, `EncryptionPolicy`,
       бэкап ключей и cross-signing включены, `.native`/`.discoverNative`)
 - [x] Секреты по аккаунтам: `SessionStore` поверх `KeystoreSecrets` (AES-GCM ключом Keystore,
@@ -127,7 +127,7 @@
 
 - [ ] FCM (`gms`) и UnifiedPush (`foss`), pusher с `append = true` и `event_id_only`
 - [ ] `PushDecoder`, conversation-уведомления с лицами, ответ из уведомления, тап открывает чат
-- [ ] Шлюз: `app_id` `moscow.swag.iskra-android`
+- [ ] Шлюз: `app_id` `wtf.iskra-android`
 - [ ] *Готово:* на убитом приложении в Doze приходит расшифрованное уведомление с именем и лицом
 
 ## 8. Настройки и управление

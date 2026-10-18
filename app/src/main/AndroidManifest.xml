@@ -43,7 +43,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="moscow.swag.iskra" android:path="/oauth-callback" />
+                <data android:scheme="wtf.iskra" android:path="/oauth-callback" />
             </intent-filter>
         </activity>
     </application>

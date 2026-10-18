@@ -5,7 +5,7 @@
 #   ./android.sh --gms                # gmsDebug
 #   ./android.sh -- --es probe verify-storage   # всё после -- уходит extras в intent
 #
-# Debug ставится как moscow.swag.iskra.dev и стоит рядом с релизом.
+# Debug ставится как wtf.iskra.dev и стоит рядом с релизом.
 set -eu
 cd "$(dirname "$0")"
 
@@ -24,5 +24,5 @@ adb="$ANDROID_HOME/platform-tools/adb"
 case "$flavor" in foss) task=installFossDebug ;; gms) task=installGmsDebug ;; esac
 
 ./gradlew "$task" --console=plain -q
-"$adb" shell am force-stop moscow.swag.iskra.dev || true
-"$adb" shell am start -n moscow.swag.iskra.dev/moscow.swag.iskra.MainActivity "$@"
+"$adb" shell am force-stop wtf.iskra.dev || true
+"$adb" shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity "$@"

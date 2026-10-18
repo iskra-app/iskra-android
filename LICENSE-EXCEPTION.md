@@ -41,7 +41,7 @@ and the contributor agrees to it by signing off their commits — see
 - **The bridge protocol** in [`third_party/iskra-tunnel-proto/`](third_party/iskra-tunnel-proto) —
   a copy of the crate from [`iskra-app/iskra-bridge`](https://github.com/iskra-app/iskra-bridge),
   under the MIT licence, so that the protocol can be implemented anywhere.
-- **The blobatar port** (`design/src/main/kotlin/moscow/swag/iskra/design/blobatar/`) and its golden
+- **The blobatar port** (`design/src/main/kotlin/wtf/iskra/design/blobatar/`) and its golden
   fixture — a port of [blobatar](https://blobatar.dev), MIT, notice kept verbatim in
   [`Licenses/blobatar.txt`](Licenses/blobatar.txt).
 - **Dependencies** keep their own licences: `matrix-rust-sdk` and its Kotlin bindings

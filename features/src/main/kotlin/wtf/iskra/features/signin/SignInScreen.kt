@@ -1,0 +1,237 @@
+package wtf.iskra.features.signin
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import wtf.iskra.design.EntryField
+import wtf.iskra.design.LocalAccent
+import wtf.iskra.design.PageColors
+import wtf.iskra.design.PrimaryActionButton
+import wtf.iskra.design.SecondaryActionButton
+import wtf.iskra.design.Theme
+import wtf.iskra.features.R
+import wtf.iskra.features.signin.SignInModel.Intent
+import wtf.iskra.features.signin.SignInModel.Step
+
+/** Экран входа. Порт `SignInView.swift`: одна колонка, адрес → дверь → (иногда) форма. */
+@Composable
+fun SignInScreen(model: SignInModel<*>) {
+    val state by model.state.collectAsStateWithLifecycle()
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState()),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = Theme.Size.signInColumn)
+                .fillMaxWidth()
+                .padding(Theme.Spacing.generous),
+            verticalArrangement = Arrangement.spacedBy(Theme.Spacing.generous),
+        ) {
+            AnimatedContent(targetState = state.step is Step.Ready, label = "sign-in-step") { ready ->
+                if (ready) Form(model, state) else Door(model, state)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Door(model: SignInModel<*>, state: SignInModel.State) {
+    Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.generous)) {
+        Header()
+        if (state.step is Step.Found) Choice(model, state) else Address(model, state)
+    }
+}
+
+@Composable
+private fun Header() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
+    ) {
+        Text(
+            stringResource(R.string.sign_in_title),
+            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+        )
+        Text(
+            stringResource(R.string.sign_in_tagline),
+            style = MaterialTheme.typography.bodyLarge,
+            color = secondary(),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun Address(model: SignInModel<*>, state: SignInModel.State) {
+    Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.normal)) {
+        Text(stringResource(R.string.sign_in_where_is_account), style = MaterialTheme.typography.titleMedium)
+        Text(
+            stringResource(R.string.sign_in_where_is_account_help),
+            style = MaterialTheme.typography.bodyMedium,
+            color = secondary(),
+        )
+        EntryField(
+            value = state.address,
+            onValueChange = model::setAddress,
+            placeholder = stringResource(R.string.sign_in_address_placeholder),
+            enabled = !state.isBusy,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+            keyboardActions = KeyboardActions(onNext = { model.findServer() }),
+        )
+        state.problem?.let { Problem(it) }
+        PrimaryActionButton(onClick = model::findServer, enabled = state.canContinue, modifier = Modifier.fillMaxWidth()) {
+            BusyLabel(R.string.sign_in_next, spinning = state.isBusy)
+        }
+    }
+}
+
+@Composable
+private fun Choice(model: SignInModel<*>, state: SignInModel.State) {
+    Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.normal)) {
+        state.problem?.let { Problem(it) }
+        PrimaryActionButton(onClick = { model.begin(Intent.SIGN_IN) }, enabled = !state.isBusy, modifier = Modifier.fillMaxWidth()) {
+            BusyLabel(R.string.sign_in_sign_in, spinning = state.pending == Intent.SIGN_IN)
+        }
+        SecondaryActionButton(onClick = { model.begin(Intent.CREATE_ACCOUNT) }, enabled = !state.isBusy, modifier = Modifier.fillMaxWidth()) {
+            BusyLabel(R.string.sign_in_create_account, spinning = state.pending == Intent.CREATE_ACCOUNT)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = Theme.Spacing.close),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(R.string.sign_in_server, state.serverName), style = MaterialTheme.typography.bodySmall, color = secondary())
+            TextButton(onClick = model::startOver, enabled = !state.isBusy) {
+                Text(stringResource(R.string.sign_in_change_server), color = LocalAccent.current.control)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Form(model: SignInModel<*>, state: SignInModel.State) {
+    val options = state.options ?: return
+    var usingPassword by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy)) {
+        TextButton(onClick = { usingPassword = false; model.back() }, enabled = !state.isBusy) {
+            Text(stringResource(R.string.sign_in_back), color = LocalAccent.current.control)
+        }
+        Text(
+            stringResource(R.string.sign_in_sign_in_to, state.serverName),
+            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        )
+        if (options.canUseSingleSignOn && !(usingPassword && options.supportsPassword)) {
+            Text(stringResource(R.string.sign_in_browser_help), style = MaterialTheme.typography.bodyMedium, color = secondary())
+            PrimaryActionButton(onClick = model::continueInBrowser, enabled = !state.isBusy, modifier = Modifier.fillMaxWidth()) {
+                BusyLabel(R.string.sign_in_continue_in_browser, spinning = state.isBusy)
+            }
+            if (options.supportsPassword) {
+                TextButton(onClick = { usingPassword = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.sign_in_use_password_instead), color = secondary())
+                }
+            }
+        } else if (options.supportsPassword) {
+            Text(stringResource(R.string.sign_in_password_help), style = MaterialTheme.typography.bodyMedium, color = secondary())
+            EntryField(
+                value = state.username,
+                onValueChange = model::setUsername,
+                placeholder = stringResource(R.string.sign_in_username),
+                enabled = !state.isBusy,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next, autoCorrectEnabled = false),
+            )
+            EntryField(
+                value = state.password,
+                onValueChange = model::setPassword,
+                placeholder = stringResource(R.string.sign_in_password),
+                enabled = !state.isBusy,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { model.signInWithPassword() }),
+            )
+            PrimaryActionButton(onClick = model::signInWithPassword, enabled = state.canSignInWithPassword, modifier = Modifier.fillMaxWidth()) {
+                BusyLabel(R.string.sign_in_sign_in, spinning = state.isBusy)
+            }
+        }
+        state.problem?.let { Problem(it) }
+    }
+}
+
+/** Красная панель с предложением, которое говорит, что делать дальше. Объявляется вслух (live region). */
+@Composable
+private fun Problem(text: Int) {
+    val red = MaterialTheme.colorScheme.error
+    Text(
+        stringResource(text),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(red.copy(alpha = Theme.Backdrop.WASH), RoundedCornerShape(Theme.Radius.card))
+            .padding(Theme.Spacing.normal)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        color = red,
+        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+    )
+}
+
+@Composable
+private fun BusyLabel(text: Int, spinning: Boolean) {
+    if (spinning) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(Theme.Size.waveform),
+            color = LocalContentColor.current,
+            strokeWidth = Theme.Border.thick,
+        )
+    } else {
+        Text(stringResource(text))
+    }
+}
+
+@Composable
+private fun secondary(): Color = PageColors.primary(LocalAccent.current.isDark).copy(alpha = SECONDARY_TEXT)
+
+private const val SECONDARY_TEXT = 0.6f

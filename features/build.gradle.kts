@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "moscow.swag.iskra.features"
+    namespace = "wtf.iskra.features"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
