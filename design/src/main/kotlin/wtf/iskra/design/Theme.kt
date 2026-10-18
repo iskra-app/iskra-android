@@ -434,6 +434,9 @@ object Theme {
 
         /** Ряд эмодзи над поднятым сообщением: число, а не измерение — меню считает место заранее. */
         val reactionBar = 52.dp
+
+        /** Насколько потянуть сообщение к середине, чтобы отпускание ответило (`SwipeToReply`). */
+        val swipeToReply = 56.dp
         val reactionCell = 44.dp
         val emojiPanel = 268.dp
         val emojiHeader = 28.dp

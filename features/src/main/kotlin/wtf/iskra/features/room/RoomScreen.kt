@@ -403,7 +403,11 @@ private fun Conversation(
 private fun BoxScope.FloatingDate(list: LazyListState, newestFirst: List<TimelineRow>) {
     val top by remember(newestFirst) {
         derivedStateOf {
-            list.layoutInfo.visibleItemsInfo.lastOrNull { it.index < newestFirst.size }?.let { newestFirst[it.index].date }
+            // Наверху и так полоса дня — вторая поверх неё читалась бы двоением.
+            list.layoutInfo.visibleItemsInfo.lastOrNull { it.index < newestFirst.size }
+                ?.let { newestFirst[it.index] }
+                ?.takeIf { it !is TimelineRow.DayDividerRow }
+                ?.date
         }
     }
     var scrolling by remember { mutableStateOf(false) }
@@ -469,86 +473,88 @@ private fun Bubble(
 
     // Один корень: элемент ленты из двух корней кладёт их друг на друга в обратном порядке.
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
-            horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close, if (own) Alignment.End else Alignment.Start),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            // Время — снаружи пузыря, со стороны, противоположной краю переписки: столбец времён
-            // тихо стоит рядом с сообщениями, а не режет их, и не спорит с последней строкой за место.
-            if (own) {
-                (message.delivery as? DeliveryStatus.Failed)?.let { failed ->
-                    FailedBadge(failed.reason, onUnsent, Modifier.align(Alignment.CenterVertically))
-                }
-                MessageMarks(message)
-            }
-            // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
-            if (!own && showsSender) {
-                if (!message.isContinued) {
-                    Avatar(message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId)
-                } else {
-                    Spacer(Modifier.width(Theme.Size.avatarSmall))
-                }
-            }
-            Column(
-                modifier = Modifier.weight(1f, fill = false),
-                horizontalAlignment = if (own) Alignment.End else Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(Theme.Spacing.withinRun),
+        SwipeToReply(towardStart = own, enabled = message.canReply, onReply = { onReply(message) }) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
+                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close, if (own) Alignment.End else Alignment.Start),
+                verticalAlignment = Alignment.Bottom,
             ) {
-                if (showsSender && !own && !message.isContinuation) {
-                    Text(
-                        message.senderName,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        modifier = Modifier.padding(start = Theme.Spacing.close),
-                    )
+                // Время — снаружи пузыря, со стороны, противоположной краю переписки: столбец времён
+                // тихо стоит рядом с сообщениями, а не режет их, и не спорит с последней строкой за место.
+                if (own) {
+                    (message.delivery as? DeliveryStatus.Failed)?.let { failed ->
+                        FailedBadge(failed.reason, onUnsent, Modifier.align(Alignment.CenterVertically))
+                    }
+                    MessageMarks(message)
                 }
-                val anchor = remember { AnchorBox() }
-                Box(Modifier.onGloballyPositioned { anchor.rect = it.boundsInWindow() }) {
-                    BubbleBody(
-                        message = message,
-                        interactive = true,
-                        revealed = revealed,
-                        noteTaps = noteTaps,
-                        onReveal = { revealed = true },
-                        onNoteTap = { noteTaps++ },
-                        onOpen = onOpen,
-                        onVote = onVote,
-                        onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
-                        onLongPress = { menuAnchor = anchor.rect },
-                    )
-                }
-                menuAnchor?.let { rect ->
-                    MessageMenu(
-                        message = message,
-                        anchor = rect,
-                        onDismiss = { menuAnchor = null },
-                        onReact = onReact,
-                        onReply = onReply,
-                        onEdit = onEdit,
-                        onAskDelete = { confirm = Confirm.DELETE },
-                        onAskEndPoll = { confirm = Confirm.END_POLL },
-                    ) {
-                        BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
+                // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
+                if (!own && showsSender) {
+                    if (!message.isContinued) {
+                        Avatar(message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId)
+                    } else {
+                        Spacer(Modifier.width(Theme.Size.avatarSmall))
                     }
                 }
-                confirm?.let { asked ->
-                    ConfirmDialog(
-                        title = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_title else R.string.poll_end_confirm_title,
-                        text = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_message else R.string.poll_end_confirm_message,
-                        confirm = if (asked == Confirm.DELETE) R.string.message_menu_delete else R.string.poll_end,
-                        dismiss = R.string.poll_cancel,
-                        onConfirm = {
-                            confirm = null
-                            if (asked == Confirm.DELETE) onDelete() else onEndPoll()
-                        },
-                        onDismiss = { confirm = null },
-                    )
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                    horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(Theme.Spacing.withinRun),
+                ) {
+                    if (showsSender && !own && !message.isContinuation) {
+                        Text(
+                            message.senderName,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            modifier = Modifier.padding(start = Theme.Spacing.close),
+                        )
+                    }
+                    val anchor = remember { AnchorBox() }
+                    Box(Modifier.onGloballyPositioned { anchor.rect = it.boundsInWindow() }) {
+                        BubbleBody(
+                            message = message,
+                            interactive = true,
+                            revealed = revealed,
+                            noteTaps = noteTaps,
+                            onReveal = { revealed = true },
+                            onNoteTap = { noteTaps++ },
+                            onOpen = onOpen,
+                            onVote = onVote,
+                            onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
+                            onLongPress = { menuAnchor = anchor.rect },
+                        )
+                    }
+                    menuAnchor?.let { rect ->
+                        MessageMenu(
+                            message = message,
+                            anchor = rect,
+                            onDismiss = { menuAnchor = null },
+                            onReact = onReact,
+                            onReply = onReply,
+                            onEdit = onEdit,
+                            onAskDelete = { confirm = Confirm.DELETE },
+                            onAskEndPoll = { confirm = Confirm.END_POLL },
+                        ) {
+                            BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
+                        }
+                    }
+                    confirm?.let { asked ->
+                        ConfirmDialog(
+                            title = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_title else R.string.poll_end_confirm_title,
+                            text = if (asked == Confirm.DELETE) R.string.message_menu_delete_confirm_message else R.string.poll_end_confirm_message,
+                            confirm = if (asked == Confirm.DELETE) R.string.message_menu_delete else R.string.poll_end,
+                            dismiss = R.string.poll_cancel,
+                            onConfirm = {
+                                confirm = null
+                                if (asked == Confirm.DELETE) onDelete() else onEndPoll()
+                            },
+                            onDismiss = { confirm = null },
+                        )
+                    }
                 }
+                if (!own) MessageMarks(message)
             }
-            if (!own) MessageMarks(message)
         }
         if (message.reactions.isNotEmpty()) Reactions(message, onReact)
     }
