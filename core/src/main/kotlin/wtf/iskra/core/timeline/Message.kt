@@ -84,7 +84,7 @@ sealed interface MessageKind {
     data class Audio(val attachment: Attachment) : MessageKind
     data class File(val attachment: Attachment) : MessageKind
     data class Location(val latitude: Double, val longitude: Double, val name: String?) : MessageKind
-    data class Poll(val question: String) : MessageKind
+    data class Poll(val poll: wtf.iskra.core.timeline.Poll) : MessageKind
 
     /** Сообщение есть, но этому устройству не дали ключ. */
     data object Unreadable : MessageKind
@@ -169,6 +169,9 @@ data class Message(
             is MessageKind.Emote -> kind.body
             else -> null
         }
+
+    /** Свой опрос, ещё открытый и дошедший до сервера. */
+    val canEndPoll: Boolean get() = isOwn && isOnServer && (kind as? MessageKind.Poll)?.poll?.isEnded == false
 
     val canEdit: Boolean get() = isOwn && !isDeleted && editableText != null && delivery != null && isOnServer
 }

@@ -12,6 +12,7 @@ import org.matrix.rustcomponents.sdk.MessageContent
 import org.matrix.rustcomponents.sdk.MessageFormat
 import org.matrix.rustcomponents.sdk.MessageType
 import org.matrix.rustcomponents.sdk.MsgLikeKind
+import org.matrix.rustcomponents.sdk.PollKind
 import org.matrix.rustcomponents.sdk.OtherState
 import org.matrix.rustcomponents.sdk.ProfileDetails
 import org.matrix.rustcomponents.sdk.QueueWedgeError
@@ -93,7 +94,7 @@ internal object TimelineMapper {
     }
 
     private fun message(event: EventTimelineItem, ownUserId: String, strings: Strings): Message? {
-        val kind = kind(event.content) ?: return null
+        val kind = kind(event.content, ownUserId) ?: return null
         val (name, avatar) = profile(event.senderProfile, event.sender)
         val msgLike = (event.content as? TimelineItemContent.MsgLike)?.content
         return Message(
@@ -201,7 +202,7 @@ internal object TimelineMapper {
             }
     }
 
-    private fun kind(content: TimelineItemContent): MessageKind? {
+    private fun kind(content: TimelineItemContent, ownUserId: String): MessageKind? {
         val msgLike = (content as? TimelineItemContent.MsgLike)?.content ?: return null
         return when (val kind = msgLike.kind) {
             is MsgLikeKind.Message -> kind(kind.content)
@@ -211,7 +212,17 @@ internal object TimelineMapper {
                     kind.info.width?.toInt(), kind.info.height?.toInt(), null, kind.info.mimetype, kind.info.blurhash,
                 ),
             )
-            is MsgLikeKind.Poll -> MessageKind.Poll(kind.question)
+            is MsgLikeKind.Poll -> MessageKind.Poll(
+                Poll.of(
+                    question = kind.question,
+                    isDisclosed = kind.kind == PollKind.DISCLOSED,
+                    maxSelections = kind.maxSelections.toLong(),
+                    answers = kind.answers.map { it.id to it.text },
+                    votes = kind.votes,
+                    isEnded = kind.endTime != null,
+                    ownUserId = ownUserId,
+                ),
+            )
             is MsgLikeKind.LiveLocation -> {
                 val last = kind.content.locations.lastOrNull()
                 val (lat, lon) = last?.geoUri?.let(::geo) ?: (0.0 to 0.0)

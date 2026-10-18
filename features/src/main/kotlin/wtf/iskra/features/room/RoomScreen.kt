@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -314,6 +315,8 @@ private fun Conversation(
                         onEdit = onEdit,
                         onDelete = { scope.launch { store.delete(row.message.id) } },
                         onOpen = { viewing = row.message.id },
+                    onVote = { answers -> scope.launch { store.vote(row.message.id, answers) } },
+                    onEndPoll = { scope.launch { store.endPoll(row.message.id) } },
                         onUnsent = { action ->
                             scope.launch {
                                 when (action) {
@@ -401,6 +404,8 @@ private fun Bubble(
     onEdit: (Message) -> Unit,
     onDelete: () -> Unit,
     onOpen: () -> Unit = {},
+    onVote: (List<String>) -> Unit = {},
+    onEndPoll: () -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
 ) {
     val accent = LocalAccent.current
@@ -496,7 +501,10 @@ private fun Bubble(
                             }
                         }
                         val words = message.richText(ownUserId)
-                        if (words != null) {
+                        val poll = (message.kind as? MessageKind.Poll)?.poll
+                        if (poll != null) {
+                            PollContent(poll, ink = ink, fill = if (own) ink else accent.control, onVote = onVote)
+                        } else if (words != null) {
                             Text(
                                 words.annotated(
                                     ink = ink,
@@ -512,7 +520,7 @@ private fun Bubble(
                             Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
                         }
                     }
-                    MessageMenu(message, menu, onDismiss = { menu = false }, onReact, onReply, onEdit, onDelete)
+                    MessageMenu(message, menu, onDismiss = { menu = false }, onReact, onReply, onEdit, onDelete, onEndPoll)
                 }
             }
             if (!own) MessageMarks(message)
@@ -615,7 +623,24 @@ private fun MessageMenu(
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
     onDelete: () -> Unit,
+    onEndPoll: () -> Unit,
 ) {
+    var confirmEnd by remember { mutableStateOf(false) }
+    if (confirmEnd) {
+        AlertDialog(
+            onDismissRequest = { confirmEnd = false },
+            title = { Text(stringResource(R.string.poll_end_confirm_title)) },
+            text = { Text(stringResource(R.string.poll_end_confirm_message)) },
+            confirmButton = {
+                TextButton(onClick = { confirmEnd = false; onEndPoll() }) {
+                    Text(stringResource(R.string.poll_end), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEnd = false }) { Text(stringResource(R.string.poll_cancel)) }
+            },
+        )
+    }
     DropdownMenu(expanded = expanded, onDismissRequest = onDismiss) {
         if (message.canReply) {
             DropdownMenuItem(
@@ -635,6 +660,13 @@ private fun MessageMenu(
                 text = { Text(stringResource(R.string.message_menu_edit)) },
                 leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
                 onClick = { onDismiss(); onEdit(message) },
+            )
+        }
+        if (message.canEndPoll) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.poll_end)) },
+                leadingIcon = { Icon(Icons.Filled.Done, contentDescription = null) },
+                onClick = { onDismiss(); confirmEnd = true },
             )
         }
         if (message.canDelete) {
@@ -683,7 +715,7 @@ private fun body(message: Message): String = when (val kind = message.kind) {
     is MessageKind.Audio -> kind.attachment.caption ?: stringResource(CoreR.string.preview_audio)
     is MessageKind.File -> kind.attachment.filename
     is MessageKind.Location -> kind.name ?: stringResource(CoreR.string.preview_location)
-    is MessageKind.Poll -> kind.question
+    is MessageKind.Poll -> kind.poll.question
     MessageKind.Unreadable -> stringResource(R.string.message_unreadable)
     MessageKind.Deleted -> stringResource(R.string.message_deleted)
     MessageKind.Unsupported -> stringResource(R.string.message_unsupported)

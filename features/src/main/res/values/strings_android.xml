@@ -7,4 +7,6 @@
     <string name="room_emote" translatable="false">* %1$s %2$s</string>
     <!-- Пилюля реакции: эмодзи и сколько человек его поставили. -->
     <string name="room_reaction_pill" translatable="false">%1$s %2$d</string>
+    <!-- Две части одной строки через точку: «Опрос · несколько ответов», «3 голоса · итоги в конце». -->
+    <string name="poll_header_joined" translatable="false">%1$s · %2$s</string>
 </resources>

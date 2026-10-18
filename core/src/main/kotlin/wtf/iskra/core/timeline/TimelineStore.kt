@@ -102,6 +102,9 @@ enum class TimelineFailure(val message: Int) {
     REACTION(R.string.timeline_reaction_failed),
     DELETE(R.string.timeline_delete_failed),
     EDIT(R.string.timeline_edit_failed),
+
+    /** Голос не засчитан или опрос не закрылся. Сам опрос — каким был. */
+    POLL(R.string.timeline_poll_failed),
 }
 
 /**
@@ -557,6 +560,35 @@ class TimelineStore internal constructor(
             if (error is CancellationException) throw error
             Log.error(Log.Category.TIMELINE, "реакция не ушла: ${Log.describe(error)}")
             fail(TimelineFailure.REACTION)
+        }
+    }
+
+    /**
+     * Ответить на опрос: весь свой выбор целиком — ответ заменяет прежний. Пустой список снимает
+     * голос (в опросе с несколькими ответами — последняя снятая галочка).
+     */
+    suspend fun vote(messageId: String, answers: List<String>) {
+        val timeline = timeline ?: return
+        val id = eventId(messageId) ?: return
+        try {
+            withTimeLimit(SDK_LIMIT) { timeline.sendPollResponse(id, answers) }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "голос не ушёл: ${Log.describe(error)}")
+            fail(TimelineFailure.POLL)
+        }
+    }
+
+    /** Завершить свой опрос: голосовать больше нельзя, результаты видят все. */
+    suspend fun endPoll(messageId: String) {
+        val timeline = timeline ?: return
+        val id = eventId(messageId) ?: return
+        try {
+            withTimeLimit(SDK_LIMIT) { timeline.endPoll(id, strings.get(R.string.timeline_poll_ended_body)) }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "опрос не закрылся: ${Log.describe(error)}")
+            fail(TimelineFailure.POLL)
         }
     }
 
