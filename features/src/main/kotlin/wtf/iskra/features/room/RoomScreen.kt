@@ -1,5 +1,8 @@
 package wtf.iskra.features.room
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.ui.text.TextRange
@@ -166,6 +169,11 @@ fun RoomScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)) { picked ->
         attachments = (attachments + picked.map { PendingAttachment(it, isFile = false) }).distinct().take(MAX_ATTACHMENTS)
     }
+    val recorder = remember(store.roomId) { VoiceRecorder(context) }
+    val recordingElapsed by recorder.elapsed.collectAsStateWithLifecycle()
+    var micDenied by remember { mutableStateOf(false) }
+    val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (!granted) micDenied = true }
+    DisposableEffect(recorder) { onDispose { recorder.cancel() } }
     // Файл — системным выбором документов: любой тип, уйдёт как есть.
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) attachments = (attachments + PendingAttachment(picked, isFile = true)).distinct().take(MAX_ATTACHMENTS)
@@ -238,6 +246,27 @@ fun RoomScreen(
                 onAttachPhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onAttachFile = { filePicker.launch(arrayOf(ANY_TYPE)) },
                 onRemoveAttachment = { attachment -> attachments = attachments - attachment },
+                recordingElapsed = recordingElapsed,
+                mic = {
+                    MicButton(
+                        recording = recordingElapsed != null,
+                        hasPermission = { ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED },
+                        onNeedPermission = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
+                        onStart = {
+                            VoicePlayback.stop()
+                            recorder.start(scope)
+                        },
+                        onFinish = {
+                            val reply = replyingTo
+                            recorder.finish()?.let { voice ->
+                                replyingTo = null
+                                scope.launch { store.sendVoice(voice.bytes, voice.filename, VoiceRecorder.MIME_TYPE, voice.durationMs, voice.waveform, reply?.id) }
+                            }
+                        },
+                        onCancel = { recorder.cancel() },
+                        modifier = Modifier.padding(bottom = Theme.Spacing.tight),
+                    )
+                },
                 onCancel = {
                     if (editing != null) {
                         field = TextFieldValue()
@@ -296,6 +325,14 @@ fun RoomScreen(
     // Черновик — в зашифрованный стор SDK, когда комнату оставляют, и не раньше, чем он прочитан.
     DisposableEffect(store, draftLoaded) {
         onDispose { if (draftLoaded && editing == null) scope.launch { store.saveDraft(field.text) } }
+    }
+
+    if (micDenied) {
+        AlertDialog(
+            onDismissRequest = { micDenied = false },
+            confirmButton = { TextButton(onClick = { micDenied = false }) { Text(stringResource(android.R.string.ok)) } },
+            text = { Text(stringResource(R.string.voice_needs_microphone)) },
+        )
     }
 
     state.failure?.let { failure ->
@@ -1006,6 +1043,8 @@ private fun Composer(
     onAttachPhoto: () -> Unit,
     onAttachFile: () -> Unit,
     onRemoveAttachment: (PendingAttachment) -> Unit,
+    recordingElapsed: Long?,
+    mic: @Composable () -> Unit,
     onCancel: () -> Unit,
     onSend: () -> Unit,
 ) {
@@ -1053,7 +1092,9 @@ private fun Composer(
                     }
                 }
             }
-            OutlinedTextField(
+            if (recordingElapsed != null) {
+                RecordingStrip(recordingElapsed, Modifier.weight(1f))
+            } else OutlinedTextField(
                 value = field,
                 onValueChange = onFieldChange,
                 modifier = Modifier.weight(1f),
@@ -1062,14 +1103,19 @@ private fun Composer(
                 shape = RoundedCornerShape(Theme.Radius.bubble),
                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent.control, cursorColor = accent.control),
             )
-            IconButton(
-                onClick = onSend,
-                enabled = canSend,
-                modifier = Modifier.padding(bottom = Theme.Spacing.tight).clip(CircleShape).background(
-                    if (canSend) accent.control else MaterialTheme.colorScheme.surfaceVariant,
-                ),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send), tint = accent.foreground)
+            // Нечего отправить — микрофон: голосовое начинается там же, где уходят слова.
+            if (!canSend && editing == null) {
+                mic()
+            } else {
+                IconButton(
+                    onClick = onSend,
+                    enabled = canSend,
+                    modifier = Modifier.padding(bottom = Theme.Spacing.tight).clip(CircleShape).background(
+                        if (canSend) accent.control else MaterialTheme.colorScheme.surfaceVariant,
+                    ),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send), tint = accent.foreground)
+                }
             }
         }
     }

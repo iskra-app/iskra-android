@@ -43,7 +43,8 @@ object FileOpener {
      */
     fun sweepOnLaunch(context: Context) {
         sweep(context)
-        runCatching { java.io.File(context.cacheDir, PLAYING).deleteRecursively() }
+        runCatching { File(context.cacheDir, PLAYING).deleteRecursively() }
+        runCatching { File(context.cacheDir, RECORDING).deleteRecursively() }
     }
 
     /** False — не вышло: не скачалось или открыть нечем. */
@@ -79,4 +80,7 @@ object FileOpener {
 
     /** Совпадает с `VideoFiles` — папка видео, которые сейчас играют. */
     private const val PLAYING = "playing"
+
+    /** Совпадает с `VoiceRecorder` — запись голосового, пока она идёт. */
+    private const val RECORDING = "recording"
 }

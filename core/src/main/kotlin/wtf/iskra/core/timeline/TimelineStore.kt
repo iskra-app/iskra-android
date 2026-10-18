@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import wtf.iskra.core.media.MediaSettings
 import wtf.iskra.core.media.PhotoPreparation
+import wtf.iskra.core.media.VoiceWaveform
 import wtf.iskra.core.R
 import wtf.iskra.core.rooms.PrivacyStatus
 import wtf.iskra.core.rooms.RoomFace
@@ -29,6 +30,7 @@ import wtf.iskra.core.rooms.title
 import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.support.withTimeLimit
+import org.matrix.rustcomponents.sdk.AudioInfo
 import org.matrix.rustcomponents.sdk.ComposerDraft
 import org.matrix.rustcomponents.sdk.ComposerDraftType
 import org.matrix.rustcomponents.sdk.DateDividerMode
@@ -664,6 +666,38 @@ class TimelineStore internal constructor(
         } catch (error: Exception) {
             if (error is CancellationException) throw error
             Log.error(Log.Category.MEDIA, "файл не отправился: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
+        }
+    }
+
+    /**
+     * Отправить голосовое: файл записи байтами, длительность и волна (0…1, в шкалу события
+     * переводит `VoiceWaveform.wire`) — обе стороны рисуют одну картинку (`send(voice:)` на iOS).
+     */
+    suspend fun sendVoice(bytes: ByteArray, filename: String, mimeType: String, durationMs: Long, waveform: List<Float>, replyingTo: String? = null): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val parameters = UploadParameters(UploadSource.Data(bytes, filename), null, null, null, replyingTo?.let(::eventId))
+        val info = AudioInfo(java.time.Duration.ofMillis(durationMs), bytes.size.toULong(), mimeType)
+        return try {
+            val handle = withTimeLimit(SDK_LIMIT) { timeline.sendVoiceMessage(parameters, info, VoiceWaveform.wire(waveform)) }
+            scope.launch {
+                try {
+                    handle.join()
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    Log.error(Log.Category.MEDIA, "голосовое не загрузилось: ${Log.describe(error)}")
+                } finally {
+                    handle.destroy()
+                }
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "голосовое не отправилось: ${Log.describe(error)}")
             fail(TimelineFailure.SEND)
             false
         }
