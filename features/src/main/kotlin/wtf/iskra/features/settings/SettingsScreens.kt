@@ -1,5 +1,9 @@
 package wtf.iskra.features.settings
 
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.ui.semantics.Role
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +32,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
@@ -57,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.design.AccentTheme
@@ -68,7 +74,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, SECURITY, APPEARANCE, BETA, ABOUT }
+enum class SettingsPage { MAIN, SECURITY, APPEARANCE, MEDIA, BETA, ABOUT }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -91,6 +97,7 @@ fun SettingsScreen(
             title = when (page) {
                 SettingsPage.MAIN -> R.string.settings_title
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
+                SettingsPage.MEDIA -> R.string.media_title
                 SettingsPage.SECURITY -> R.string.settings_security
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
@@ -101,6 +108,7 @@ fun SettingsScreen(
             when (page) {
                 SettingsPage.MAIN -> Main(session, onNavigate, onSignOut)
                 SettingsPage.APPEARANCE -> Appearance(settings)
+                SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo)
                 SettingsPage.ABOUT -> About(appVersion)
@@ -140,6 +148,7 @@ private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSi
     HorizontalDivider()
     Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) }
     Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) }
+    Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) }
     Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) }
     Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) }
     HorizontalDivider()
@@ -265,6 +274,47 @@ private fun accentName(theme: AccentTheme): Int = when (theme) {
     AccentTheme.MONO -> R.string.appearance_color_mono
 }
 
+/**
+ * Что делать с фото и видео по дороге наружу (`MediaSettingsView`): без метаданных и сжато — оба
+ * включены по умолчанию. Читается в момент отправки (`TimelineStore.sendPhoto`).
+ */
+@Composable
+private fun Media(settings: AppSettings) {
+    val media by settings.media.collectAsStateWithLifecycle()
+    Toggle(R.string.media_strip_metadata, null, media.stripsMetadata, { settings.setMedia(media.copy(stripsMetadata = it)) })
+    Toggle(R.string.media_compress, null, media.compresses, { settings.setMedia(media.copy(compresses = it)) })
+    if (media.compresses) {
+        SectionTitle(R.string.media_compression)
+        // Списком, а не сегментами: «Средне (720p)» на немецком в треть ширины экрана не помещается.
+        MediaCompression.entries.forEach { option ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = option == media.compression, role = Role.RadioButton) { settings.setMedia(media.copy(compression = option)) }
+                    .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(
+                        when (option) {
+                            MediaCompression.STRONG -> R.string.media_compression_strong
+                            MediaCompression.BALANCED -> R.string.media_compression_balanced
+                            MediaCompression.LIGHT -> R.string.media_compression_light
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f),
+                )
+                RadioButton(
+                    selected = option == media.compression,
+                    onClick = null,
+                    colors = RadioButtonDefaults.colors(selectedColor = LocalAccent.current.control),
+                )
+            }
+        }
+    }
+}
+
 /** Бета-функции (`BetaView`): существа вместо инициалов и демо-сервер. */
 @Composable
 private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit) {
@@ -283,14 +333,14 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
 }
 
 @Composable
-private fun Toggle(title: Int, help: Int, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+private fun Toggle(title: Int, help: Int?, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }.padding(Theme.Spacing.roomy),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
-            Text(stringResource(help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (help != null) Text(stringResource(help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.width(Theme.Spacing.roomy))
         Switch(
