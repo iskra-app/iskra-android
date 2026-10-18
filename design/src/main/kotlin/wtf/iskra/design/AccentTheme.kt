@@ -105,6 +105,12 @@ object PageColors {
     fun ownReaction(dark: Boolean) = primary(dark).copy(alpha = 0.16f)
 }
 
+/**
+ * Системный цвет iOS по имени — для того, что окрашено смыслом, а не акцентом: кнопки смахивания
+ * (прочитано — синим, закрепить — оранжевым). У `SYSTEM` своего цвета нет — это синий.
+ */
+fun AccentTheme.systemColor(dark: Boolean): Color = if (this == AccentTheme.SYSTEM) AccentTheme.BLUE.paletteColor(dark) else paletteColor(dark)
+
 /** Системные цвета iOS (светлый, тёмный). Тот же красный на обеих платформах. */
 private fun AccentTheme.paletteColor(dark: Boolean): Color = when (this) {
     AccentTheme.RED -> if (dark) Color(0xFFFF453A) else Color(0xFFFF3B30)

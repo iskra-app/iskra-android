@@ -435,6 +435,9 @@ object Theme {
         /** Ряд эмодзи над поднятым сообщением: число, а не измерение — меню считает место заранее. */
         val reactionBar = 52.dp
 
+        /** Кнопка под строкой чата, открытая смахиванием (`RoomListSwipeActions`). */
+        val swipeAction = 76.dp
+
         /** Насколько потянуть сообщение к середине, чтобы отпускание ответило (`SwipeToReply`). */
         val swipeToReply = 56.dp
         val reactionCell = 44.dp

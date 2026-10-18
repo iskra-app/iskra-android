@@ -1,5 +1,15 @@
 package wtf.iskra.features.rooms
 
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.MarkEmailRead
+import androidx.compose.material.icons.filled.MarkEmailUnread
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Unarchive
+import wtf.iskra.design.AccentTheme
+import wtf.iskra.design.systemColor
+import wtf.iskra.features.support.SwipeAction
+import wtf.iskra.features.support.SwipeActions
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
@@ -242,6 +252,29 @@ private fun Empty(title: Int, message: Int) {
 private fun RoomRow(room: RoomSummary, now: Instant, actions: RoomActions, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
+    val dark = LocalAccent.current.isDark
+    // Как на iOS: вправо — прочитано и закрепить, влево — архив и удалить. Удаление спрашивает.
+    val leading = listOf(
+        if (room.hasUnread) {
+            SwipeAction(stringResource(R.string.room_list_swipe_mark_read), Icons.Filled.MarkEmailRead, AccentTheme.BLUE.systemColor(dark)) { actions.onRead(room) }
+        } else {
+            SwipeAction(stringResource(R.string.room_list_swipe_mark_unread), Icons.Filled.MarkEmailUnread, AccentTheme.BLUE.systemColor(dark)) { actions.onUnread(room) }
+        },
+        SwipeAction(
+            stringResource(if (room.isPinned) R.string.room_list_swipe_unpin else R.string.room_list_swipe_pin),
+            Icons.Filled.PushPin,
+            AccentTheme.ORANGE.systemColor(dark),
+        ) { actions.onPin(room) },
+    )
+    val trailing = listOf(
+        SwipeAction(
+            stringResource(if (room.isArchived) R.string.room_list_swipe_unarchive else R.string.room_list_swipe_archive),
+            if (room.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
+            AccentTheme.VIOLET.systemColor(dark),
+        ) { actions.onArchive(room) },
+        SwipeAction(stringResource(R.string.room_list_swipe_delete), Icons.Filled.Delete, AccentTheme.RED.systemColor(dark)) { actions.onLeave(room) },
+    )
+    SwipeActions(leading, trailing) {
     Box {
     Row(
         modifier = Modifier
@@ -281,6 +314,7 @@ private fun RoomRow(room: RoomSummary, now: Instant, actions: RoomActions, onOpe
         }
     }
     RoomMenu(room, menu, onDismiss = { menu = false }, actions)
+    }
     }
 }
 
@@ -413,7 +447,7 @@ private class RoomActions(
 
 /**
  * Меню долгого нажатия на строке: прочитано/непрочитано, закрепить, в архив, выйти. Тот же набор, что
- * у свайпов на iOS (`RoomListSwipeActions`); жесты-свайпы — следующим шагом.
+ * у свайпов на iOS (`RoomListSwipeActions`), и у смахиваний здесь же.
  */
 @Composable
 private fun RoomMenu(room: RoomSummary, expanded: Boolean, onDismiss: () -> Unit, actions: RoomActions) {
