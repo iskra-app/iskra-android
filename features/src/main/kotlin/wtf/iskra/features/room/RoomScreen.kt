@@ -62,6 +62,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Check
@@ -167,6 +168,23 @@ fun RoomScreen(
     // К какому сообщению вести ленту: нажали на закреплённое или на цитату в ответе.
     var jumpTo by remember(store.roomId) { mutableStateOf(initialJump) }
     var searching by remember(store.roomId) { mutableStateOf(false) }
+    // Закреплённые — своя лента SDK, и открывается, только когда закреплённое есть (`PinnedStore`).
+    val pinnedStore = remember(store) { store.pinned() }
+    val pinned by pinnedStore.state.collectAsStateWithLifecycle()
+    val hasPinned = state.pinnedIds.isNotEmpty()
+    LaunchedEffect(pinnedStore, hasPinned) { if (hasPinned) pinnedStore.start() }
+    var showsPinned by remember(store.roomId) { mutableStateOf(false) }
+    if (showsPinned) {
+        PinnedMessages(
+            pinnedStore,
+            isOneToOne = state.header.isOneToOne,
+            onOpen = { id ->
+                showsPinned = false
+                jumpTo = id
+            },
+            onClose = { showsPinned = false },
+        )
+    }
     if (searching) {
         RoomSearch(
             store,
@@ -210,7 +228,10 @@ fun RoomScreen(
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, onBack, onSearch = { searching = true })
         HorizontalDivider()
-        state.latestPinned?.let { pinned -> PinnedStrip(pinned, onClick = { jumpTo = pinned.id }) }
+        // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
+        pinned.messages.lastOrNull()?.takeIf { hasPinned }?.let { latest ->
+            PinnedStrip(latest, count = pinned.messages.size, onClick = { jumpTo = latest.id }, onOpenList = { showsPinned = true })
+        }
         Box(Modifier.weight(1f)) {
             when {
                 state.didFailToLoad -> Failed { scope.launch { store.retryLoading() } }
@@ -725,7 +746,7 @@ private fun Bubble(
  * Показывает самое свежее из того, что уже в ленте.
  */
 @Composable
-private fun PinnedStrip(message: Message, onClick: () -> Unit) {
+private fun PinnedStrip(message: Message, count: Int, onClick: () -> Unit, onOpenList: () -> Unit) {
     val accent = LocalAccent.current
     Column {
         Row(
@@ -735,10 +756,25 @@ private fun PinnedStrip(message: Message, onClick: () -> Unit) {
             Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(accent.control))
             Spacer(Modifier.width(Theme.Spacing.close))
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.room_pinned), style = MaterialTheme.typography.labelMedium, color = accent.control)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.room_pinned), style = MaterialTheme.typography.labelMedium, color = accent.control)
+                    // Только где их больше одного: «Закреплено 1» — число, о котором не спрашивали, а
+                    // «Закреплено 4» — причина нажать на стрелку.
+                    if (count > 1) {
+                        Spacer(Modifier.width(Theme.Spacing.tight))
+                        Text(count.toString(), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
                 Text(body(message), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Icon(Icons.Filled.PushPin, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Theme.Size.menuIcon))
+            // Полоса ведёт к сообщению, стрелка — к остальным закреплённым.
+            IconButton(onClick = onOpenList) {
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.room_pinned_title),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         HorizontalDivider()
     }
@@ -1071,7 +1107,7 @@ private fun Reactions(message: Message, onReact: (String) -> Unit) {
 
 /** Слова пузыря. Вложения пока — словом («Фото»), сами картинки и плееры — этап 6. */
 @Composable
-private fun body(message: Message): String = when (val kind = message.kind) {
+internal fun body(message: Message): String = when (val kind = message.kind) {
     // Слова из HTML, а не разметка Markdown из запасного `body`; жирный и ссылки — с `MatrixHTML`.
     is MessageKind.Text -> HtmlWords.words(kind.body, message.formattedBody)
     is MessageKind.Notice -> HtmlWords.words(kind.body, message.formattedBody)

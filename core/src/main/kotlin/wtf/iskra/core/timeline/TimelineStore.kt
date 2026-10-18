@@ -115,9 +115,6 @@ data class TimelineState(
      */
     fun viewKey(row: TimelineRow): String = adopted[row.id] ?: row.id
 
-    /** Что показывает полоса закреплённого: самое свежее закреплённое из того, что уже в ленте. */
-    val latestPinned: Message? get() = pinnedIds.asReversed().firstNotNullOfOrNull { rows.message(withId = it) }
-
     /** Есть ещё история, и ничто на экране не может её попросить — комнату из двух сообщений не прокрутить. */
     val needsMoreHistory: Boolean get() = hasLoaded && canLoadMore && !isPaginating && !didFailToPaginate && rows.size < SCREENFUL
 
@@ -206,6 +203,9 @@ class TimelineStore internal constructor(
     /** Эхо, сменившее наш пузырь: ID сообщения → ID пузыря. См. [TimelineState.viewKey]. */
     private val adopted = mutableMapOf<String, String>()
 
+    /** Лента закреплённых — по требованию, см. [pinned]. */
+    private var pinnedStore: PinnedStore? = null
+
     // MARK: Открытие
 
     suspend fun start() {
@@ -220,6 +220,8 @@ class TimelineStore internal constructor(
         val task = scope.async {
             try {
                 open()
+                // Закреплённые, если их уже открывали, — снова с комнатой: [stop] клал и их.
+                if (mine == generation) pinnedStore?.let { scope.launch { it.start() } }
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 // Уход читающего во время открытия — не сбой открытия.
@@ -334,6 +336,7 @@ class TimelineStore internal constructor(
                 canPost = levels?.let { runCatching { it.canOwnUserSendMessage(MessageLikeEventType.RoomMessage) }.getOrNull() } ?: state.canPost,
             )
         }
+        pinnedStore?.roomPinned(info.pinnedEventIds)
         info.destroy()
     }
 
@@ -434,6 +437,7 @@ class TimelineStore internal constructor(
         roomInfoHandle = null
         typingHandle?.cancel()
         typingHandle = null
+        pinnedStore?.stop()
 
         // Уходя посреди слова, не оставлять собеседнику «печатает…», который никто не отзовёт.
         typingStopper?.cancel()
@@ -927,6 +931,16 @@ class TimelineStore internal constructor(
             emptyList()
         }
     }
+
+    /**
+     * Закреплённые этой комнаты. Один на стор и живёт с ним: [stop] кладёт и его, следующее открытие
+     * комнаты поднимает снова. Открывает его экран — когда закреплённое есть.
+     */
+    fun pinned(): PinnedStore = pinnedStore ?: PinnedStore(room, ownUserId, strings, scope) { fail(TimelineFailure.PIN) }
+        .also {
+            pinnedStore = it
+            it.roomPinned(state.value.pinnedIds)
+        }
 
     /** Закрепить сообщение в комнате или открепить — для всех. */
     suspend fun setPinned(messageId: String, pinned: Boolean) {
