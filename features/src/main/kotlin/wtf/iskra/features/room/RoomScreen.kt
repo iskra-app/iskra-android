@@ -1,5 +1,12 @@
 package wtf.iskra.features.room
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.lazy.LazyListState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -295,46 +302,88 @@ private fun Conversation(
             .collect { store.markAsRead() }
     }
 
-    LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
-        items(newestFirst, key = { it.id }) { row ->
-            when (row) {
-                is TimelineRow.MessageRow -> Bubble(
-                    message = row.message,
-                    showsSender = !state.header.isOneToOne,
-                    onReact = { key -> scope.launch { store.toggleReaction(row.message.id, key) } },
-                    onReply = onReply,
-                    onEdit = onEdit,
-                    onDelete = { scope.launch { store.delete(row.message.id) } },
-                    onOpen = { viewing = row.message.id },
-                    onUnsent = { action ->
-                        scope.launch {
-                            when (action) {
-                                UnsentAction.RETRY -> store.retrySending(row.message.id)
-                                UnsentAction.SEND_ANYWAY -> store.sendAnyway(row.message.id)
-                                UnsentAction.DISCARD -> store.discard(row.message.id)
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
+            items(newestFirst, key = { it.id }) { row ->
+                when (row) {
+                    is TimelineRow.MessageRow -> Bubble(
+                        message = row.message,
+                        showsSender = !state.header.isOneToOne,
+                        onReact = { key -> scope.launch { store.toggleReaction(row.message.id, key) } },
+                        onReply = onReply,
+                        onEdit = onEdit,
+                        onDelete = { scope.launch { store.delete(row.message.id) } },
+                        onOpen = { viewing = row.message.id },
+                        onUnsent = { action ->
+                            scope.launch {
+                                when (action) {
+                                    UnsentAction.RETRY -> store.retrySending(row.message.id)
+                                    UnsentAction.SEND_ANYWAY -> store.sendAnyway(row.message.id)
+                                    UnsentAction.DISCARD -> store.discard(row.message.id)
+                                }
                             }
-                        }
-                    },
-                )
-                is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()))
-                is TimelineRow.DayDividerRow -> DayLine(row.divider.date)
-                TimelineRow.UnreadDivider -> UnreadLine()
+                        },
+                    )
+                    is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()))
+                    is TimelineRow.DayDividerRow -> DayLine(row.divider.date)
+                    TimelineRow.UnreadDivider -> UnreadLine()
+                }
+            }
+            item(key = "history") {
+                when {
+                    state.isPaginating -> Box(Modifier.fillMaxWidth().padding(Theme.Spacing.roomy), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(Theme.Size.voiceButton), color = LocalAccent.current.control)
+                    }
+                    state.historyIsStranded -> ServiceLine(stringResource(R.string.room_earlier_unavailable))
+                    state.needsMoreHistory -> TextButton(onClick = { scope.launch { store.loadMoreHistory() } }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.room_try_again), color = LocalAccent.current.control)
+                    }
+                    else -> Spacer(Modifier.height(Theme.Spacing.close))
+                }
             }
         }
-        item(key = "history") {
-            when {
-                state.isPaginating -> Box(Modifier.fillMaxWidth().padding(Theme.Spacing.roomy), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(Theme.Size.voiceButton), color = LocalAccent.current.control)
-                }
-                state.historyIsStranded -> ServiceLine(stringResource(R.string.room_earlier_unavailable))
-                state.needsMoreHistory -> TextButton(onClick = { scope.launch { store.loadMoreHistory() } }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.room_try_again), color = LocalAccent.current.control)
-                }
-                else -> Spacer(Modifier.height(Theme.Spacing.close))
+        FloatingDate(list, newestFirst)
+    }
+}
+
+/**
+ * День верхней видимой строки — над лентой, пока её листают, и ещё немного после: в середине
+ * длинной истории иначе не понять, когда это было. Стоя — не мешает: полосы дней в самой ленте.
+ */
+@Composable
+private fun BoxScope.FloatingDate(list: LazyListState, newestFirst: List<TimelineRow>) {
+    val top by remember(newestFirst) {
+        derivedStateOf {
+            list.layoutInfo.visibleItemsInfo.lastOrNull { it.index < newestFirst.size }?.let { newestFirst[it.index].date }
+        }
+    }
+    var scrolling by remember { mutableStateOf(false) }
+    LaunchedEffect(list) {
+        snapshotFlow { list.isScrollInProgress }.collectLatest { moving ->
+            if (moving) {
+                scrolling = true
+            } else {
+                delay(FLOATING_DATE_HOLD_MS)
+                scrolling = false
             }
         }
     }
+    val day = top
+    AnimatedVisibility(scrolling && day != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
+        if (day != null) DayLine(day)
+    }
 }
+
+/** Когда это было — для плавающей даты. У полосы «непрочитанное» своего дня нет. */
+private val TimelineRow.date: Instant?
+    get() = when (this) {
+        is TimelineRow.MessageRow -> message.timestamp
+        is TimelineRow.DayDividerRow -> divider.date
+        is TimelineRow.EventRow -> event.timestamp
+        TimelineRow.UnreadDivider -> null
+    }
+
+private const val FLOATING_DATE_HOLD_MS = 1200L
 
 /** Строки ядра для служебных строк — из ресурсов, на языке приложения. */
 @Composable
