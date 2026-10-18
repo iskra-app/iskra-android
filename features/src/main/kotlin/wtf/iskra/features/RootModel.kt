@@ -65,6 +65,10 @@ class RootModel(
     val phase: StateFlow<Phase> = mutablePhase.asStateFlow()
 
     init {
+        // Флаг запуска — то же, что переключатель в «Бете»: запоминается. Иначе активити, созданная
+        // заново без extras (вернулись «Назад» и открыли снова, система пересоздала после установки),
+        // молча открывала вход вместо демо. Выключается там же, в «Бете», или выходом.
+        if (demo) settings?.setDemoBackend(true)
         if (demo || settings?.demoBackend?.value == true) startDemo() else restore()
     }
 

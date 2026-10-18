@@ -98,6 +98,7 @@ fun RoomListScreen(
     banner: @Composable () -> Unit = {},
 ) {
     val state by store.state.collectAsStateWithLifecycle()
+    val typing by store.typingRoomIds.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     var query by rememberSaveable { mutableStateOf("") }
@@ -166,7 +167,7 @@ fun RoomListScreen(
                                 onDecline = { scope.launch { store.decline(room.id) } },
                             )
                         } else {
-                            RoomRow(room = room, now = now, actions = actions, onOpen = { onOpen(room.id) })
+                            RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, onOpen = { onOpen(room.id) })
                         }
                     }
                 }
@@ -249,7 +250,7 @@ private fun Empty(title: Int, message: Int) {
 }
 
 @Composable
-private fun RoomRow(room: RoomSummary, now: Instant, actions: RoomActions, onOpen: () -> Unit) {
+private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
     val dark = LocalAccent.current.isDark
@@ -307,7 +308,7 @@ private fun RoomRow(room: RoomSummary, now: Instant, actions: RoomActions, onOpe
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Preview(room, Modifier.weight(1f))
+                Preview(room, typing, Modifier.weight(1f))
                 Spacer(Modifier.width(Theme.Spacing.close))
                 Badge(room)
             }
@@ -323,11 +324,20 @@ private fun RoomRow(room: RoomSummary, now: Instant, actions: RoomActions, onOpe
  * длины последнего сообщения, читается как дёргающийся. В группе первая строка — кто написал.
  */
 @Composable
-private fun Preview(room: RoomSummary, modifier: Modifier) {
+private fun Preview(room: RoomSummary, typing: Boolean, modifier: Modifier) {
     val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     val style = MaterialTheme.typography.bodyMedium
     val draft = room.draft
     when {
+        // Как в заголовке комнаты: пока пишут — это и есть последнее, что там происходит.
+        typing -> Text(
+            stringResource(R.string.room_typing),
+            modifier = modifier,
+            style = style,
+            color = LocalAccent.current.control,
+            minLines = 2,
+            maxLines = 2,
+        )
         draft != null -> Text(
             stringResource(R.string.room_list_draft, draft),
             modifier = modifier,

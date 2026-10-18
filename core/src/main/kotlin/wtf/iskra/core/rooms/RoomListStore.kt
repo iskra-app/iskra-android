@@ -49,6 +49,7 @@ import org.matrix.rustcomponents.sdk.SyncService
 import org.matrix.rustcomponents.sdk.SyncServiceState
 import org.matrix.rustcomponents.sdk.SyncServiceStateObserver
 import org.matrix.rustcomponents.sdk.TaskHandle
+import org.matrix.rustcomponents.sdk.TypingNotificationsListener
 import java.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -97,7 +98,7 @@ enum class RoomActionFailure(val message: Int) {
  * колбэк: дифф позиционный, и две пачки, применённые не в том порядке, оставляют список тихо
  * перемешанным (на iOS это поймали в ленте).
  *
- * Пока здесь не перенесено: подглядывание строк (`RoomPeek`), «печатает…», локальные имена,
+ * Пока здесь не перенесено: подглядывание строк (`RoomPeek`), локальные имена,
  * перезапуск очередей отправки с паузой и слежение за сетью устройства — следующие пункты этапа 3.
  */
 class RoomListStore(
@@ -138,6 +139,18 @@ class RoomListStore(
      * `id()` — вызов в Rust и строка обратно, а пересборка спрашивала его по нескольку раз на комнату.
      */
     private val orderedRooms = mutableListOf<Listed>()
+
+    private val mutableTyping = MutableStateFlow<Set<String>>(emptySet())
+
+    /**
+     * Комнаты, где сейчас пишет кто-то, кроме тебя, — список говорит это вместо последнего сообщения.
+     * Набором, а не полем `RoomSummary`: «печатает» приходит и уходит десяток раз в минуту, и связать
+     * его со строками значило бы пересобирать весь список на каждое нажатие клавиши на том конце.
+     */
+    val typingRoomIds: StateFlow<Set<String>> = mutableTyping.asStateFlow()
+
+    /** По подписке на комнату списка. Сами уведомления приходят с синхронизацией в любом случае. */
+    private val typingHandles = mutableMapOf<String, TaskHandle>()
 
     private class Listed(val room: Room) {
         val id: String = room.id()
@@ -454,6 +467,10 @@ class RoomListStore(
         diffsJob?.cancel()
         diffsJob = null
 
+        typingHandles.values.forEach { it.cancel() }
+        typingHandles.clear()
+        mutableTyping.value = emptySet()
+
         sendQueueHandle?.cancel()
         sendQueueHandle = null
         sendQueueErrorHandle?.cancel()
@@ -516,11 +533,36 @@ class RoomListStore(
             },
         )
         closeDropped(before)
+        watchTyping()
 
         when (outcome) {
             DiffOutcome.Applied -> rebuilds.schedule(touched)
             is DiffOutcome.Desynced -> desynced(outcome.what)
         }
+    }
+
+    /** Новые комнаты списка — слушать, ушедшие — отпустить. */
+    private fun watchTyping() {
+        val current = orderedRooms.map { it.id }.toSet()
+        for (listed in orderedRooms) {
+            val roomId = listed.id
+            if (roomId in typingHandles) continue
+            typingHandles[roomId] = runCatching {
+                listed.room.subscribeToTypingNotifications(object : TypingNotificationsListener {
+                    override fun call(typingUserIds: List<String>) {
+                        // Сервер возвращает и наше собственное уведомление — это не новость.
+                        val others = typingUserIds.any { it != ownUserId }
+                        scope.launch {
+                            if (hasStopped) return@launch
+                            mutableTyping.value = if (others) mutableTyping.value + roomId else mutableTyping.value - roomId
+                        }
+                    }
+                })
+            }.getOrNull() ?: continue
+        }
+        val gone = typingHandles.keys - current
+        for (roomId in gone) typingHandles.remove(roomId)?.cancel()
+        if (gone.isNotEmpty()) mutableTyping.value = mutableTyping.value - gone
     }
 
     /**
