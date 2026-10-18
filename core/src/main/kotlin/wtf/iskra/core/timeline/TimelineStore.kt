@@ -95,8 +95,13 @@ data class TimelineState(
     val canPost: Boolean = true,
     /** Кто печатает, по имени в этой комнате. Себя нет никогда. */
     val typing: List<String> = emptyList(),
+    /** Закреплённые события комнаты, в порядке закрепления: последнее — самое свежее. */
+    val pinnedIds: List<String> = emptyList(),
     val failure: TimelineFailure? = null,
 ) {
+    /** Что показывает полоса закреплённого: самое свежее закреплённое из того, что уже в ленте. */
+    val latestPinned: Message? get() = pinnedIds.asReversed().firstNotNullOfOrNull { rows.message(withId = it) }
+
     /** Есть ещё история, и ничто на экране не может её попросить — комнату из двух сообщений не прокрутить. */
     val needsMoreHistory: Boolean get() = hasLoaded && canLoadMore && !isPaginating && !didFailToPaginate && rows.size < SCREENFUL
 
@@ -118,6 +123,9 @@ enum class TimelineFailure(val message: Int) {
 
     /** Голос не засчитан или опрос не закрылся. Сам опрос — каким был. */
     POLL(R.string.timeline_poll_failed),
+
+    /** Закрепить или открепить не дали — чаще всего нет прав. */
+    PIN(R.string.timeline_pin_failed),
 }
 
 /**
@@ -300,6 +308,7 @@ class TimelineStore internal constructor(
                     privacy = PrivacyStatus.of(info.encryptionState),
                 ),
                 // Права приходят не всегда; «нет» — только на ясное слово комнаты.
+                pinnedIds = info.pinnedEventIds,
                 canPost = levels?.let { runCatching { it.canOwnUserSendMessage(MessageLikeEventType.RoomMessage) }.getOrNull() } ?: state.canPost,
             )
         }
@@ -770,6 +779,19 @@ class TimelineStore internal constructor(
             if (error is CancellationException) throw error
             Log.error(Log.Category.TIMELINE, "опрос не закрылся: ${Log.describe(error)}")
             fail(TimelineFailure.POLL)
+        }
+    }
+
+    /** Закрепить сообщение в комнате или открепить — для всех. */
+    suspend fun setPinned(messageId: String, pinned: Boolean) {
+        val timeline = timeline ?: return
+        val id = eventId(messageId) ?: return
+        try {
+            withTimeLimit(SDK_LIMIT) { if (pinned) timeline.pinEvent(id) else timeline.unpinEvent(id) }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "закрепление не изменилось: ${Log.describe(error)}")
+            fail(TimelineFailure.PIN)
         }
     }
 

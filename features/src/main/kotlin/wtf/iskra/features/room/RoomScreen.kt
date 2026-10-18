@@ -1,5 +1,6 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.filled.PushPin
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -192,6 +193,7 @@ fun RoomScreen(
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, onBack)
         HorizontalDivider()
+        state.latestPinned?.let { pinned -> PinnedStrip(pinned) }
         Box(Modifier.weight(1f)) {
             when {
                 state.didFailToLoad -> Failed { scope.launch { store.retryLoading() } }
@@ -440,6 +442,8 @@ private fun Conversation(
                         onOpen = { id -> viewing = id },
                     onVote = { answers -> scope.launch { store.vote(row.message.id, answers) } },
                     onEndPoll = { scope.launch { store.endPoll(row.message.id) } },
+                    isPinned = row.message.id in state.pinnedIds,
+                    onPin = { pinned -> scope.launch { store.setPinned(row.message.id, pinned) } },
                         onUnsent = { action ->
                             scope.launch {
                                 when (action) {
@@ -542,6 +546,8 @@ private fun Bubble(
     onOpen: (String) -> Unit = {},
     onVote: (List<String>) -> Unit = {},
     onEndPoll: () -> Unit = {},
+    isPinned: Boolean = false,
+    onPin: (Boolean) -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
 ) {
     val accent = LocalAccent.current
@@ -616,7 +622,9 @@ private fun Bubble(
                             onReact = onReact,
                             onReply = onReply,
                             onEdit = onEdit,
-                            onAskDelete = { confirm = Confirm.DELETE },
+                            isPinned = isPinned,
+                        onPin = onPin,
+                        onAskDelete = { confirm = Confirm.DELETE },
                             onAskEndPoll = { confirm = Confirm.END_POLL },
                         ) {
                             BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
@@ -640,6 +648,30 @@ private fun Bubble(
             }
         }
         if (message.reactions.isNotEmpty()) Reactions(message, onReact)
+    }
+}
+
+/**
+ * Закреплённое — полосой под заголовком: черта акцентом, «Закреплено» и само сообщение одной строкой.
+ * Показывает самое свежее из того, что уже в ленте.
+ */
+@Composable
+private fun PinnedStrip(message: Message) {
+    val accent = LocalAccent.current
+    Column {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(accent.control))
+            Spacer(Modifier.width(Theme.Spacing.close))
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.room_pinned), style = MaterialTheme.typography.labelMedium, color = accent.control)
+                Text(body(message), style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Icon(Icons.Filled.PushPin, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(Theme.Size.menuIcon))
+        }
+        HorizontalDivider()
     }
 }
 
@@ -898,6 +930,8 @@ private fun MessageMenu(
     onReact: (String) -> Unit,
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
+    isPinned: Boolean,
+    onPin: (Boolean) -> Unit,
     onAskDelete: () -> Unit,
     onAskEndPoll: () -> Unit,
     lifted: @Composable () -> Unit,
@@ -917,6 +951,10 @@ private fun MessageMenu(
             )
         }
         if (message.canEdit) add(MenuAction(stringResource(R.string.message_menu_edit), Icons.Filled.Edit) { onEdit(message) })
+        // Закрепить можно то, что есть на сервере, — то же, на что можно ответить.
+        if (message.canReply) {
+            add(MenuAction(stringResource(if (isPinned) R.string.message_menu_unpin else R.string.message_menu_pin), Icons.Filled.PushPin) { onPin(!isPinned) })
+        }
         if (message.canEndPoll) add(MenuAction(stringResource(R.string.poll_end), Icons.Filled.Done, run = onAskEndPoll))
         if (message.canDelete) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
     }
