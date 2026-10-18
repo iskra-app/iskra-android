@@ -37,11 +37,14 @@ import org.matrix.rustcomponents.sdk.EventSendState
 import org.matrix.rustcomponents.sdk.ImageInfo
 import org.matrix.rustcomponents.sdk.QueueWedgeError
 import org.matrix.rustcomponents.sdk.SendHandle
+import org.matrix.rustcomponents.sdk.MembershipState
+import org.matrix.rustcomponents.sdk.Mentions
 import org.matrix.rustcomponents.sdk.MessageLikeEventType
 import org.matrix.rustcomponents.sdk.ReceiptType
 import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomInfo
 import org.matrix.rustcomponents.sdk.RoomInfoListener
+import org.matrix.rustcomponents.sdk.RoomMessageEventContentWithoutRelation
 import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.Timeline
 import org.matrix.rustcomponents.sdk.TimelineConfiguration
@@ -511,13 +514,13 @@ class TimelineStore internal constructor(
      * Текст. Markdown соблюдается: люди пишут `*так*` и ждут, что сработает. [replyingTo] — ID
      * *сообщения*; ответ на то, у чего ещё нет события, уходит обычным сообщением, а не теряется.
      */
-    suspend fun send(text: String, replyingTo: String? = null) {
+    suspend fun send(text: String, replyingTo: String? = null, mentions: List<ComposerMention> = emptyList()) {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
         val timeline = timeline ?: return fail(TimelineFailure.SEND)
         stopTellingThemWeType()
         // Не пишется в журнал и никуда, кроме зашифрованной очереди SDK.
-        val content = messageEventContentFromMarkdown(trimmed)
+        val content = content(trimmed, mentions)
         try {
             val eventId = replyingTo?.let(::eventId)
             withTimeLimit(SDK_LIMIT) {
@@ -528,6 +531,43 @@ class TimelineStore internal constructor(
             Log.error(Log.Category.TIMELINE, "сообщение не отправилось: ${Log.describe(error)}")
             fail(TimelineFailure.SEND)
         }
+    }
+
+    /**
+     * Слова с упоминаниями: уцелевшие `@Имя` — ссылками `matrix.to` в Markdown и их ID — в
+     * `m.mentions`, который и будит людей (`ComposerMentions.markdown`).
+     */
+    private fun content(text: String, mentions: List<ComposerMention>): RoomMessageEventContentWithoutRelation {
+        val (markdown, userIds) = ComposerMentions.markdown(text, mentions)
+        val content = messageEventContentFromMarkdown(markdown)
+        return if (userIds.isEmpty()) content else content.withMentions(Mentions(userIds, false))
+    }
+
+    /**
+     * Кого можно позвать через «@»: вошедшие в комнату, кроме себя, — те, кто писал недавно, первыми.
+     * Без синхронизации участников: список из стора SDK, а ждать сервер ради подсказки не стоит.
+     */
+    suspend fun mentionCandidates(): List<MentionCandidate> {
+        val members = runCatching {
+            withTimeLimit(SDK_LIMIT) {
+                val iterator = room.membersNoSync()
+                buildList {
+                    while (true) {
+                        val chunk = iterator.nextChunk(MEMBER_CHUNK.toUInt()) ?: break
+                        if (chunk.isEmpty()) break
+                        addAll(chunk)
+                    }
+                }
+            }
+        }.getOrElse {
+            Log.error(Log.Category.TIMELINE, "участники не прочитались: ${Log.describe(it)}")
+            return emptyList()
+        }
+        val recent = state.value.rows.asReversed().mapNotNull { (it as? TimelineRow.MessageRow)?.message?.senderId }.distinct()
+        return members
+            .filter { it.membership is MembershipState.Join && it.userId != ownUserId }
+            .map { MentionCandidate(it.userId, it.displayName?.takeIf(String::isNotBlank) ?: ComposerMentions.localpart(it.userId), it.avatarUrl) }
+            .sortedBy { candidate -> recent.indexOf(candidate.userId).let { if (it < 0) Int.MAX_VALUE else it } }
     }
 
     /**
@@ -589,14 +629,14 @@ class TimelineStore internal constructor(
         }
     }
 
-    suspend fun edit(messageId: String, text: String) {
+    suspend fun edit(messageId: String, text: String, mentions: List<ComposerMention> = emptyList()) {
         val trimmed = text.trim()
         val timeline = timeline ?: return
         val id = eventOrTransactionId(messageId) ?: return
         if (trimmed.isEmpty()) return
         try {
             withTimeLimit(SDK_LIMIT) {
-                timeline.edit(id, org.matrix.rustcomponents.sdk.EditedContent.RoomMessage(messageEventContentFromMarkdown(trimmed)))
+                timeline.edit(id, org.matrix.rustcomponents.sdk.EditedContent.RoomMessage(content(trimmed, mentions)))
             }
         } catch (error: Exception) {
             if (error is CancellationException) throw error
@@ -819,6 +859,9 @@ class TimelineStore internal constructor(
         const val MAXIMUM_OPENING_PAGES = 4
         const val MAXIMUM_REFILL_PAGES = 20
         val SDK_LIMIT = 30.seconds
+
+        /** Сколько участников читается за раз из стора SDK. */
+        const val MEMBER_CHUNK = 200
         val TYPING_LULL = 4.seconds
     }
 }

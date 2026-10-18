@@ -1,5 +1,10 @@
 package wtf.iskra.features.room
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import wtf.iskra.core.timeline.ComposerMention
+import wtf.iskra.core.timeline.ComposerMentions
+import wtf.iskra.core.timeline.MentionCandidate
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.material.icons.filled.ContentCopy
@@ -146,7 +151,10 @@ fun RoomScreen(
     DisposableEffect(store) { onDispose { store.close() } }
     BackHandler(onBack = onBack)
 
-    var draft by rememberSaveable(store.roomId) { mutableStateOf("") }
+    var field by rememberSaveable(store.roomId, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
+    // Кого позвали из списка «@»: рядом с черновиком, а не в нём (`ComposerMention`).
+    var mentions by remember(store.roomId) { mutableStateOf<List<ComposerMention>>(emptyList()) }
+    var candidates by remember(store.roomId) { mutableStateOf<List<MentionCandidate>>(emptyList()) }
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var draftLoaded by remember(store.roomId) { mutableStateOf(false) }
@@ -158,8 +166,13 @@ fun RoomScreen(
     }
 
     LaunchedEffect(store) {
-        if (draft.isEmpty()) store.draft()?.let { draft = it }
+        if (field.text.isEmpty()) store.draft()?.let { field = TextFieldValue(it, TextRange(it.length)) }
         draftLoaded = true
+    }
+    val mentionQuery = field.selection.takeIf { it.collapsed }?.let { ComposerMentions.query(field.text, it.end) }
+    // Участники — когда впервые набрали «@», а не при каждом открытии комнаты.
+    LaunchedEffect(mentionQuery != null) {
+        if (mentionQuery != null && candidates.isEmpty()) candidates = store.mentionCandidates()
     }
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
@@ -179,7 +192,9 @@ fun RoomScreen(
                     onEdit = { message ->
                         editing = message
                         replyingTo = null
-                        draft = message.editableText.orEmpty()
+                        val (text, linked) = ComposerMentions.unlinked(message.editableText.orEmpty())
+                        field = TextFieldValue(text, TextRange(text.length))
+                        mentions = linked
                     },
                 )
             }
@@ -197,11 +212,19 @@ fun RoomScreen(
             )
         }
         if (state.canPost) {
+            val suggestions = mentionQuery?.let { ComposerMentions.matches(it.text, candidates).take(MAX_SUGGESTIONS) }.orEmpty()
+            if (suggestions.isNotEmpty() && mentionQuery != null) {
+                MentionPicker(suggestions) { member ->
+                    val (text, cursor, mention) = ComposerMentions.insert(member, mentionQuery, field.text)
+                    field = TextFieldValue(text, TextRange(cursor))
+                    mentions = mentions + mention
+                }
+            }
             Composer(
-                text = draft,
-                onTextChange = { text ->
-                    draft = text
-                    store.typed()
+                field = field,
+                onFieldChange = { value ->
+                    if (value.text != field.text) store.typed()
+                    field = value
                 },
                 replyingTo = replyingTo,
                 editing = editing,
@@ -209,22 +232,27 @@ fun RoomScreen(
                 onAttach = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 onRemoveAttachment = { uri -> attachments = attachments - uri },
                 onCancel = {
-                    if (editing != null) draft = ""
+                    if (editing != null) {
+                        field = TextFieldValue()
+                        mentions = emptyList()
+                    }
                     replyingTo = null
                     editing = null
                 },
                 onSend = {
-                    val text = draft
+                    val text = field.text
+                    val called = mentions
                     val reply = replyingTo
                     val edit = editing
                     val photos = attachments
-                    draft = ""
+                    field = TextFieldValue()
+                    mentions = emptyList()
                     replyingTo = null
                     editing = null
                     attachments = emptyList()
                     scope.launch {
                         when {
-                            edit != null -> store.edit(edit.id, text)
+                            edit != null -> store.edit(edit.id, text, called)
                             photos.isNotEmpty() -> {
                                 // Вложения вперёд; слова — подписью под первым, в том же событии.
                                 val settings = mediaSettings()
@@ -235,9 +263,9 @@ fun RoomScreen(
                                     val sent = store.sendPhoto(bytes, name, settings, caption, reply?.id.takeIf { index == 0 })
                                     if (sent && caption != null) captioned = true
                                 }
-                                if (!captioned && text.isNotBlank()) store.send(text, reply?.id)
+                                if (!captioned && text.isNotBlank()) store.send(text, reply?.id, called)
                             }
-                            else -> store.send(text, reply?.id)
+                            else -> store.send(text, reply?.id, called)
                         }
                         store.clearDraft()
                     }
@@ -255,7 +283,7 @@ fun RoomScreen(
 
     // Черновик — в зашифрованный стор SDK, когда комнату оставляют, и не раньше, чем он прочитан.
     DisposableEffect(store, draftLoaded) {
-        onDispose { if (draftLoaded && editing == null) scope.launch { store.saveDraft(draft) } }
+        onDispose { if (draftLoaded && editing == null) scope.launch { store.saveDraft(field.text) } }
     }
 
     state.failure?.let { failure ->
@@ -440,6 +468,9 @@ private const val FLOATING_DATE_HOLD_MS = 1200L
 
 /** Сколько вложений за раз — столько же, сколько у системного выбора и в альбоме. */
 private const val MAX_ATTACHMENTS = 10
+
+/** Сколько людей показывает список «@»: больше — уже не подсказка, а список участников. */
+private const val MAX_SUGGESTIONS = 5
 
 /** Строки ядра для служебных строк — из ресурсов, на языке приложения. */
 @Composable
@@ -952,8 +983,8 @@ private fun clock(at: Instant): String {
 
 @Composable
 private fun Composer(
-    text: String,
-    onTextChange: (String) -> Unit,
+    field: TextFieldValue,
+    onFieldChange: (TextFieldValue) -> Unit,
     replyingTo: Message?,
     editing: Message?,
     attachments: List<Uri>,
@@ -963,6 +994,7 @@ private fun Composer(
     onSend: () -> Unit,
 ) {
     val accent = LocalAccent.current
+    val text = field.text
     val canSend = text.isNotBlank() || (editing == null && attachments.isNotEmpty())
     Column(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight)) {
         if (attachments.isNotEmpty() && editing == null) PendingAttachments(attachments, onRemoveAttachment)
@@ -991,8 +1023,8 @@ private fun Composer(
                 }
             }
             OutlinedTextField(
-                value = text,
-                onValueChange = onTextChange,
+                value = field,
+                onValueChange = onFieldChange,
                 modifier = Modifier.weight(1f),
                 placeholder = { Text(stringResource(R.string.room_composer_placeholder)) },
                 maxLines = COMPOSER_LINES,
