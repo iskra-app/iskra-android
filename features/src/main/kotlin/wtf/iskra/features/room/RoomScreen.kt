@@ -1,5 +1,7 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Photo
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import wtf.iskra.core.timeline.ComposerMention
@@ -158,11 +160,15 @@ fun RoomScreen(
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var draftLoaded by remember(store.roomId) { mutableStateOf(false) }
-    var attachments by remember(store.roomId) { mutableStateOf<List<Uri>>(emptyList()) }
+    var attachments by remember(store.roomId) { mutableStateOf<List<PendingAttachment>>(emptyList()) }
     val context = LocalContext.current
     // Системный выбор: без разрешения на всю галерею, до десяти за раз (docs/PROMPT.md, 11.5).
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)) { picked ->
-        attachments = (attachments + picked).distinct().take(MAX_ATTACHMENTS)
+        attachments = (attachments + picked.map { PendingAttachment(it, isFile = false) }).distinct().take(MAX_ATTACHMENTS)
+    }
+    // Файл — системным выбором документов: любой тип, уйдёт как есть.
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
+        if (picked != null) attachments = (attachments + PendingAttachment(picked, isFile = true)).distinct().take(MAX_ATTACHMENTS)
     }
 
     LaunchedEffect(store) {
@@ -229,8 +235,9 @@ fun RoomScreen(
                 replyingTo = replyingTo,
                 editing = editing,
                 attachments = attachments,
-                onAttach = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                onRemoveAttachment = { uri -> attachments = attachments - uri },
+                onAttachPhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onAttachFile = { filePicker.launch(arrayOf(ANY_TYPE)) },
+                onRemoveAttachment = { attachment -> attachments = attachments - attachment },
                 onCancel = {
                     if (editing != null) {
                         field = TextFieldValue()
@@ -257,10 +264,15 @@ fun RoomScreen(
                                 // Вложения вперёд; слова — подписью под первым, в том же событии.
                                 val settings = mediaSettings()
                                 var captioned = false
-                                photos.forEachIndexed { index, uri ->
-                                    val (bytes, name) = readPicked(context, uri) ?: return@forEachIndexed
+                                photos.forEachIndexed { index, attachment ->
+                                    val (bytes, name) = readPicked(context, attachment.uri) ?: return@forEachIndexed
                                     val caption = text.takeIf { !captioned && it.isNotBlank() }
-                                    val sent = store.sendPhoto(bytes, name, settings, caption, reply?.id.takeIf { index == 0 })
+                                    val replyId = reply?.id.takeIf { index == 0 }
+                                    val sent = if (attachment.isFile) {
+                                        store.sendFile(bytes, name, context.contentResolver.getType(attachment.uri), caption, replyId)
+                                    } else {
+                                        store.sendPhoto(bytes, name, settings, caption, replyId)
+                                    }
                                     if (sent && caption != null) captioned = true
                                 }
                                 if (!captioned && text.isNotBlank()) store.send(text, reply?.id, called)
@@ -471,6 +483,9 @@ private const val MAX_ATTACHMENTS = 10
 
 /** Сколько людей показывает список «@»: больше — уже не подсказка, а список участников. */
 private const val MAX_SUGGESTIONS = 5
+
+/** Любой тип файла — системному выбору документов. */
+private const val ANY_TYPE = "*/*"
 
 /** Строки ядра для служебных строк — из ресурсов, на языке приложения. */
 @Composable
@@ -987,9 +1002,10 @@ private fun Composer(
     onFieldChange: (TextFieldValue) -> Unit,
     replyingTo: Message?,
     editing: Message?,
-    attachments: List<Uri>,
-    onAttach: () -> Unit,
-    onRemoveAttachment: (Uri) -> Unit,
+    attachments: List<PendingAttachment>,
+    onAttachPhoto: () -> Unit,
+    onAttachFile: () -> Unit,
+    onRemoveAttachment: (PendingAttachment) -> Unit,
     onCancel: () -> Unit,
     onSend: () -> Unit,
 ) {
@@ -1018,8 +1034,23 @@ private fun Composer(
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
             // В правке вложению взяться неоткуда: правится слово, а не событие.
             if (editing == null) {
-                IconButton(onClick = onAttach, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach), tint = accent.control)
+                var choosing by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { choosing = true }, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach), tint = accent.control)
+                    }
+                    DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.room_attach_photo)) },
+                            leadingIcon = { Icon(Icons.Filled.Photo, contentDescription = null) },
+                            onClick = { choosing = false; onAttachPhoto() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.room_attach_file)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null) },
+                            onClick = { choosing = false; onAttachFile() },
+                        )
+                    }
                 }
             }
             OutlinedTextField(

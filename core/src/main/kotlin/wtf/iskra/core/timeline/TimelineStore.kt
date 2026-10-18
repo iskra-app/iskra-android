@@ -34,6 +34,7 @@ import org.matrix.rustcomponents.sdk.ComposerDraftType
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.EventOrTransactionId
 import org.matrix.rustcomponents.sdk.EventSendState
+import org.matrix.rustcomponents.sdk.FileInfo
 import org.matrix.rustcomponents.sdk.ImageInfo
 import org.matrix.rustcomponents.sdk.QueueWedgeError
 import org.matrix.rustcomponents.sdk.SendHandle
@@ -629,6 +630,45 @@ class TimelineStore internal constructor(
         }
     }
 
+    /**
+     * Отправить файл — как он есть (docs/PROMPT.md, 8.3: «файлы, отправленные *как файлы*, уходят
+     * нетронутыми, намеренно»): ни сжатия, ни очистки — человек выбрал файл, а не фото. Байтами,
+     * как и фото: открытый текст не ложится на диск ради того, чтобы SDK прочёл путь.
+     */
+    suspend fun sendFile(bytes: ByteArray, filename: String, mimeType: String?, caption: String? = null, replyingTo: String? = null): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val parameters = UploadParameters(
+            source = UploadSource.Data(bytes, filename),
+            caption = caption?.trim()?.ifEmpty { null },
+            formattedCaption = null,
+            mentions = null,
+            inReplyTo = replyingTo?.let(::eventId),
+        )
+        val info = FileInfo(mimetype = mimeType ?: OCTET_STREAM, size = bytes.size.toULong(), thumbnailInfo = null, thumbnailSource = null)
+        return try {
+            val handle = withTimeLimit(SDK_LIMIT) { timeline.sendFile(parameters, info) }
+            scope.launch {
+                try {
+                    handle.join()
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    Log.error(Log.Category.MEDIA, "файл не загрузился: ${Log.describe(error)}")
+                } finally {
+                    handle.destroy()
+                }
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "файл не отправился: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
+        }
+    }
+
     suspend fun edit(messageId: String, text: String, mentions: List<ComposerMention> = emptyList()) {
         val trimmed = text.trim()
         val timeline = timeline ?: return
@@ -859,6 +899,8 @@ class TimelineStore internal constructor(
         const val MAXIMUM_OPENING_PAGES = 4
         const val MAXIMUM_REFILL_PAGES = 20
         val SDK_LIMIT = 30.seconds
+
+        const val OCTET_STREAM = "application/octet-stream"
 
         /** Сколько участников читается за раз из стора SDK. */
         const val MEMBER_CHUNK = 200

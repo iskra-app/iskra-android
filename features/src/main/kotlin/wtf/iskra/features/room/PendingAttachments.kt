@@ -10,7 +10,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,7 +23,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -51,17 +58,39 @@ import wtf.iskra.features.R
  * Здесь только адреса (`content://` от системного выбора), не байты: двенадцать мегапикселей ждут
  * в галерее, пока их не отправят, а не в памяти, пока человек думает.
  */
+/** Выбранное: адрес и что это — фото (пойдёт через подготовку) или файл (уйдёт как есть). */
+internal data class PendingAttachment(val uri: Uri, val isFile: Boolean)
+
 @Composable
-internal fun PendingAttachments(attachments: List<Uri>, onRemove: (Uri) -> Unit) {
+internal fun PendingAttachments(attachments: List<PendingAttachment>, onRemove: (PendingAttachment) -> Unit) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
         contentPadding = PaddingValues(horizontal = Theme.Spacing.close),
         modifier = Modifier.fillMaxWidth().padding(bottom = Theme.Spacing.tight),
     ) {
-        items(attachments, key = { it.toString() }) { uri ->
-            val image = rememberPickedThumbnail(uri)
-            Box(Modifier.size(Theme.Size.galleryThumbnailCurrent).clip(RoundedCornerShape(Theme.Radius.control)).background(MaterialTheme.colorScheme.surfaceVariant)) {
-                if (image != null) Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        items(attachments, key = { it.uri.toString() }) { attachment ->
+            val uri = attachment.uri
+            Box(
+                Modifier
+                    .then(if (attachment.isFile) Modifier.widthIn(max = Theme.Size.menuWidth) else Modifier.size(Theme.Size.galleryThumbnailCurrent))
+                    .height(Theme.Size.galleryThumbnailCurrent)
+                    .clip(RoundedCornerShape(Theme.Radius.control))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            ) {
+                if (attachment.isFile) {
+                    // Файл — словом: значок и имя, картинки у него нет.
+                    Row(
+                        Modifier.fillMaxHeight().padding(start = Theme.Spacing.close, end = Theme.Size.audioScrubber + Theme.Spacing.close),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(rememberPickedName(uri), style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
+                } else {
+                    val image = rememberPickedThumbnail(uri)
+                    if (image != null) Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                }
                 Icon(
                     Icons.Filled.Close,
                     contentDescription = stringResource(R.string.room_remove_attachment),
@@ -72,7 +101,7 @@ internal fun PendingAttachments(attachments: List<Uri>, onRemove: (Uri) -> Unit)
                         .size(Theme.Size.audioScrubber)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = Theme.Backdrop.PLATE))
-                        .clickable { onRemove(uri) },
+                        .clickable { onRemove(attachment) },
                 )
             }
         }
@@ -92,12 +121,25 @@ private fun rememberPickedThumbnail(uri: Uri): ImageBitmap? {
     return image
 }
 
+@Composable
+private fun rememberPickedName(uri: Uri): String {
+    val context = LocalContext.current
+    var name by remember(uri) { mutableStateOf("") }
+    LaunchedEffect(uri) { name = withContext(Dispatchers.IO) { displayName(context, uri) } }
+    return name
+}
+
+private fun displayName(context: Context, uri: Uri): String =
+    runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    }.getOrNull() ?: uri.lastPathSegment.orEmpty()
+
 /** Выбранный файл целиком и его имя. Null — система его уже не отдаёт (удалили, отозвали доступ). */
 internal suspend fun readPicked(context: Context, uri: Uri): Pair<ByteArray, String>? = withContext(Dispatchers.IO) {
     try {
-        val name = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst()) cursor.getString(0) else null
-        } ?: uri.lastPathSegment.orEmpty()
+        val name = displayName(context, uri)
         val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@withContext null
         bytes to name
     } catch (error: Exception) {
