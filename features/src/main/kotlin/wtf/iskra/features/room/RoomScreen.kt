@@ -61,6 +61,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -413,6 +414,7 @@ private fun Bubble(
     val top = if (message.isContinuation) Theme.Spacing.withinRun else Theme.Spacing.betweenSenders / 2
     var menu by remember { mutableStateOf(false) }
     var revealed by remember(message.id) { mutableStateOf(false) }
+    var noteTaps by remember(message.id) { mutableIntStateOf(0) }
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
     val ownUserId = LocalOwnUserId.current
 
@@ -461,11 +463,21 @@ private fun Bubble(
                             MediaContent(
                                 message.kind,
                                 Modifier.combinedClickable(
-                                    onClickLabel = stringResource(R.string.message_media_open_full_screen),
-                                    onClick = { if (message.kind is MessageKind.Image) onOpen() },
+                                    onClickLabel = stringResource(
+                                        if (message.kind is MessageKind.VideoNote) R.string.message_media_play else R.string.message_media_open_full_screen,
+                                    ),
+                                    onClick = {
+                                        when (message.kind) {
+                                            is MessageKind.Image, is MessageKind.Video -> onOpen()
+                                            is MessageKind.VideoNote -> noteTaps++
+                                            else -> Unit
+                                        }
+                                    },
                                     onDoubleClick = { if (message.canReact) onReact(QUICK_REACTION) },
                                     onLongClick = { menu = true },
                                 ),
+                                messageId = message.id,
+                                noteTaps = noteTaps,
                             )
                             picture.caption?.takeIf { message.kind !is MessageKind.Sticker }?.let { caption ->
                                 Text(

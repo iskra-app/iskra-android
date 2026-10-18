@@ -32,9 +32,18 @@ object FileOpener {
     /** Какое вложение сейчас качается, чтобы его кружок показал это. */
     val opening: StateFlow<String?> = mutableOpening.asStateFlow()
 
-    /** Убрать всё, что открывалось раньше. При запуске и перед каждым открытием. */
+    /** Убрать всё, что открывалось раньше. Перед каждым открытием. */
     fun sweep(context: Context) {
         runCatching { directory(context).deleteRecursively() }
+    }
+
+    /**
+     * При запуске: и открытое прошлым запуском, и видео, которые играли, когда приложение упало.
+     * Чужое приложение давно прочло первое, а плееров второго больше нет.
+     */
+    fun sweepOnLaunch(context: Context) {
+        sweep(context)
+        runCatching { java.io.File(context.cacheDir, PLAYING).deleteRecursively() }
     }
 
     /** False — не вышло: не скачалось или открыть нечем. */
@@ -67,4 +76,7 @@ object FileOpener {
     /** Совпадает с `file_paths.xml` и `authorities` провайдера в манифесте. */
     private const val DIRECTORY = "opened"
     private const val AUTHORITY_SUFFIX = ".files"
+
+    /** Совпадает с `VideoFiles` — папка видео, которые сейчас играют. */
+    private const val PLAYING = "playing"
 }

@@ -24,8 +24,8 @@ class AppGraph(context: Context, appVersion: String) {
     val settings = AppSettings(context)
 
     init {
-        // Открытые прошлым запуском файлы — открытый текст на диске; чужое приложение их давно прочло.
-        wtf.iskra.features.support.FileOpener.sweep(context)
+        // Открытые и игравшие прошлым запуском файлы — открытый текст на диске, и он больше никому не нужен.
+        wtf.iskra.features.support.FileOpener.sweepOnLaunch(context)
     }
     val sessionStore = SessionStore(secrets)
     val authentication = AuthenticationService(

@@ -30,6 +30,8 @@ lifecycle = "2.11.0"
 datastore = "1.2.1"
 browser = "1.10.0"
 composeBom = "2026.09.00"
+# Видео и кружочки (docs/PROMPT.md, раздел 10): ExoPlayer и его поверхность для Compose. Apache 2.0.
+media3 = "1.11.1"
 
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
@@ -51,6 +53,9 @@ androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-ru
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref = "media3" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }

@@ -39,6 +39,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui.compose)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.collections.immutable)
     debugImplementation(libs.compose.ui.tooling)

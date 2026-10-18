@@ -11,9 +11,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +32,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import androidx.media3.common.Player
+import androidx.media3.ui.compose.ContentFrame
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import wtf.iskra.core.timeline.Attachment
 import wtf.iskra.core.timeline.MessageKind
 import wtf.iskra.design.Theme
@@ -48,12 +54,13 @@ internal val MessageKind.picture: Attachment?
  * Картинка сообщения. Место под неё отводится сразу, по пропорциям, которые прислал отправитель, —
  * чтобы лента не прыгала, когда байты придут; до них — тихая плашка, а не спиннер.
  *
- * Стикер — без подложки: это сказанное, а не вложение. Кружочек — круг. Видео — кадр и значок;
- * плеер — следующим пунктом этапа 6. Фото открывается на весь экран — `MediaViewer`.
+ * Стикер — без подложки: это сказанное, а не вложение. Кружочек — круг, и играет на месте, по
+ * нажатию (`noteTaps` растёт с каждым), не на весь экран. Фото и видео открываются в `MediaViewer`.
  */
 @Composable
-internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier) {
+internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier, messageId: String = "", noteTaps: Int = 0) {
     val attachment = kind.picture ?: return
+    if (kind is MessageKind.VideoNote) return VideoNote(messageId, attachment, noteTaps, modifier)
     val size = frame(kind, attachment)
     val shape = when (kind) {
         is MessageKind.VideoNote -> CircleShape
@@ -135,4 +142,89 @@ private object Thumbnails {
 
     /** Тридцать два мегабайта картинок — пара экранов фото; дальше — заново у SDK, у него свой кэш. */
     private const val BYTES = 32 * 1024 * 1024
+}
+
+/**
+ * Кружочек, который играет там же, где лежит. Первое нажатие качает и запускает, следующие —
+ * пауза и дальше; доиграл — снова кадр и значок. Динамик один: заговорило другое — кружок умолкает.
+ */
+@Composable
+private fun VideoNote(messageId: String, attachment: Attachment, taps: Int, modifier: Modifier) {
+    var wanted by remember(messageId) { mutableStateOf(false) }
+    val load = rememberVideo(attachment, wanted)
+    val player = (load as? VideoLoad.Ready)?.player
+    var playing by remember(player) { mutableStateOf(false) }
+    val image = rememberThumbnail(attachment, Theme.Size.videoNote)
+
+    LaunchedEffect(taps) {
+        if (taps == 0) return@LaunchedEffect
+        val current = player
+        when {
+            current == null -> wanted = true
+            current.isPlaying -> current.pause()
+            else -> {
+                VoicePlayback.stop()
+                Speaker.claim(messageId)
+                current.play()
+            }
+        }
+    }
+    // Пришёл файл, о котором просили, — сразу играть: человек нажал ради этого.
+    LaunchedEffect(player) {
+        if (player == null) return@LaunchedEffect
+        VoicePlayback.stop()
+        Speaker.claim(messageId)
+        player.play()
+    }
+    // Подпиской, а не значением из композиции: то отстаёт на кадр и остановило бы только что запущенное.
+    LaunchedEffect(player) { Speaker.owner.collect { if (it != messageId) player?.pause() } }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                playing = isPlaying
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) {
+                    player?.pause()
+                    player?.seekTo(0)
+                    Speaker.release(messageId)
+                }
+            }
+        }
+        player?.addListener(listener)
+        onDispose {
+            player?.removeListener(listener)
+            Speaker.release(messageId)
+        }
+    }
+
+    Box(
+        modifier.size(Theme.Size.videoNote).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        val still: @Composable () -> Unit = {
+            if (image != null) Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        if (player != null) {
+            ContentFrame(player = player, modifier = Modifier.fillMaxSize(), surfaceType = SURFACE_TYPE_TEXTURE_VIEW, contentScale = ContentScale.Crop, shutter = still)
+        } else {
+            still()
+        }
+        when {
+            load is VideoLoad.Loading -> CircularProgressIndicator(Modifier.size(Theme.Size.uploadRing), color = Color.White)
+            load is VideoLoad.Failed -> PlateIcon(Icons.Filled.ErrorOutline)
+            !playing -> PlateIcon(Icons.Filled.PlayArrow)
+        }
+    }
+}
+
+@Composable
+private fun PlateIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Icon(
+        icon,
+        contentDescription = null,
+        tint = Color.White,
+        modifier = Modifier.size(Theme.Size.uploadRing).clip(CircleShape).background(Color.Black.copy(alpha = Theme.Backdrop.DIM)),
+    )
 }

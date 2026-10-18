@@ -40,6 +40,16 @@ internal object VoicePlayback {
     private var player: MediaPlayer? = null
     private var job: Job? = null
 
+    init {
+        // Динамик забрали — кружок или видео: голосовое умолкает, а не говорит поверх.
+        scope.launch {
+            Speaker.owner.collect { owner ->
+                val playing = mutableState.value.messageId ?: return@collect
+                if (owner != playing) stop()
+            }
+        }
+    }
+
     /** Нажатие на кнопку голосового: то же — пауза или дальше, другое — сначала, а прежнее умолкает. */
     fun toggle(messageId: String, attachment: Attachment, loader: MediaLoader) {
         val current = player
@@ -48,6 +58,7 @@ internal object VoicePlayback {
                 current.pause()
                 mutableState.value = mutableState.value.copy(isPlaying = false)
             } else {
+                Speaker.claim(messageId)
                 current.start()
                 mutableState.value = mutableState.value.copy(isPlaying = true)
                 tick()
@@ -56,6 +67,7 @@ internal object VoicePlayback {
         }
         if (mutableState.value.messageId == messageId && mutableState.value.isLoading) return
         stop()
+        Speaker.claim(messageId)
         mutableState.value = State(messageId = messageId, isLoading = true)
         job = scope.launch {
             try {

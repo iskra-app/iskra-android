@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.Player
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,8 +81,8 @@ import java.util.Date
 import kotlin.math.abs
 import kotlin.math.max
 
-/** Фото чата, которые листает просмотрщик, — по времени, старое слева, как в ленте. */
-internal fun List<Message>.viewable(): List<Message> = filter { it.kind is MessageKind.Image }
+/** Фото и видео чата, которые листает просмотрщик, — по времени, старое слева, как в ленте. */
+internal fun List<Message>.viewable(): List<Message> = filter { it.kind is MessageKind.Image || it.kind is MessageKind.Video }
 
 /**
  * Фото чата, открытое на весь экран, — галерея Telegram (`MediaPager` на iOS):
@@ -91,9 +93,10 @@ internal fun List<Message>.viewable(): List<Message> = filter { it.kind is Messa
  *   файл встаёт на его место, когда придёт;
  * - **одно нажатие** убирает всё лишнее, щипок или двойное нажатие увеличивают, смахивание вниз закрывает.
  *
- * Байты полного файла — только в памяти и только пока страница жива: в зашифрованной комнате это
- * чья-то личная фотография открытым текстом. Сохранение и «поделиться» — когда будет файл, который
- * живёт ровно столько же.
+ * Байты полного фото — только в памяти и только пока страница жива: в зашифрованной комнате это
+ * чья-то личная фотография открытым текстом. Видео качается, только когда его страница впереди
+ * (`rememberVideo`), и встаёт на паузу, когда его пролистнули; его кнопки — в подвале.
+ * Сохранение и «поделиться» — когда будет файл, который живёт ровно столько же.
  */
 @Composable
 internal fun MediaViewer(items: List<Message>, startId: String, onClose: () -> Unit) {
@@ -104,6 +107,7 @@ internal fun MediaViewer(items: List<Message>, startId: String, onClose: () -> U
     var chrome by remember { mutableStateOf(true) }
     var zoomed by remember { mutableStateOf(false) }
     var dismissing by remember { mutableFloatStateOf(0f) }
+    val players = remember { mutableStateMapOf<String, Player>() }
 
     Dialog(
         onDismissRequest = onClose,
@@ -118,20 +122,32 @@ internal fun MediaViewer(items: List<Message>, startId: String, onClose: () -> U
                 key = { items[it].id },
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
-                ZoomablePhoto(
-                    message = items[page],
-                    onTap = { chrome = !chrome },
-                    onZoom = { if (page == pager.currentPage) zoomed = it },
-                    onDrag = { dismissing = it },
-                    onDismiss = onClose,
-                )
+                val message = items[page]
+                if (message.kind is MessageKind.Video) {
+                    VideoPage(
+                        message = message,
+                        isCurrent = page == pager.currentPage,
+                        onTap = { chrome = !chrome },
+                        onDrag = { dismissing = it },
+                        onDismiss = onClose,
+                        onPlayer = { player -> if (player != null) players[message.id] = player else players.remove(message.id) },
+                    )
+                } else {
+                    ZoomablePhoto(
+                        message = message,
+                        onTap = { chrome = !chrome },
+                        onZoom = { if (page == pager.currentPage) zoomed = it },
+                        onDrag = { dismissing = it },
+                        onDismiss = onClose,
+                    )
+                }
             }
             val current = items[pager.currentPage.coerceIn(0, items.lastIndex)]
             AnimatedVisibility(chrome && dismissing == 0f, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
                 ViewerHeader(current, pager.currentPage + 1, items.size, onClose)
             }
             AnimatedVisibility(chrome && dismissing == 0f, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.BottomCenter)) {
-                ViewerFooter(items, pager.currentPage) { index -> scope.launch { pager.animateScrollToPage(index) } }
+                ViewerFooter(items, pager.currentPage, players[current.id]) { index -> scope.launch { pager.animateScrollToPage(index) } }
             }
         }
     }
@@ -174,10 +190,10 @@ private fun ViewerHeader(message: Message, position: Int, total: Int, onClose: (
 
 /** Подпись фото и все фото чата полоской — текущее шире, нажатие ведёт туда. */
 @Composable
-private fun ViewerFooter(items: List<Message>, current: Int, onSelect: (Int) -> Unit) {
-    val caption = (items.getOrNull(current)?.kind as? MessageKind.Image)?.attachment?.caption
+private fun ViewerFooter(items: List<Message>, current: Int, player: Player?, onSelect: (Int) -> Unit) {
+    val caption = items.getOrNull(current)?.kind?.picture?.caption
     // Нечего сказать — нет и плашки: пустая тёмная полоса под одиноким фото — просто шум.
-    if (caption == null && items.size < 2) return
+    if (caption == null && items.size < 2 && player == null) return
     val strip = rememberLazyListState(initialFirstVisibleItemIndex = current)
     LaunchedEffect(current) { strip.animateScrollToItem(max(0, current - STRIP_LEAD)) }
     Column(
@@ -188,6 +204,7 @@ private fun ViewerFooter(items: List<Message>, current: Int, onSelect: (Int) -> 
             .padding(vertical = Theme.Spacing.close),
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
     ) {
+        if (player != null) VideoControls(player)
         caption?.let { caption ->
             Text(
                 caption,
@@ -206,7 +223,7 @@ private fun ViewerFooter(items: List<Message>, current: Int, onSelect: (Int) -> 
                 modifier = Modifier.height(Theme.Size.galleryThumbnail.height),
             ) {
                 itemsIndexed(items, key = { _, message -> message.id }) { index, message ->
-                    val attachment = (message.kind as MessageKind.Image).attachment
+                    val attachment = message.kind.picture ?: return@itemsIndexed
                     val image = rememberThumbnail(attachment, Theme.Size.galleryThumbnailCurrent)
                     val isCurrent = index == current
                     Box(
@@ -218,7 +235,9 @@ private fun ViewerFooter(items: List<Message>, current: Int, onSelect: (Int) -> 
                             .clip(RoundedCornerShape(Theme.Spacing.tight))
                             .background(Color.White.copy(alpha = Theme.Backdrop.WASH))
                             .alpha(if (isCurrent) 1f else QUIET)
-                            .clickable(onClickLabel = stringResource(R.string.message_media_photo)) { onSelect(index) },
+                            .clickable(
+                                onClickLabel = stringResource(if (message.kind is MessageKind.Video) R.string.message_media_video else R.string.message_media_photo),
+                            ) { onSelect(index) },
                     ) {
                         if (image != null) Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
