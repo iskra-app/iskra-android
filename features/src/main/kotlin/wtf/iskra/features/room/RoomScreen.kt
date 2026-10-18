@@ -504,6 +504,13 @@ private fun Bubble(
                         val poll = (message.kind as? MessageKind.Poll)?.poll
                         if (poll != null) {
                             PollContent(poll, ink = ink, fill = if (own) ink else accent.control, onVote = onVote)
+                        } else if (message.kind.isAttachmentRow) {
+                            AttachmentContent(
+                                message,
+                                ink = ink,
+                                fill = if (own) ink else accent.color,
+                                onFill = if (own) accent.bubble else accent.foreground,
+                            )
                         } else if (words != null) {
                             Text(
                                 words.annotated(

@@ -54,6 +54,8 @@ class Attachment internal constructor(
     val durationMs: Long?,
     val mimeType: String?,
     val blurhash: String?,
+    /** Сколько байт, как сказал отправитель. Только чтобы показать: качать решает человек. */
+    val size: Long? = null,
 ) {
     /** Что опознаёт байты: `mxc://`, на который указывает событие. Имя файла — нет: у всех стикеров «sticker». */
     val mediaId: String = runCatching { source.url() }.getOrDefault("")
@@ -62,7 +64,7 @@ class Attachment internal constructor(
 
     override fun equals(other: Any?) = other is Attachment && other.filename == filename && other.caption == caption &&
         other.width == width && other.height == height && other.durationMs == durationMs &&
-        other.blurhash == blurhash && other.mediaId == mediaId
+        other.blurhash == blurhash && other.mediaId == mediaId && other.size == size
 
     override fun hashCode() = mediaId.hashCode() * 31 + filename.hashCode()
 }

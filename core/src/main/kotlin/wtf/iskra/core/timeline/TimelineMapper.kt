@@ -252,12 +252,15 @@ internal object TimelineMapper {
             val attachment = Attachment(
                 c.source, c.info?.thumbnailSource, c.filename, c.caption,
                 c.info?.width?.toInt(), c.info?.height?.toInt(), c.info?.duration?.toMillis(), c.info?.mimetype, c.info?.blurhash,
+                c.info?.size?.toLong(),
             )
             if (MessagePreview.isVideoNote(c)) MessageKind.VideoNote(attachment) else MessageKind.Video(attachment)
         }
         is MessageType.Audio -> {
             val c = type.content
-            val attachment = Attachment(c.source, null, c.filename, c.caption, null, null, c.info?.duration?.toMillis(), c.info?.mimetype, null)
+            val attachment = Attachment(
+                c.source, null, c.filename, c.caption, null, null, c.info?.duration?.toMillis(), c.info?.mimetype, null, c.info?.size?.toLong(),
+            )
             if (c.voice != null) {
                 MessageKind.Voice(attachment, c.audio?.waveform.orEmpty().map { it.toFloat() / WAVEFORM_SCALE })
             } else {
@@ -268,7 +271,9 @@ internal object TimelineMapper {
             ?: MessageKind.Unsupported
         is MessageType.File -> {
             val c = type.content
-            MessageKind.File(Attachment(c.source, c.info?.thumbnailSource, c.filename, c.caption, null, null, null, c.info?.mimetype, null))
+            MessageKind.File(
+                Attachment(c.source, c.info?.thumbnailSource, c.filename, c.caption, null, null, null, c.info?.mimetype, null, c.info?.size?.toLong()),
+            )
         }
         else -> MessageKind.Unsupported
     }

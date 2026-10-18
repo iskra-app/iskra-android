@@ -9,4 +9,6 @@
     <string name="room_reaction_pill" translatable="false">%1$s %2$d</string>
     <!-- Две части одной строки через точку: «Опрос · несколько ответов», «3 голоса · итоги в конце». -->
     <string name="poll_header_joined" translatable="false">%1$s · %2$s</string>
+    <!-- Координаты места под его названием: числа, не слова. -->
+    <string name="location_coordinates" translatable="false">%1$.5f, %2$.5f</string>
 </resources>
