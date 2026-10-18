@@ -484,7 +484,7 @@ private fun Conversation(
 
     Box(Modifier.fillMaxSize()) {
         LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
-            items(newestFirst, key = { it.id }) { row ->
+            items(newestFirst, key = { state.viewKey(it) }) { row ->
                 when (row) {
                     is TimelineRow.MessageRow -> Bubble(
                         message = row.message,

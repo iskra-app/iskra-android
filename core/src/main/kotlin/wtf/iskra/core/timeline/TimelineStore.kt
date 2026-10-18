@@ -65,6 +65,7 @@ import org.matrix.rustcomponents.sdk.UploadParameters
 import org.matrix.rustcomponents.sdk.UploadSource
 import org.matrix.rustcomponents.sdk.messageEventContentFromMarkdown
 import uniffi.matrix_sdk_ui.TimelineReadReceiptTracking
+import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /** Шапка переписки — то, что ей нужно, и не больше. Остальное — экран «О чате». */
@@ -102,7 +103,18 @@ data class TimelineState(
     /** Закреплённые события комнаты, в порядке закрепления: последнее — самое свежее. */
     val pinnedIds: List<String> = emptyList(),
     val failure: TimelineFailure? = null,
+    /** Эхо, сменившее наш ожидающий пузырь: ID сообщения → ID, под которым строка уже стояла (см. [viewKey]). */
+    val adopted: Map<String, String> = emptyMap(),
 ) {
+    /**
+     * Ключ, под которым строку *рисуют*, — не всегда её ID. Расходятся они у одного: своего сообщения
+     * между отправкой и эхом. Наш пузырь встаёт по нажатию (`PendingSends`), эхо приходит долей секунды
+     * позже с другим ID, и для `LazyColumn` это две разные строки: одна уничтожалась, другая строилась.
+     * Эхо наследует ключ пузыря, пока оно на экране. Только для рисования: всё, что *действует* на
+     * сообщение, берёт настоящий ID — его знает сервер.
+     */
+    fun viewKey(row: TimelineRow): String = adopted[row.id] ?: row.id
+
     /** Что показывает полоса закреплённого: самое свежее закреплённое из того, что уже в ленте. */
     val latestPinned: Message? get() = pinnedIds.asReversed().firstNotNullOfOrNull { rows.message(withId = it) }
 
@@ -138,8 +150,8 @@ enum class TimelineFailure(val message: Int) {
  * локальное эхо — то, что сообщение появляется сразу и потом тихо получает галочку.
  *
  * Пока перенесено основное: открытие с явной первой страницей, пагинация, отправка и ответ, правка,
- * удаление, реакции, прочитанное, черновики, «печатает». Медиа, закреплённые, треды, пересылка,
- * присутствие и ожидающие отправки пузыри — следующими пунктами этапов 4 и 6.
+ * удаление, реакции, прочитанное, черновики, «печатает», ожидающие пузыри. Треды, пересылка и
+ * присутствие — следующими пунктами этапа 4.
  */
 class TimelineStore internal constructor(
     private val room: Room,
@@ -187,6 +199,12 @@ class TimelineStore internal constructor(
 
     private var isTellingThemWeType = false
     private var typingStopper: Job? = null
+
+    /** Отправленное, чего SDK ещё не вернул: стоит в конце переписки, чтобы нажатие ставило слова на экран. */
+    private val pending = PendingSends()
+
+    /** Эхо, сменившее наш пузырь: ID сообщения → ID пузыря. См. [TimelineState.viewKey]. */
+    private val adopted = mutableMapOf<String, String>()
 
     // MARK: Открытие
 
@@ -430,6 +448,9 @@ class TimelineStore internal constructor(
         items.clear()
         memo.clear()
         latestRows = emptyList()
+        // Пузыри принадлежали ушедшей ленте, а само сообщение — в очереди SDK: вернётся эхом при открытии.
+        pending.removeAll()
+        adopted.clear()
         askedForReplyDetails.clear()
         isRefilling = false
         mutableState.update { it.copy(canLoadMore = true, isPaginating = false, typing = emptyList()) }
@@ -478,7 +499,20 @@ class TimelineStore internal constructor(
 
     private fun rebuildRows() {
         // Альбомы — последним проходом: заходы, даты и «прочитано» считаются по отдельным сообщениям.
-        val rows = Album.grouping(TimelineRows.rows(memo.mapped(items, ownUserId, strings)))
+        var rows = Album.grouping(TimelineRows.rows(memo.mapped(items, ownUserId, strings)))
+
+        // Отправленное и ещё не показанное — в конец, и снимается, как только среди строк выше
+        // появится его эхо. Снимается *до* добавления: эхо приходит обычным диффом, и это та самая
+        // сборка — добавив сначала, одна фраза стояла бы в переписке дважды на кадр.
+        if (!pending.isEmpty) {
+            adopted += pending.pruneEchoed(rows)
+            rows = TimelineRows.markRunEnds(rows + pendingRows(after = rows))
+        }
+        // Только пока сообщение на экране: отлистанное далеко назад уходит, и ключ за ним никому не нужен.
+        if (adopted.isNotEmpty()) {
+            val present = rows.mapTo(HashSet()) { it.id }
+            adopted.keys.retainAll(present)
+        }
         latestRows = rows
 
         rows.lastOrNull { it.message?.isOwn == true && it.message?.delivery == DeliveryStatus.Read }?.message?.timestamp?.let { read ->
@@ -491,7 +525,75 @@ class TimelineStore internal constructor(
 
         // Половина переписки — не улучшение целой, на которую смотрит читающий.
         if (isRefilling && rows.size < state.value.rows.size) return
-        mutableState.update { it.copy(rows = rows) }
+        val keys = adopted.toMap()
+        mutableState.update { it.copy(rows = rows, adopted = keys) }
+    }
+
+    /**
+     * Ещё не ушедшее — строками в конце переписки. Пузырь — настоящий [Message] с настоящим
+     * [DeliveryStatus.Sending]: рисуется на нашей стороне с часами, на него не отреагировать, его не
+     * изменить и не удалить (`canReact` и соседи держатся за тот же статус), и хендла отправки по его
+     * ID никто не найдёт — он не принадлежит ни одному событию.
+     *
+     * Даты над ним не придумывается: дату ставит лента SDK, и угаданная встала бы второй строкой за миг
+     * до настоящей. Платит только первое сообщение нового дня — дата появится с эхом.
+     */
+    private fun pendingRows(after: List<TimelineRow>): List<TimelineRow> {
+        // Мы — как эта комната нас уже рисует: имя и лицо — у члена комнаты, спросить его — вызов и
+        // ожидание, а ждать — единственное, чего сообщение «сейчас» не может себе позволить.
+        val me = after.asReversed().firstNotNullOfOrNull { row -> row.message?.takeIf { it.isOwn } }
+        var previous = after.lastOrNull()?.message
+        return pending.all.map { item ->
+            // Заход — по правилу ленты: три строки подряд не несут каждая наше имя, и ничего не
+            // прыгает, когда эхо сменит пузырь строкой, которую лента сгруппировала сама.
+            val above = previous
+            val isContinuation = above != null && above.senderId == ownUserId &&
+                Duration.between(above.timestamp, item.sentAt) < TimelineRows.RUN_WINDOW
+            val message = Message(
+                id = item.id,
+                kind = MessageKind.Text(item.text),
+                senderId = ownUserId,
+                senderName = me?.senderName ?: ownUserId,
+                senderAvatarUrl = me?.senderAvatarUrl,
+                isOwn = true,
+                timestamp = item.sentAt,
+                delivery = DeliveryStatus.Sending,
+                replyTo = item.replyingTo?.let { quote(of = it, rows = after) },
+                isContinuation = isContinuation,
+            )
+            previous = message
+            TimelineRow.MessageRow(message)
+        }
+    }
+
+    /**
+     * Полоска над ещё не ушедшим ответом — из отвеченного, как оно стоит на экране. Null, если его в
+     * переписке уже нет: ответ без полоски лучше полоски «сообщение недоступно» о том, что на виду, —
+     * эхо через миг принесёт цитату SDK.
+     */
+    private fun quote(of: String, rows: List<TimelineRow>): ReplyPreview? {
+        val original = rows.message(withId = of) ?: return null
+        val eventId = eventId(of) ?: return null
+        val content = items.firstNotNullOfOrNull { item ->
+            item.asEvent()?.takeIf { TimelineMapper.identifier(it.eventOrTransactionId) == of }?.content
+        }
+        val text = original.editableText ?: content?.let { MessagePreview.text(it, strings) } ?: return null
+        return ReplyPreview(eventId, original.senderName, original.senderId, text)
+    }
+
+    /**
+     * Ничего не сообщается и ничего не теряется: сообщение в очереди SDK и встанет обычным пузырём, как
+     * лента его догонит. Это только не даёт строке, живущей ради сотни миллисекунд, остаться навсегда,
+     * если эхо выглядело не так, как мы ждали.
+     */
+    private fun forgetPending(id: String) {
+        val mine = generation
+        scope.launch {
+            delay(PendingSends.LIFETIME.toMillis())
+            if (mine != generation || pending.all.none { it.id == id }) return@launch
+            pending.remove(id)
+            rebuildRows()
+        }
     }
 
     /** Ответы, оригиналов которых SDK не держит, — просит их. Ответ придёт обычным диффом. */
@@ -534,9 +636,20 @@ class TimelineStore internal constructor(
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return
         val timeline = timeline ?: return fail(TimelineFailure.SEND)
-        stopTellingThemWeType()
         // Не пишется в журнал и никуда, кроме зашифрованной очереди SDK.
-        val content = content(trimmed, mentions)
+        val (markdown, userIds) = ComposerMentions.markdown(trimmed, mentions)
+
+        // Слова — на экран *сначала*, отправка — за ними. Эхо SDK приходит почти сразу, но эти сотни
+        // миллисекунд человек смотрел на пустой композер и неизменную переписку. См. `PendingSends`.
+        val shown = state.value.rows.mapNotNullTo(HashSet()) { row -> row.message?.takeIf { it.isOwn }?.id }
+        val pendingId = pending.add(trimmed, replyingTo, body = markdown, alreadyShown = shown)
+        rebuildRows()
+        forgetPending(pendingId)
+
+        // Отправка — конец письма; и не ждётся: запрос «перестал печатать» не должен стоять между
+        // нажатием и очередью.
+        stopTellingThemWeType()
+        val content = markdownContent(markdown, userIds)
         try {
             val eventId = replyingTo?.let(::eventId)
             withTimeLimit(SDK_LIMIT) {
@@ -545,6 +658,9 @@ class TimelineStore internal constructor(
         } catch (error: Exception) {
             if (error is CancellationException) throw error
             Log.error(Log.Category.TIMELINE, "сообщение не отправилось: ${Log.describe(error)}")
+            // SDK не взял его вовсе: эха не будет, в очереди пусто, и пузырь врал бы, что сообщение в пути.
+            pending.remove(pendingId)
+            rebuildRows()
             fail(TimelineFailure.SEND)
         }
     }
@@ -555,6 +671,10 @@ class TimelineStore internal constructor(
      */
     private fun content(text: String, mentions: List<ComposerMention>): RoomMessageEventContentWithoutRelation {
         val (markdown, userIds) = ComposerMentions.markdown(text, mentions)
+        return markdownContent(markdown, userIds)
+    }
+
+    private fun markdownContent(markdown: String, userIds: List<String>): RoomMessageEventContentWithoutRelation {
         val content = messageEventContentFromMarkdown(markdown)
         return if (userIds.isEmpty()) content else content.withMentions(Mentions(userIds, false))
     }
