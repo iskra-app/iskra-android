@@ -57,6 +57,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -103,6 +105,8 @@ fun RoomListScreen(
     /** Поиск по сообщениям — под совпавшими названиями; null — только названия. */
     search: SearchStore? = null,
     onOpenAt: (roomId: String, eventId: String) -> Unit = { room, _ -> onOpen(room) },
+    /** Меню аккаунтов по долгому нажатию на шестерёнку: открыто ли и как закрыть. Null — его нет. */
+    accountMenu: (@Composable (expanded: Boolean, onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -140,6 +144,7 @@ fun RoomListScreen(
                     else -> null
                 },
                 onSettings = onSettings,
+                accountMenu = accountMenu,
             )
         }
         if (!showingArchive) banner()
@@ -221,7 +226,9 @@ fun RoomListScreen(
 }
 
 @Composable
-private fun Header(status: Int?, onSettings: () -> Unit) {
+@OptIn(ExperimentalFoundationApi::class)
+private fun Header(status: Int?, onSettings: () -> Unit, accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null) {
+    var showsAccounts by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         verticalAlignment = Alignment.CenterVertically,
@@ -240,8 +247,23 @@ private fun Header(status: Int?, onSettings: () -> Unit) {
                 )
             }
         }
-        IconButton(onClick = onSettings) {
-            Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title), tint = LocalAccent.current.control)
+        // Касание — настройки, долгое — аккаунты, как на iOS. Кнопка своя: у `IconButton` нет долгого.
+        Box {
+            Box(
+                Modifier
+                    .size(Theme.Size.minimumTapTarget)
+                    .clip(CircleShape)
+                    .combinedClickable(
+                        role = Role.Button,
+                        onClickLabel = stringResource(R.string.settings_title),
+                        onClick = onSettings,
+                        onLongClick = accountMenu?.let { { showsAccounts = true } },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title), tint = LocalAccent.current.control)
+            }
+            accountMenu?.invoke(showsAccounts) { showsAccounts = false }
         }
     }
 }

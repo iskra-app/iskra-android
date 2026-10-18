@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import wtf.iskra.core.security.AccountRecord
 import wtf.iskra.core.session.AuthenticationError
 import wtf.iskra.core.session.AuthenticationService
 import wtf.iskra.core.session.UserSession
@@ -99,6 +100,97 @@ class RootModel(
         }
     }
 
+    // ---------------------------------------------------------------------------- аккаунты
+
+    /**
+     * Аккаунты устройства, как их видит переключатель (`AccountSwitcher` на iOS). Экраны ничего не
+     * делают сами — просят модель: переключение закрывает один сеанс и открывает другой, а это
+     * дело корня.
+     */
+    data class Accounts(
+        /** Все вошедшие, в порядке добавления, тот, что на экране, — тоже. */
+        val all: List<AccountRecord> = emptyList(),
+        val activeId: String? = null,
+        /** Есть ли здесь между чем переключаться: в демо нет — его сеанс не аккаунт устройства. */
+        val isAvailable: Boolean = false,
+        /** Из каких сейчас выходят — строка говорит об этом, а не стоит нетронутой десять секунд. */
+        val signingOut: Set<String> = emptySet(),
+        /** Открыт ли вход для ещё одного аккаунта — поверх приложения. */
+        val isAdding: Boolean = false,
+    ) {
+        /** Все, кроме того, что на экране. */
+        val others: List<AccountRecord> get() = all.filter { it.sessionId != activeId }
+        val hasSeveral: Boolean get() = all.size > 1
+    }
+
+    private val mutableAccounts = MutableStateFlow(Accounts())
+    val accounts: StateFlow<Accounts> = mutableAccounts.asStateFlow()
+
+    private fun reloadAccounts() {
+        val session = sessionNow
+        mutableAccounts.value = mutableAccounts.value.copy(
+            all = authentication.accounts(),
+            activeId = session?.sessionId,
+            isAvailable = session != null && !session.isDemo,
+        )
+    }
+
+    /**
+     * Другой аккаунт — на экран. Открытый *закрывается*, не выходя (как при уходе в демо), и приложение
+     * начинается заново на другом: `restore()` открывает его, потому что он теперь активный. Его стор
+     * на диске, токены в Keystore — это запуск без запуска, сеть для его чатов не нужна.
+     */
+    fun switchTo(sessionId: String) {
+        val current = sessionNow ?: return
+        if (current.sessionId == sessionId || current.isDemo) return
+        mutablePhase.value = Phase.Starting
+        scope.launch {
+            current.shutDown()
+            authentication.setActiveAccount(sessionId)
+            restore().join()
+        }
+    }
+
+    /** «Добавить аккаунт»: вход поверх приложения, а открытый аккаунт под ним работает, пока новый не вошёл. */
+    fun addAccount() {
+        if (sessionNow?.isDemo != false) return
+        mutableAccounts.value = mutableAccounts.value.copy(isAdding = true)
+    }
+
+    /** Передумали добавлять: начатое входом — бросить, открытое — не трогать. */
+    fun cancelAdding() {
+        if (!mutableAccounts.value.isAdding) return
+        mutableAccounts.value = mutableAccounts.value.copy(isAdding = false)
+        scope.launch { authentication.cancelSignIn() }
+    }
+
+    /** Модель входа для ещё одного аккаунта: тот же экран, что при первом входе. */
+    fun addAccountModel(browser: WebAuthentication): SignInModel<UserSession> =
+        SignInModel(authentication, browser, scope, onSignedIn = ::added)
+
+    /** Вошли ещё в один. Он — на экран; тот, что был, закрыт и остаётся вошедшим, в одно касание. */
+    private fun added(session: UserSession) {
+        val previous = sessionNow
+        mutableAccounts.value = mutableAccounts.value.copy(isAdding = false)
+        signedIn(session, settingUp = true)
+        if (previous != null) scope.launch { previous.shutDown() }
+    }
+
+    /** Выход из аккаунта, который не на экране, — тот, что на экране, остаётся где был. */
+    fun signOutOther(sessionId: String) {
+        val accounts = mutableAccounts.value
+        if (sessionId == accounts.activeId || sessionId in accounts.signingOut) return
+        mutableAccounts.value = accounts.copy(signingOut = accounts.signingOut + sessionId)
+        scope.launch {
+            try {
+                authentication.signOutInBackground(sessionId)
+            } finally {
+                mutableAccounts.value = mutableAccounts.value.copy(signingOut = mutableAccounts.value.signingOut - sessionId)
+                reloadAccounts()
+            }
+        }
+    }
+
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */
     fun signInModel(browser: WebAuthentication): SignInModel<UserSession> =
         SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) })
@@ -120,7 +212,15 @@ class RootModel(
     private fun signedIn(session: UserSession, settingUp: Boolean = false) {
         // Демо не о чем спрашивать: его ключи живут один запуск.
         mutablePhase.value = if (settingUp && !session.isDemo) Phase.SettingUp(session) else Phase.SignedIn(session)
+        reloadAccounts()
         scope.launch {
+            // Имя и картинка — в запись аккаунта: переключатель покажет их, когда он закрыт.
+            if (!session.isDemo) {
+                launch {
+                    session.loadProfile()
+                    reloadAccounts()
+                }
+            }
             // Подтверждение и резервная копия слушают с первого мгновения сеанса: запрос «это ты?»
             // с другого устройства может прийти до того, как человек откроет настройки.
             launch { session.verification.listen() }
@@ -158,6 +258,7 @@ class RootModel(
         scope.launch {
             session.signOut()
             mutablePhase.value = Phase.SignedOut()
+            reloadAccounts()
             // Если на устройстве есть ещё аккаунты — открыть следующий, а не показывать вход.
             if (authentication.accounts().isNotEmpty()) {
                 mutablePhase.value = Phase.Starting

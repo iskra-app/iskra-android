@@ -66,6 +66,8 @@ class UserSession internal constructor(
         val name = runCatching { wtf.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.displayName() } }.getOrNull()
         val avatar = runCatching { wtf.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.avatarUrl() } }.getOrNull()
         mutableProfile.value = Profile(name ?: mutableProfile.value.displayName, avatar ?: mutableProfile.value.avatarUrl)
+        // Переключателю аккаунтов: закрытый аккаунт спросить не у кого.
+        if (!isDemo) authentication.rememberProfile(sessionId, mutableProfile.value.displayName, mutableProfile.value.avatarUrl)
     }
 
     /**

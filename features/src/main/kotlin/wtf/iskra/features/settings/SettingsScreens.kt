@@ -67,6 +67,7 @@ import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.timeline.ThreadSettings
+import wtf.iskra.features.RootModel
 import wtf.iskra.design.AccentTheme
 import wtf.iskra.design.AppearanceMode
 import wtf.iskra.design.LocalAccent
@@ -92,6 +93,11 @@ fun SettingsScreen(
     onSignOut: () -> Unit,
     onDemo: (Boolean) -> Unit,
     appVersion: String,
+    /** Аккаунты устройства и что с ними можно сделать — всё делает корень (`RootModel`). */
+    accounts: RootModel.Accounts = RootModel.Accounts(),
+    onSwitchAccount: (String) -> Unit = {},
+    onAddAccount: () -> Unit = {},
+    onSignOutOther: (String) -> Unit = {},
 ) {
     BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -109,7 +115,9 @@ fun SettingsScreen(
         )
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             when (page) {
-                SettingsPage.MAIN -> Main(session, onNavigate, onSignOut)
+                SettingsPage.MAIN -> Main(session, onNavigate, onSignOut, hasSeveralAccounts = accounts.hasSeveral) {
+                    if (accounts.isAvailable) AccountsSection(accounts, onSwitchAccount, onAddAccount, onSignOutOther)
+                }
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
@@ -135,7 +143,13 @@ private fun TopBar(title: Int, onBack: () -> Unit) {
 }
 
 @Composable
-private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSignOut: () -> Unit) {
+private fun Main(
+    session: UserSession,
+    onNavigate: (SettingsPage?) -> Unit,
+    onSignOut: () -> Unit,
+    hasSeveralAccounts: Boolean = false,
+    accountsSection: @Composable () -> Unit = {},
+) {
     val profile by session.profile.collectAsStateWithLifecycle()
     LaunchedEffect(session) { session.loadProfile() }
     var confirming by remember { mutableStateOf(false) }
@@ -150,6 +164,13 @@ private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSi
         Text(session.userId, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     HorizontalDivider()
+    accountsSection()
+    // «Выйти» — или, когда аккаунтов несколько и неясно, из какого, — «Выйти из Саши».
+    val signOutTitle = if (hasSeveralAccounts) {
+        stringResource(R.string.accounts_sign_out_of, profile.displayName ?: session.userId)
+    } else {
+        stringResource(R.string.account_sign_out)
+    }
     Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) }
     Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) }
     Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) }
@@ -163,13 +184,13 @@ private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSi
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy),
     ) {
         Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-        Text(stringResource(R.string.account_sign_out), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyLarge)
+        Text(signOutTitle, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyLarge)
     }
 
     if (confirming) {
         AlertDialog(
             onDismissRequest = { confirming = false },
-            title = { Text(stringResource(R.string.account_sign_out)) },
+            title = { Text(signOutTitle) },
             confirmButton = {
                 TextButton(onClick = {
                     confirming = false

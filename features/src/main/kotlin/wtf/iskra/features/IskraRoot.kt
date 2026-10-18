@@ -38,6 +38,10 @@ import wtf.iskra.features.recovery.RecoverySetupScreen
 import wtf.iskra.features.recovery.VerificationDialog
 import wtf.iskra.features.rooms.RoomListScreen
 import wtf.iskra.features.settings.SettingsPage
+import wtf.iskra.features.settings.AccountMenu
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
 import wtf.iskra.features.settings.SettingsScreen
 import wtf.iskra.features.support.FaceMode
 import wtf.iskra.features.support.LocalFaceMode
@@ -95,7 +99,7 @@ fun IskraRoot(
                     LocalOwnUserId provides current.session.userId,
                     LocalAppSettings provides model.settings,
                 ) {
-                    SignedIn(current.session, model, appVersion)
+                    SignedIn(current.session, model, browser, appVersion)
                 }
             }
         }
@@ -130,7 +134,26 @@ private fun Notice(title: Int, message: Int) {
  * открытая комната — состояние, «назад» — его сброс.
  */
 @Composable
-private fun SignedIn(session: UserSession, model: RootModel, appVersion: String) {
+private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthentication, appVersion: String) {
+    val accounts by model.accounts.collectAsStateWithLifecycle()
+    // «Добавить аккаунт»: вход поверх приложения; открытый аккаунт под ним работает, пока новый не вошёл.
+    if (accounts.isAdding) {
+        val adding = remember { model.addAccountModel(browser) }
+        Dialog(
+            onDismissRequest = model::cancelAdding,
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Box(Modifier.fillMaxSize()) {
+                    SignInScreen(adding)
+                    TextButton(
+                        onClick = model::cancelAdding,
+                        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(Theme.Spacing.close),
+                    ) { Text(stringResource(R.string.accounts_cancel)) }
+                }
+            }
+        }
+    }
     var openRoom by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
     // Найденное поиском: открыть комнату — и на этом сообщении.
     var openEvent by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
@@ -159,6 +182,14 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
                 onSignOut = model::signOut,
                 onDemo = model::setDemo,
                 appVersion = appVersion,
+                accounts = accounts,
+                onSwitchAccount = { id ->
+                    settingsPage = null
+                    openRoom = null
+                    model.switchTo(id)
+                },
+                onAddAccount = model::addAccount,
+                onSignOutOther = model::signOutOther,
             )
             timeline != null -> RoomScreen(
                 timeline,
@@ -180,6 +211,13 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
                 },
                 onSettings = { settingsPage = SettingsPage.MAIN },
                 banner = { RecoveryBanner(session) { unlocking = true } },
+                accountMenu = if (accounts.isAvailable) {
+                    { expanded, onDismiss ->
+                        AccountMenu(expanded, accounts, onDismiss, onSwitch = model::switchTo, onAdd = model::addAccount)
+                    }
+                } else {
+                    null
+                },
             )
         }
         // Своё другое устройство спрашивает «это ты?» — где бы человек ни был.

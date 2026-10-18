@@ -81,6 +81,29 @@ class AuthenticationService(
 
     fun activeAccountId(): String? = runCatching { sessionStore.activeSessionId() }.getOrNull()
 
+    /** Запоминает имя и картинку аккаунта — переключатель показывает их, когда аккаунт закрыт. */
+    fun rememberProfile(sessionId: String, displayName: String?, avatarUrl: String?) {
+        runCatching { sessionStore.updateProfile(sessionId, displayName, avatarUrl) }
+    }
+
+    /**
+     * Выход из аккаунта, который *не* на экране. Выйти может только живой клиент — сервер забывает
+     * устройство, — поэтому аккаунт открывается рядом, без синхронизации, ровно на время выхода. Не
+     * открылся (нет сети, сервер уже завершил сеанс) — локальное уходит всё равно: ключи, токены и стор
+     * и есть то, что здесь значит «выйти» (docs/PROMPT.md, 5.2). Открытый сейчас так не трогается.
+     */
+    suspend fun signOutInBackground(sessionId: String) {
+        if (synchronized(openSessions) { sessionId in openSessions }) return
+        val session = try {
+            restoreSession(sessionId)
+        } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            Log.error(Log.Category.SESSION, "закрытый аккаунт не открылся для выхода: ${Log.describe(error)}")
+            null
+        }
+        if (session != null) signOut(session) else forgetSession(sessionId)
+    }
+
     /** Делает другой аккаунт тем, на котором открывается приложение. Закрывает и восстанавливает — вызывающий. */
     fun setActiveAccount(sessionId: String) {
         runCatching { sessionStore.setActive(sessionId) }
