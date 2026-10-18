@@ -17,6 +17,9 @@ import kotlinx.coroutines.withContext
 import wtf.iskra.core.media.MediaSettings
 import wtf.iskra.core.media.PhotoPreparation
 import wtf.iskra.core.media.VoiceWaveform
+import wtf.iskra.core.search.SearchHit
+import wtf.iskra.core.search.SearchStore
+import wtf.iskra.core.rooms.MessagePreview
 import wtf.iskra.core.R
 import wtf.iskra.core.rooms.PrivacyStatus
 import wtf.iskra.core.rooms.RoomFace
@@ -43,6 +46,7 @@ import org.matrix.rustcomponents.sdk.SendHandle
 import org.matrix.rustcomponents.sdk.MembershipState
 import org.matrix.rustcomponents.sdk.Mentions
 import org.matrix.rustcomponents.sdk.MessageLikeEventType
+import org.matrix.rustcomponents.sdk.ProfileDetails
 import org.matrix.rustcomponents.sdk.ReceiptType
 import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomInfo
@@ -782,6 +786,28 @@ class TimelineStore internal constructor(
         }
     }
 
+    /**
+     * Поиск внутри этой комнаты — по тому же локальному индексу, что и общий (`RoomSearchStore` на
+     * iOS), и с тем же правилом: результат — только живое сообщение (`SearchStore.excerpt`).
+     */
+    suspend fun search(query: String): List<SearchHit> {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return emptyList()
+        return try {
+            withTimeLimit(SDK_LIMIT) {
+                room.searchMessages(trimmed, SEARCH_BATCH.toUInt()).nextEvents().orEmpty().mapNotNull { event ->
+                    val excerpt = SearchStore.excerpt(event.content, strings) ?: return@mapNotNull null
+                    val name = (event.senderProfile as? ProfileDetails.Ready)?.displayName?.takeIf { it.isNotBlank() } ?: event.sender
+                    SearchHit(event.eventId, roomId, name, excerpt, MessagePreview.instant(event.timestamp.toULong()))
+                }
+            }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "поиск в чате не удался: ${Log.describe(error)}")
+            emptyList()
+        }
+    }
+
     /** Закрепить сообщение в комнате или открепить — для всех. */
     suspend fun setPinned(messageId: String, pinned: Boolean) {
         val timeline = timeline ?: return
@@ -957,6 +983,7 @@ class TimelineStore internal constructor(
         val SDK_LIMIT = 30.seconds
 
         const val OCTET_STREAM = "application/octet-stream"
+        const val SEARCH_BATCH = 50
 
         /** Сколько участников читается за раз из стора SDK. */
         const val MEMBER_CHUNK = 200

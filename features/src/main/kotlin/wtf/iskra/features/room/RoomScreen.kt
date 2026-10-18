@@ -1,5 +1,6 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
 import android.Manifest
@@ -165,6 +166,17 @@ fun RoomScreen(
     var mentions by remember(store.roomId) { mutableStateOf<List<ComposerMention>>(emptyList()) }
     // К какому сообщению вести ленту: нажали на закреплённое или на цитату в ответе.
     var jumpTo by remember(store.roomId) { mutableStateOf(initialJump) }
+    var searching by remember(store.roomId) { mutableStateOf(false) }
+    if (searching) {
+        RoomSearch(
+            store,
+            onOpen = { id ->
+                searching = false
+                jumpTo = id
+            },
+            onClose = { searching = false },
+        )
+    }
     var candidates by remember(store.roomId) { mutableStateOf<List<MentionCandidate>>(emptyList()) }
     var replyingTo by remember(store.roomId) { mutableStateOf<Message?>(null) }
     var editing by remember(store.roomId) { mutableStateOf<Message?>(null) }
@@ -196,7 +208,7 @@ fun RoomScreen(
     }
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        Header(state, onBack)
+        Header(state, onBack, onSearch = { searching = true })
         HorizontalDivider()
         state.latestPinned?.let { pinned -> PinnedStrip(pinned, onClick = { jumpTo = pinned.id }) }
         Box(Modifier.weight(1f)) {
@@ -354,7 +366,7 @@ fun RoomScreen(
 }
 
 @Composable
-private fun Header(state: TimelineState, onBack: () -> Unit) {
+private fun Header(state: TimelineState, onBack: () -> Unit, onSearch: () -> Unit) {
     val header = state.header
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.close),
@@ -388,6 +400,9 @@ private fun Header(state: TimelineState, onBack: () -> Unit) {
                     maxLines = 1,
                 )
             }
+        }
+        IconButton(onClick = onSearch) {
+            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.room_search_in_chat))
         }
     }
 }
