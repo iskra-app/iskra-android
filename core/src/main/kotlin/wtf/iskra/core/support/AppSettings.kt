@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.media.MediaSettings
+import wtf.iskra.core.timeline.ThreadSettings
 
 /**
  * Настройки приложения, а не аккаунта: оформление, бета-функции. Не секреты — поэтому обычные
@@ -58,6 +59,24 @@ class AppSettings(context: Context) {
         mutableRecentReactions.value = RecentReactions.list(stored)
     }
 
+    private val mutableThreads = MutableStateFlow(
+        ThreadSettings(
+            shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
+            hidesReplies = preferences.getBoolean(THREADS_HIDE_REPLIES, ThreadSettings.HIDES_REPLIES_BY_DEFAULT),
+        ),
+    )
+
+    /** Где треды и уходят ли ответы из ленты (`ThreadSettings`). Читается, когда комната открывается. */
+    val threads: StateFlow<ThreadSettings> = mutableThreads.asStateFlow()
+
+    fun setThreads(settings: ThreadSettings) {
+        preferences.edit()
+            .putString(THREADS_SHOWN, settings.shown.storageName)
+            .putBoolean(THREADS_HIDE_REPLIES, settings.hidesReplies)
+            .apply()
+        mutableThreads.value = settings
+    }
+
     /** Что делать с фото и видео по дороге наружу. Читается в момент отправки. */
     val media: StateFlow<MediaSettings> = mutableMedia.asStateFlow()
 
@@ -99,5 +118,7 @@ class AppSettings(context: Context) {
         const val MEDIA_COMPRESSES = "media.compresses"
         const val MEDIA_COMPRESSION = "media.compression"
         const val RECENT_REACTIONS = "reactions.recent"
+        const val THREADS_SHOWN = "chats.threads.shown"
+        const val THREADS_HIDE_REPLIES = "chats.threads.hidesReplies"
     }
 }

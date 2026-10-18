@@ -7,6 +7,7 @@ import kotlinx.coroutines.cancel
 import wtf.iskra.core.media.MediaLoader
 import wtf.iskra.core.rooms.RoomListStore
 import wtf.iskra.core.support.Strings
+import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.timeline.TimelineStore
 import org.matrix.rustcomponents.sdk.Client
 
@@ -70,8 +71,9 @@ class UserSession internal constructor(
     /**
      * Переписка комнаты — для экрана, который её показывает. Свой хендл комнаты на каждую ленту:
      * закрывает его [TimelineStore.close], когда экран уходит. Null для комнаты, которой клиент не знает.
+     * [threadSettings] — из `AppSettings`, читается при открытии.
      */
-    fun timeline(roomId: String): TimelineStore? {
+    fun timeline(roomId: String, threadSettings: () -> ThreadSettings = { ThreadSettings() }): TimelineStore? {
         val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
         return TimelineStore(
             room = room,
@@ -81,7 +83,18 @@ class UserSession internal constructor(
             scope = scope,
             onDraftChanged = { rooms.noteDraft(roomId, it) },
             onOwnMessagesRead = { rooms.noteRead(roomId, it) },
+            threadSettings = threadSettings,
         )
+    }
+
+    /**
+     * Тред комнаты своей лентой ([TimelineStore.threadRootId]). Свежий стор при каждом открытии:
+     * тред — визит внутри визита, а держат открытой комнату. Ни черновика, ни прочитанного списку
+     * чатов не сообщает — список о комнате.
+     */
+    fun threadTimeline(roomId: String, rootEventId: String): TimelineStore? {
+        val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
+        return TimelineStore(room = room, roomId = roomId, ownUserId = userId, strings = strings, scope = scope, threadRootId = rootEventId)
     }
 
     @Volatile

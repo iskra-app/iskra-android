@@ -3,6 +3,7 @@ package wtf.iskra.features.room
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Forum
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
@@ -60,6 +61,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -121,6 +125,7 @@ import wtf.iskra.core.timeline.RichText
 import wtf.iskra.core.timeline.SendFailure
 import wtf.iskra.core.timeline.TimelineRow
 import wtf.iskra.core.timeline.TimelineState
+import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.timeline.TimelineStore
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.PrimaryActionButton
@@ -153,9 +158,33 @@ fun RoomScreen(
     mediaSettings: () -> MediaSettings = { MediaSettings.DEFAULT },
     /** Событие, к которому вести сразу после открытия: найденное поиском. */
     initialJump: String? = null,
+    /** Лента треда по ID корня (`UserSession.threadTimeline`). Null — тредов отсюда не открыть. */
+    openThread: ((String) -> TimelineStore?)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    // Этот экран — тред, а не комната (`TimelineStore.threadRootId`).
+    val isThread = store.threadRootId != null
+    val appSettings = LocalAppSettings.current
+    val threadSettings by (appSettings?.threads ?: remember { kotlinx.coroutines.flow.MutableStateFlow(ThreadSettings()) }).collectAsStateWithLifecycle()
+    var openedThread by remember(store.roomId) { mutableStateOf<TimelineStore?>(null) }
+    // Тред — визит внутри визита: поверх комнаты, которая остаётся открытой под ним.
+    openedThread?.let { thread ->
+        Dialog(
+            onDismissRequest = { openedThread = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+                RoomScreen(thread, onBack = { openedThread = null }, mediaSettings = mediaSettings)
+            }
+        }
+    }
+    val onOpenThread: ((Message) -> Unit)? =
+        if (openThread == null || isThread || !threadSettings.usesThreads(state.header.kind, state.header.memberCount)) {
+            null
+        } else {
+            { root -> openThread(root.id)?.let { openedThread = it } }
+        }
 
     // Открытие — вызов стора: первую страницу он просит сам, в `open()` (docs/PROMPT.md, 4.2).
     LaunchedEffect(store) { store.start() }
@@ -226,10 +255,10 @@ fun RoomScreen(
     }
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        Header(state, onBack, onSearch = { searching = true })
+        Header(state, isThread, onBack, onSearch = { searching = true })
         HorizontalDivider()
         // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
-        pinned.messages.lastOrNull()?.takeIf { hasPinned }?.let { latest ->
+        pinned.messages.lastOrNull()?.takeIf { hasPinned && !isThread }?.let { latest ->
             PinnedStrip(latest, count = pinned.messages.size, onClick = { jumpTo = latest.id }, onOpenList = { showsPinned = true })
         }
         Box(Modifier.weight(1f)) {
@@ -245,6 +274,7 @@ fun RoomScreen(
                     jumpTo = jumpTo,
                     onJump = { jumpTo = it },
                     onReply = { replyingTo = it; editing = null },
+                    onOpenThread = onOpenThread,
                     onEdit = { message ->
                         editing = message
                         replyingTo = null
@@ -387,7 +417,7 @@ fun RoomScreen(
 }
 
 @Composable
-private fun Header(state: TimelineState, onBack: () -> Unit, onSearch: () -> Unit) {
+private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit) {
     val header = state.header
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.close),
@@ -406,8 +436,15 @@ private fun Header(state: TimelineState, onBack: () -> Unit, onSearch: () -> Uni
             faces = header.faces,
         )
         Column(Modifier.weight(1f)) {
-            Text(header.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // В треде заголовок — «Тред», а под ним — чей он: комната.
+            Text(
+                if (isThread) stringResource(R.string.thread_title) else header.name,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             val status = when {
+                isThread -> header.name
                 state.typing.isNotEmpty() -> stringResource(R.string.room_typing)
                 !header.isOneToOne && header.memberCount > 0 ->
                     pluralStringResource(R.plurals.room_participants, header.memberCount, header.memberCount)
@@ -422,8 +459,11 @@ private fun Header(state: TimelineState, onBack: () -> Unit, onSearch: () -> Uni
                 )
             }
         }
-        IconButton(onClick = onSearch) {
-            Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.room_search_in_chat))
+        // Поиск — по комнате; из треда он вёл бы туда, куда тред не покажет.
+        if (!isThread) {
+            IconButton(onClick = onSearch) {
+                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.room_search_in_chat))
+            }
         }
     }
 }
@@ -436,6 +476,7 @@ private fun Conversation(
     onJump: (String?) -> Unit,
     onReply: (Message) -> Unit,
     onEdit: (Message) -> Unit,
+    onOpenThread: ((Message) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val list = rememberLazyListState()
@@ -521,6 +562,7 @@ private fun Conversation(
                     highlighted = highlighted == row.id,
                     onQuote = { id -> onJump(id) },
                     onPin = { pinned -> scope.launch { store.setPinned(row.message.id, pinned) } },
+                    onOpenThread = onOpenThread,
                         onUnsent = { action ->
                             scope.launch {
                                 when (action) {
@@ -634,6 +676,7 @@ private fun Bubble(
     highlighted: Boolean = false,
     onQuote: (String) -> Unit = {},
     onUnsent: (UnsentAction) -> Unit = {},
+    onOpenThread: ((Message) -> Unit)? = null,
 ) {
     val accent = LocalAccent.current
     val own = message.isOwn
@@ -713,8 +756,9 @@ private fun Bubble(
                             onReply = onReply,
                             onEdit = onEdit,
                             isPinned = isPinned,
-                        onPin = onPin,
-                        onAskDelete = { confirm = Confirm.DELETE },
+                            onPin = onPin,
+                            onOpenThread = onOpenThread,
+                            onAskDelete = { confirm = Confirm.DELETE },
                             onAskEndPoll = { confirm = Confirm.END_POLL },
                         ) {
                             BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
@@ -733,6 +777,9 @@ private fun Bubble(
                             onDismiss = { confirm = null },
                         )
                     }
+                    // Ответы, собранные под ним, — в одно нажатие.
+                    val thread = message.thread
+                    if (thread != null && onOpenThread != null) ThreadLine(thread) { onOpenThread(message) }
                 }
                 if (!own) MessageMarks(message)
             }
@@ -1042,6 +1089,7 @@ private fun MessageMenu(
     onEdit: (Message) -> Unit,
     isPinned: Boolean,
     onPin: (Boolean) -> Unit,
+    onOpenThread: ((Message) -> Unit)?,
     onAskDelete: () -> Unit,
     onAskEndPoll: () -> Unit,
     lifted: @Composable () -> Unit,
@@ -1053,6 +1101,11 @@ private fun MessageMenu(
     val copyable = message.richText(ownUserId)?.text ?: message.editableText
     val actions = buildList {
         if (message.canReply) add(MenuAction(stringResource(R.string.message_menu_reply), Icons.AutoMirrored.Filled.Reply) { onReply(message) })
+        // Ответить в треде, а не в комнате: тот же тред, что открывает строка под сообщением, — или
+        // новый, если его ещё нет. Только на дошедшем до сервера и не на ответе в треде.
+        if (message.canReply && message.threadRootId == null && onOpenThread != null) {
+            add(MenuAction(stringResource(R.string.thread_reply_in_thread), Icons.Filled.Forum) { onOpenThread(message) })
+        }
         if (copyable != null) {
             add(
                 MenuAction(stringResource(R.string.message_menu_copy), Icons.Filled.ContentCopy) {

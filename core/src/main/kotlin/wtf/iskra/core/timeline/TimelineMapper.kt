@@ -4,6 +4,7 @@ import wtf.iskra.core.R
 import wtf.iskra.core.rooms.MessagePreview
 import wtf.iskra.core.support.Strings
 import org.matrix.rustcomponents.sdk.EmbeddedEventDetails
+import org.matrix.rustcomponents.sdk.ThreadSummary
 import org.matrix.rustcomponents.sdk.EventOrTransactionId
 import org.matrix.rustcomponents.sdk.EventSendState
 import org.matrix.rustcomponents.sdk.EventTimelineItem
@@ -113,9 +114,7 @@ internal object TimelineMapper {
             mentionedUserIds = (msgLike?.kind as? MsgLikeKind.Message)?.content?.mentions?.userIds.orEmpty(),
             formattedBody = formattedBody(event.content),
             threadRootId = msgLike?.threadRoot,
-            thread = msgLike?.threadSummary?.let { summary ->
-                ThreadSummaryPreview(summary.numReplies().toInt(), null, null)
-            },
+            thread = msgLike?.threadSummary?.let { threadPreview(it, strings) },
         )
     }
 
@@ -170,6 +169,14 @@ internal object TimelineMapper {
     }
 
     /** Сообщение, на которое отвечают, как его разрешил SDK, — все три ответа сказаны вслух. */
+    /** «3 ответа · Аня: последнее» — последний ответ, если SDK его уже знает. */
+    private fun threadPreview(summary: ThreadSummary, strings: Strings): ThreadSummaryPreview {
+        val latest = summary.latestEvent() as? EmbeddedEventDetails.Ready
+        val sender = latest?.let { profile(it.senderProfile, it.sender).first }
+        val text = latest?.let { MessagePreview.text(it.content, strings) }
+        return ThreadSummaryPreview(summary.numReplies().toInt(), sender, text)
+    }
+
     private fun replyPreview(content: TimelineItemContent, strings: Strings): ReplyPreview? {
         val details = (content as? TimelineItemContent.MsgLike)?.content?.inReplyTo ?: return null
         val eventId = details.eventId()

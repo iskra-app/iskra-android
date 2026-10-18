@@ -139,7 +139,9 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
     val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(true)).collectAsStateWithLifecycle()
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
-    val timeline = remember(roomId) { roomId?.let(session::timeline) }
+    val timeline = remember(roomId) {
+        roomId?.let { id -> session.timeline(id) { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() } }
+    }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
@@ -166,6 +168,7 @@ private fun SignedIn(session: UserSession, model: RootModel, appVersion: String)
                 },
                 mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
                 initialJump = openEvent,
+                openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
             )
             else -> RoomListScreen(
                 session.rooms,

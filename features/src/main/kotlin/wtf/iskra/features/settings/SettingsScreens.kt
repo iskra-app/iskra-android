@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
@@ -65,6 +66,7 @@ import kotlinx.coroutines.launch
 import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
+import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.design.AccentTheme
 import wtf.iskra.design.AppearanceMode
 import wtf.iskra.design.LocalAccent
@@ -74,7 +76,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, SECURITY, APPEARANCE, MEDIA, BETA, ABOUT }
+enum class SettingsPage { MAIN, SECURITY, APPEARANCE, CHATS, MEDIA, BETA, ABOUT }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -98,6 +100,7 @@ fun SettingsScreen(
                 SettingsPage.MAIN -> R.string.settings_title
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
                 SettingsPage.MEDIA -> R.string.media_title
+                SettingsPage.CHATS -> R.string.settings_chats
                 SettingsPage.SECURITY -> R.string.settings_security
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
@@ -109,6 +112,7 @@ fun SettingsScreen(
                 SettingsPage.MAIN -> Main(session, onNavigate, onSignOut)
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
+                SettingsPage.CHATS -> Chats(settings)
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo)
                 SettingsPage.ABOUT -> About(appVersion)
@@ -148,6 +152,7 @@ private fun Main(session: UserSession, onNavigate: (SettingsPage?) -> Unit, onSi
     HorizontalDivider()
     Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) }
     Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) }
+    Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) }
     Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) }
     Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) }
     Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) }
@@ -313,6 +318,46 @@ private fun Media(settings: AppSettings) {
             }
         }
     }
+}
+
+/** «Чаты»: где треды и уходят ли ответы из ленты (`ThreadSettings`). Действует со следующего открытия чата. */
+@Composable
+private fun Chats(settings: AppSettings) {
+    val threads by settings.threads.collectAsStateWithLifecycle()
+    SectionTitle(R.string.chats_threads)
+    ThreadSettings.Shown.entries.forEach { option ->
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .selectable(selected = option == threads.shown, role = Role.RadioButton) { settings.setThreads(threads.copy(shown = option)) }
+                .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(
+                    when (option) {
+                        ThreadSettings.Shown.ALWAYS -> R.string.chats_threads_always
+                        ThreadSettings.Shown.IN_LARGE_ROOMS -> R.string.chats_threads_large_rooms
+                        ThreadSettings.Shown.NEVER -> R.string.chats_threads_never
+                    },
+                ),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            RadioButton(
+                selected = option == threads.shown,
+                onClick = null,
+                colors = RadioButtonDefaults.colors(selectedColor = LocalAccent.current.control),
+            )
+        }
+    }
+    Toggle(
+        R.string.chats_threads_hide_replies,
+        R.string.chats_threads_help,
+        threads.hidesReplies,
+        { settings.setThreads(threads.copy(hidesReplies = it)) },
+        enabled = threads.shown != ThreadSettings.Shown.NEVER,
+    )
 }
 
 /** Бета-функции (`BetaView`): существа вместо инициалов и демо-сервер. */

@@ -161,6 +161,15 @@ class TimelineStore internal constructor(
     private val onDraftChanged: (String?) -> Unit = {},
     /** Свои сообщения прочитаны до этого времени — квитанции есть только в ленте, список их не видит. */
     private val onOwnMessagesRead: (java.time.Instant) -> Unit = {},
+    /**
+     * Тред, которым этот стор является: ID события корня. Null — лента самой комнаты: там ответы в
+     * тредах строкой под корнем ([Message.thread]), а то и вовсе вне ленты ([ThreadSettings.hidesReplies]).
+     * Лента треда начинается корнем и держит только ответы; всё отправленное из неё — слова, картинки,
+     * ответ — уходит в тред.
+     */
+    val threadRootId: String? = null,
+    /** Настройки тредов на миг открытия: фокус открытой ленты не меняется. */
+    private val threadSettings: () -> ThreadSettings = { ThreadSettings() },
 ) {
     private val mutableState = MutableStateFlow(TimelineState())
     val state: StateFlow<TimelineState> = mutableState.asStateFlow()
@@ -258,10 +267,15 @@ class TimelineStore internal constructor(
             }
         })
 
+        // Лента комнаты держит ответы в тредах среди всего остального, пока настройки не скажут их
+        // убрать, — тогда они только строкой под корнем, и тред открывают, чтобы прочесть.
+        val header = state.value.header
+        val threads = threadSettings()
         val configuration = TimelineConfiguration(
-            focus = TimelineFocus.Live(hideThreadedEvents = false),
+            focus = threadRootId?.let { TimelineFocus.Thread(it) }
+                ?: TimelineFocus.Live(hideThreadedEvents = threads.usesThreads(header.kind, header.memberCount) && threads.hidesReplies),
             filter = TimelineFilter.All,
-            internalIdPrefix = null,
+            internalIdPrefix = threadRootId?.let { "thread-$it-" },
             dateDividerMode = DateDividerMode.DAILY,
             trackReadReceipts = TimelineReadReceiptTracking.ALL_EVENTS,
             reportUtds = false,
@@ -1035,6 +1049,11 @@ class TimelineStore internal constructor(
      * «непрочитано», поставленный вручную, — документация SDK говорит это прямо.
      */
     suspend fun markAsRead() {
+        // Тред читается в своей ленте: квитанции в нём свои, и прочесть тред — не прочесть комнату.
+        if (threadRootId != null) {
+            timeline?.let { runCatching { withTimeLimit(SDK_LIMIT) { it.markAsRead(ReceiptType.READ) } } }
+            return
+        }
         hasReadToEnd = true
         runCatching { withTimeLimit(SDK_LIMIT) { room.markAsRead(ReceiptType.READ) } }
         runCatching { withTimeLimit(SDK_LIMIT) { room.setUnreadFlag(false) } }
@@ -1056,7 +1075,7 @@ class TimelineStore internal constructor(
      * Полфразы на потом — через SDK, а не в настройках: черновик — это сообщение, и место ему в том же
      * зашифрованном сторе, что и переписке.
      */
-    suspend fun draft(): String? = runCatching { withTimeLimit(SDK_LIMIT) { room.loadComposerDraft(null) } }.getOrNull()?.plainText
+    suspend fun draft(): String? = runCatching { withTimeLimit(SDK_LIMIT) { room.loadComposerDraft(threadRootId) } }.getOrNull()?.plainText
 
     suspend fun saveDraft(text: String) {
         val trimmed = text.trim()
@@ -1065,13 +1084,13 @@ class TimelineStore internal constructor(
             return
         }
         runCatching {
-            withTimeLimit(SDK_LIMIT) { room.saveComposerDraft(ComposerDraft(text, null, ComposerDraftType.NewMessage, emptyList()), null) }
+            withTimeLimit(SDK_LIMIT) { room.saveComposerDraft(ComposerDraft(text, null, ComposerDraftType.NewMessage, emptyList()), threadRootId) }
         }
         onDraftChanged(trimmed)
     }
 
     suspend fun clearDraft() {
-        runCatching { withTimeLimit(SDK_LIMIT) { room.clearComposerDraft(null) } }
+        runCatching { withTimeLimit(SDK_LIMIT) { room.clearComposerDraft(threadRootId) } }
         onDraftChanged(null)
     }
 
