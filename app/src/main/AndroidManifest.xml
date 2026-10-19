@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Голосовые (docs/PROMPT.md, 11.3): спрашивается при первой записи, не при запуске. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- «Место»: одна точка по просьбе человека, из видимого приложения. Фоновой геопозиции нет. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <!--
         Бэкап выключен целиком (docs/PROMPT.md, 5.1). Это аналог `ThisDeviceOnly` на iOS: зашифрованный

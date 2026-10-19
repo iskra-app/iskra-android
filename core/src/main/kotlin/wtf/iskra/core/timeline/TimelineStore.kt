@@ -39,6 +39,7 @@ import wtf.iskra.core.support.withTimeLimit
 import org.matrix.rustcomponents.sdk.AudioInfo
 import org.matrix.rustcomponents.sdk.ComposerDraft
 import org.matrix.rustcomponents.sdk.ComposerDraftType
+import org.matrix.rustcomponents.sdk.AssetType
 import org.matrix.rustcomponents.sdk.DateDividerMode
 import org.matrix.rustcomponents.sdk.EventOrTransactionId
 import org.matrix.rustcomponents.sdk.EventSendState
@@ -787,6 +788,38 @@ class TimelineStore internal constructor(
     }
 
     /**
+     * Место — точкой (`assetType = PIN`): *место*, а не «где отправитель». Matrix знает и второе
+     * (`SENDER`), но это было бы утверждение о человеке от его имени, которого он не видел на экране,
+     * где нажимал «Отправить». Тело — фраза с координатами для клиентов, не знающих событий места
+     * (порт `send(location:)`).
+     */
+    suspend fun sendLocation(latitude: Double, longitude: Double, name: String? = null, replyingTo: String? = null): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        return try {
+            withTimeLimit(SDK_LIMIT) {
+                timeline.sendLocation(
+                    // Точка, а не запятая: «55,755800, 37,617300» на немецком — две пары чисел, а не одна.
+                    String.format(java.util.Locale.ROOT, strings[R.string.timeline_location_body], latitude, longitude),
+                    "geo:$latitude,$longitude",
+                    name,
+                    LOCATION_ZOOM,
+                    AssetType.PIN,
+                    replyingTo?.let(::eventId),
+                )
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "место не отправилось: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
+        }
+    }
+
+    /**
      * Видео — по настройкам: сжатое и без места, дат и устройства (`VideoPreparation`). Не очистилось —
      * не уходит, как фото. SDK получает *путь*: сотни мегабайт байтами держали бы память; копия живёт,
      * пока идёт загрузка, и удаляется, когда SDK её дочитал, — или при следующем запуске.
@@ -1204,6 +1237,9 @@ class TimelineStore internal constructor(
         const val MAXIMUM_OPENING_PAGES = 4
         const val MAXIMUM_REFILL_PAGES = 20
         val SDK_LIMIT = 30.seconds
+
+        /** Насколько близко открывать карту у получателя: улица — видно, какой дом и на какой улице. */
+        val LOCATION_ZOOM: UByte = 15u
 
         const val OCTET_STREAM = "application/octet-stream"
         const val SEARCH_BATCH = 50

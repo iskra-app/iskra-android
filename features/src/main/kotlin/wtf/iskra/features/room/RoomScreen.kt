@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -267,6 +268,19 @@ fun RoomScreen(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) attachments = (attachments + PendingAttachment(picked, PendingAttachment.Kind.FILE)).distinct().take(MAX_ATTACHMENTS)
     }
+    // «Место»: точка, которую человек видит, прежде чем отправить.
+    var locating by remember(store.roomId) { mutableStateOf(false) }
+    if (locating) {
+        MyLocationDialog(
+            onSend = { latitude, longitude ->
+                locating = false
+                val reply = replyingTo
+                replyingTo = null
+                scope.launch { store.sendLocation(latitude, longitude, replyingTo = reply?.id) }
+            },
+            onDismiss = { locating = false },
+        )
+    }
     // Камера — системным приложением, в свой файл: снятое встаёт в композер, как выбранное из галереи.
     var capturing by remember(store.roomId) { mutableStateOf<PendingAttachment?>(null) }
     val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
@@ -368,6 +382,7 @@ fun RoomScreen(
                     capturing = PendingAttachment(uri, PendingAttachment.Kind.VIDEO)
                     runCatching { recordVideo.launch(uri) }.onFailure { capturing = null }
                 },
+                onLocation = { locating = true },
                 canPaste = { Camera.clipboardHasMedia(context) },
                 onPaste = {
                     scope.launch {
@@ -1354,6 +1369,7 @@ private fun Composer(
     onAttachFile: () -> Unit,
     onTakePhoto: () -> Unit = {},
     onRecordVideo: () -> Unit = {},
+    onLocation: () -> Unit = {},
     canPaste: () -> Boolean = { false },
     onPaste: () -> Unit = {},
     onRemoveAttachment: (PendingAttachment) -> Unit,
@@ -1415,6 +1431,11 @@ private fun Composer(
                             text = { Text(stringResource(R.string.room_attach_file)) },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null) },
                             onClick = { choosing = false; onAttachFile() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.location_attach)) },
+                            leadingIcon = { Icon(Icons.Filled.Place, contentDescription = null) },
+                            onClick = { choosing = false; onLocation() },
                         )
                         if (pastable) {
                             DropdownMenuItem(
