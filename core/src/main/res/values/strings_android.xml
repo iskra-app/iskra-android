@@ -3,4 +3,6 @@
 <resources>
     <!-- Имя устройства в списке сеансов, как device.iOS и device.mac на iOS. -->
     <string name="device_android">Iskra on Android</string>
+    <!-- Резервную копию сделало другое устройство (BackupExistsOnServer). В iOS этой развилки пока нет. -->
+    <string name="account_backup_elsewhere_failed">Your account already has a backup, made on another device, and this device can’t open it. Confirm this device from a phone or computer where you’re signed in, then try again.</string>
 </resources>

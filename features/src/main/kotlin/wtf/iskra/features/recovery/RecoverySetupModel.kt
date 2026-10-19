@@ -20,12 +20,14 @@ import kotlin.time.Duration.Companion.seconds
  *
  * - **новый аккаунт** — резервная копия включается сама, человеку показывают код один раз;
  * - **устройство, которое не может прочесть историю** — два равных пути: код или другое устройство;
- * - **код потерян** — другое устройство и новый код, или честный «чистый лист».
+ * - **код потерян** — другое устройство и новый код, или честный «чистый лист»;
+ * - **копию сделало другое устройство, и кода к ней нет** (`BackupExistsOnServer`) — те же два пути, что
+ *   при потерянном коде, только без «введите код»: вводить нечего.
  *
  * Ни слова «верификация», «cross-signing», «secret storage»: только «код восстановления» и «резервная копия».
  */
 class RecoverySetupModel(val session: UserSession) {
-    enum class Step { PREPARING, CONFIRM_NEW, CREATING, CODE, CHOOSE, ENTERING, LOST, STARTING_OVER, PASSWORD, APPROVING, DONE }
+    enum class Step { PREPARING, CONFIRM_NEW, CREATING, CODE, CHOOSE, ENTERING, LOST, ELSEWHERE, STARTING_OVER, PASSWORD, APPROVING, DONE }
 
     private val mutableStep = MutableStateFlow(Step.PREPARING)
     val step: StateFlow<Step> = mutableStep.asStateFlow()
@@ -47,9 +49,12 @@ class RecoverySetupModel(val session: UserSession) {
     private val recovery: RecoveryStore get() = session.recovery
     val verification get() = session.verification
 
-    private enum class AfterConfirming { FINISH, MINT_NEW_CODE }
+    private enum class AfterConfirming { FINISH, MINT_NEW_CODE, PROTECT }
 
     private var afterConfirming = AfterConfirming.FINISH
+
+    /** Куда вернуться, если «чистый лист» не вышел или человек передумал. */
+    private var beforeStartingOver = Step.LOST
 
     fun clearFailure() {
         mutableFailure.value = null
@@ -76,9 +81,17 @@ class RecoverySetupModel(val session: UserSession) {
         mutableStep.value = Step.CREATING
         val minted = recovery.protectHistory()
         if (minted == null) {
-            // Не вышло, и человеку тут делать нечего: пускаем, баннер и настройки попросят снова.
-            mutableFailure.value = recovery.failure
-            mutableStep.value = Step.DONE
+            val failure = recovery.failure
+            val next = afterFailedProtect(failure)
+            if (next == Step.ELSEWHERE) {
+                // Не сбой, а ответ: копия есть, и это устройство её не откроет. Сказать и предложить путь.
+                mutableHasOtherDevices.value = recovery.hasOtherDevices()
+            } else {
+                // Не вышло, и человеку тут делать нечего: пускаем, баннер и настройки попросят снова.
+                // Но сначала — словами: экран уйдёт, только когда сбой прочитан.
+                mutableFailure.value = failure
+            }
+            mutableStep.value = next
             return
         }
         mutableCode.value = minted
@@ -115,12 +128,15 @@ class RecoverySetupModel(val session: UserSession) {
     }
 
     /** Подтверждение прошло. После потерянного кода новый — *предлагается*, а не делается молча. */
-    fun confirmed() {
-        mutableStep.value = when (afterConfirming) {
-            AfterConfirming.FINISH -> Step.DONE
+    suspend fun confirmed() {
+        when (afterConfirming) {
+            AfterConfirming.FINISH -> mutableStep.value = Step.DONE
             // Старый код не потерян, а *засунут куда-то*: сравнение отдало устройству секреты, но
             // хранилище не тронуло, и старый код всё ещё его открывает. Новый код убил бы его.
-            AfterConfirming.MINT_NEW_CODE -> Step.CONFIRM_NEW
+            AfterConfirming.MINT_NEW_CODE -> mutableStep.value = Step.CONFIRM_NEW
+            // Старого кода не было вовсе — спрашивать «заменить?» было бы неправдой. Ключ копии пришёл
+            // с другого устройства, и включение теперь не упрётся в чужую копию: просто сделать код.
+            AfterConfirming.PROTECT -> create()
         }
     }
 
@@ -151,11 +167,18 @@ class RecoverySetupModel(val session: UserSession) {
         verification.start()
     }
 
+    /** Копию сделало другое устройство: получить её ключ оттуда, а потом — первый код. */
+    suspend fun confirmBackupFromAnotherDevice() {
+        afterConfirming = AfterConfirming.PROTECT
+        verification.start()
+    }
+
     fun noAccessToOtherDevice() {
         mutableHasOtherDevices.value = false
     }
 
     suspend fun startOver() {
+        if (mutableStep.value == Step.ELSEWHERE || mutableStep.value == Step.LOST) beforeStartingOver = mutableStep.value
         mutableStep.value = Step.STARTING_OVER
         try {
             when (val approval = recovery.beginStartOver()) {
@@ -169,7 +192,7 @@ class RecoverySetupModel(val session: UserSession) {
             }
         } catch (_: RecoveryStore.StartOverFailed) {
             mutableFailure.value = AccountActionFailure.START_OVER
-            mutableStep.value = Step.LOST
+            mutableStep.value = beforeStartingOver
         }
     }
 
@@ -182,7 +205,7 @@ class RecoverySetupModel(val session: UserSession) {
     suspend fun abandonStartOver() {
         mutableApprovalUrl.value = null
         recovery.cancelStartOver()
-        mutableStep.value = Step.LOST
+        mutableStep.value = beforeStartingOver
     }
 
     suspend fun confirmWithPassword(password: String) {
@@ -195,7 +218,7 @@ class RecoverySetupModel(val session: UserSession) {
             recovery.finishStartOver(password, session.userId)
         } catch (_: RecoveryStore.StartOverFailed) {
             mutableFailure.value = AccountActionFailure.START_OVER
-            mutableStep.value = Step.LOST
+            mutableStep.value = beforeStartingOver
             return
         }
         // Личность новая, и за ней нет копии. Сделать её сейчас — разница между «начать с чистого
@@ -212,5 +235,12 @@ class RecoverySetupModel(val session: UserSession) {
             HistoryProtection.KEY_NEEDED -> Step.CHOOSE
             HistoryProtection.ON, HistoryProtection.UNKNOWN -> Step.DONE
         }
+
+        /**
+         * Куда после того, как копия не включилась. Чужая копия на сервере — не повод пускать в
+         * приложение молча: история не защищена, кода нет, и человек должен это услышать с путём дальше.
+         */
+        fun afterFailedProtect(failure: AccountActionFailure?): Step =
+            if (failure == AccountActionFailure.BACKUP_ELSEWHERE) Step.ELSEWHERE else Step.DONE
     }
 }

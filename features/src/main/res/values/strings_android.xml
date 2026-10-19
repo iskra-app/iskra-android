@@ -15,4 +15,8 @@
     <string name="video_rate" translatable="false">%1$s×</string>
     <!-- Сколько осталось до конца видео: «−0:42», как на iOS. -->
     <string name="video_remaining" translatable="false">−%1$s</string>
+    <!-- Экран восстановления: копию сделало другое устройство, кода к ней нет. В iOS этой развилки пока нет. -->
+    <string name="recovery_elsewhere_title">Your account already has a backup</string>
+    <string name="recovery_elsewhere_has_devices">It was made on another device, and there’s no recovery code for it — so this device can’t open your earlier messages yet. Confirm this device from a phone or computer where you’re already signed in, and we’ll give you a recovery code.</string>
+    <string name="recovery_elsewhere_alone">It was made on another device, and there’s no recovery code for it. Without that device your old messages can’t come back — they stay encrypted for good. New messages will arrive as usual, and we’ll give you a recovery code.</string>
 </resources>

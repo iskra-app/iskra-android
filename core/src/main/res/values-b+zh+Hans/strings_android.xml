@@ -3,4 +3,5 @@
 <resources>
     <!-- Имя устройства в списке сеансов, как device.iOS и device.mac на iOS. -->
     <string name="device_android">Android 上的 Iskra</string>
+    <string name="account_backup_elsewhere_failed">您的账号已有一份由另一台设备创建的备份，这台设备打不开它。请在已登录的手机或电脑上确认这台设备，然后再试一次。</string>
 </resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Строки, нужные только Android (CLAUDE.md). -->
+<resources>
+    <string name="recovery_elsewhere_title">このアカウントにはすでにバックアップがあります</string>
+    <string name="recovery_elsewhere_has_devices">別のデバイスで作られたもので、コードはありません。そのため、このデバイスではまだ以前のメッセージを開けません。すでにサインインしているスマホやパソコンからこのデバイスを承認すれば、復元コードをお渡しします。</string>
+    <string name="recovery_elsewhere_alone">別のデバイスで作られたもので、コードはありません。そのデバイスがなければ、過去のメッセージは戻りません。ずっと暗号化されたままになります。新しいメッセージはいつも通り届き、復元コードもお渡しします。</string>
+</resources>

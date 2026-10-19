@@ -46,6 +46,13 @@ enum class AccountActionFailure(val explanation: Int) {
     RESTORE(R.string.account_restore_failed),
     STALE_CODE(R.string.account_stale_code_failed),
     START_OVER(R.string.account_start_over_failed),
+
+    /**
+     * Резервная копия на сервере уже есть, а секретного хранилища — нет (`BackupExistsOnServer`): копию
+     * сделало другое устройство, и кода к ней не существует. «Защитить заново» тут нечего — это
+     * устройство должно получить ключ от того, или начать с чистого листа.
+     */
+    BACKUP_ELSEWHERE(R.string.account_backup_elsewhere_failed),
 }
 
 /** Как сервер хочет подтверждения, прежде чем выбросить старую личность. */
@@ -123,7 +130,7 @@ class RecoveryStore internal constructor(
      * Включить резервную копию и получить код. `waitForBackupsToUpload = true` — именно true: код,
      * показанный до того, как ключи ушли на сервер, открыл бы пустую копию.
      */
-    suspend fun protectHistory(): RecoveryKey? = working(AccountActionFailure.PROTECT_HISTORY) {
+    suspend fun protectHistory(): RecoveryKey? = working({ failureOfProtecting(it) }) {
         val key = withTimeLimit(ENABLE_LIMIT) {
             encryption.enableRecovery(true, null, object : EnableRecoveryProgressListener {
                 override fun onUpdate(status: EnableRecoveryProgress) = Unit
@@ -221,13 +228,17 @@ class RecoveryStore internal constructor(
 
     class StartOverFailed : Exception()
 
-    private suspend fun <T> working(onFailure: AccountActionFailure, body: suspend () -> T): T? {
+    private suspend fun <T> working(onFailure: AccountActionFailure, body: suspend () -> T): T? =
+        working({ onFailure }, body)
+
+    private suspend fun <T> working(failureOf: (Throwable) -> AccountActionFailure, body: suspend () -> T): T? {
         if (mutableWorking.value) return null
         mutableWorking.value = true
         return try {
             body()
         } catch (error: Exception) {
             if (error is CancellationException) throw error
+            val onFailure = failureOf(error)
             Log.error(Log.Category.SESSION, "восстановление: ${onFailure.name.lowercase()} не вышло: ${describe(error)}")
             failure = onFailure
             null
@@ -236,13 +247,18 @@ class RecoveryStore internal constructor(
         }
     }
 
-    private companion object {
-        val SDK_LIMIT = 60.seconds
+    internal companion object {
+        /** Почему не включилась копия. `BackupExistsOnServer` — не сбой, а другое состояние аккаунта. */
+        fun failureOfProtecting(error: Throwable): AccountActionFailure =
+            if (error is RecoveryException.BackupExistsOnServer) AccountActionFailure.BACKUP_ELSEWHERE
+            else AccountActionFailure.PROTECT_HISTORY
+
+        private val SDK_LIMIT = 60.seconds
 
         /** Включение ждёт, пока ключи уйдут на сервер, — на большом аккаунте это минуты. */
-        val ENABLE_LIMIT = 5.minutes
+        private val ENABLE_LIMIT = 5.minutes
 
-        fun protection(state: RecoveryState) = when (state) {
+        private fun protection(state: RecoveryState) = when (state) {
             RecoveryState.UNKNOWN -> HistoryProtection.UNKNOWN
             RecoveryState.ENABLED -> HistoryProtection.ON
             RecoveryState.DISABLED -> HistoryProtection.OFF
@@ -250,10 +266,10 @@ class RecoveryStore internal constructor(
         }
 
         /** Код, которым это хранилище *было* открыто, но который с тех пор сменили, — «MAC check». */
-        fun isStale(error: Throwable): Boolean =
+        private fun isStale(error: Throwable): Boolean =
             error is RecoveryException.SecretStorage && error.message.orEmpty().contains("MAC check", ignoreCase = true)
 
         /** Вид ошибки; текст SDK — только для SecretStorage, где это техническая строка без содержимого. */
-        fun describe(error: Throwable): String = Log.describe(error)
+        private fun describe(error: Throwable): String = Log.describe(error)
     }
 }

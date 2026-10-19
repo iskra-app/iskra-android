@@ -68,10 +68,13 @@ fun RecoverySetupScreen(model: RecoverySetupModel, onDone: () -> Unit) {
     val uri = LocalUriHandler.current
 
     LaunchedEffect(model) { model.begin() }
-    LaunchedEffect(step) { if (step == RecoverySetupModel.Step.DONE) onDone() }
+    // Сбой по дороге к «готово» сначала читают: уйти сразу значило бы закрыть диалог вместе с экраном.
+    LaunchedEffect(step, failure) { if (step == RecoverySetupModel.Step.DONE && failure == null) onDone() }
     // Сравнение прошло — устройство подтверждено, дальше решает модель.
     LaunchedEffect(verificationStep) {
-        if (verificationStep == VerificationStore.Step.Succeeded) model.confirmed()
+        // Не в самом эффекте: после чужой копии `confirmed` включает её (минуты), а закрытый диалог
+        // подтверждения сменит шаг и отменил бы эффект посреди включения.
+        if (verificationStep == VerificationStore.Step.Succeeded) scope.launch { model.confirmed() }
     }
     LaunchedEffect(approvalUrl) { approvalUrl?.let { runCatching { uri.openUri(it) } } }
     // «Назад» на шаге выбора и ввода возвращает к выбору, а не выпускает из приложения посередине.
@@ -130,15 +133,21 @@ fun RecoverySetupScreen(model: RecoverySetupModel, onDone: () -> Unit) {
                 }
             } else {
                 Title(R.string.recovery_lost_alone_title, R.string.recovery_lost_alone_message)
-                Text(
-                    stringResource(R.string.recovery_lost_alone_not_password),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                SecondaryActionButton(onClick = { scope.launch { model.startOver() } }, modifier = Modifier.fillMaxWidth()) {
-                    Text(stringResource(R.string.recovery_lost_alone_start), color = MaterialTheme.colorScheme.error)
+                StartFresh { scope.launch { model.startOver() } }
+            }
+            // Копию сделало другое устройство, и кода к ней нет: «ввести код» не предлагается — вводить нечего.
+            RecoverySetupModel.Step.ELSEWHERE -> if (hasOtherDevices) {
+                Title(R.string.recovery_elsewhere_title, R.string.recovery_elsewhere_has_devices)
+                PrimaryActionButton(
+                    onClick = { scope.launch { model.confirmBackupFromAnotherDevice() } },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.recovery_choose_other_device)) }
+                TextButton(onClick = model::noAccessToOtherDevice) {
+                    Text(stringResource(R.string.recovery_lost_no_access), color = LocalAccent.current.control)
                 }
+            } else {
+                Title(R.string.recovery_elsewhere_title, R.string.recovery_elsewhere_alone)
+                StartFresh { scope.launch { model.startOver() } }
             }
             RecoverySetupModel.Step.PASSWORD -> {
                 var password by remember { mutableStateOf("") }
@@ -190,6 +199,20 @@ fun RecoverySetupScreen(model: RecoverySetupModel, onDone: () -> Unit) {
             confirmButton = { TextButton(onClick = model::clearFailure) { Text(stringResource(android.R.string.ok)) } },
             text = { Text(stringResource(it.explanation)) },
         )
+    }
+}
+
+/** «Начать с чистого листа» — и оговорка, что пароль аккаунта тут ни при чём. */
+@Composable
+private fun StartFresh(onClick: () -> Unit) {
+    Text(
+        stringResource(R.string.recovery_lost_alone_not_password),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+    )
+    SecondaryActionButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.recovery_lost_alone_start), color = MaterialTheme.colorScheme.error)
     }
 }
 

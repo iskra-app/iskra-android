@@ -3,4 +3,5 @@
 <resources>
     <!-- Имя устройства в списке сеансов, как device.iOS и device.mac на iOS. -->
     <string name="device_android">Android の Iskra</string>
+    <string name="account_backup_elsewhere_failed">このアカウントには別のデバイスで作られたバックアップがすでにあり、このデバイスでは開けません。サインイン済みのスマホやパソコンからこのデバイスを承認してから、もう一度お試しください。</string>
 </resources>
