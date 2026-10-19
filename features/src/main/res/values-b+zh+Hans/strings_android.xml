@@ -4,4 +4,6 @@
     <string name="recovery_elsewhere_title">您的账号已经有一份备份</string>
     <string name="recovery_elsewhere_has_devices">它是另一台设备创建的，没有代码——所以这台设备暂时打不开您以前的消息。在已经登录的手机或电脑上确认这台设备，我们就会给您一个恢复代码。</string>
     <string name="recovery_elsewhere_alone">它是另一台设备创建的，没有代码。没有那台设备，旧消息就回不来了——它们会永远保持加密。新消息照常接收，我们也会给您一个恢复代码。</string>
+    <string name="room_attach_take_photo">拍照</string>
+    <string name="room_attach_record_video">录像</string>
 </resources>

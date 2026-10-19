@@ -83,7 +83,7 @@ object PhotoPreparation {
     )
 
     /** Размытость по уменьшенной копии: хэш двенадцати мегапикселей — тот же, что хэш миниатюры. */
-    private fun blurhash(bitmap: Bitmap): String {
+    internal fun blurhash(bitmap: Bitmap): String {
         val scale = minOf(1f, Blurhash.SIDE.toFloat() / max(bitmap.width, bitmap.height))
         val width = max(1, (bitmap.width * scale).toInt())
         val height = max(1, (bitmap.height * scale).toInt())

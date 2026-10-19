@@ -17,6 +17,9 @@ import kotlinx.coroutines.withContext
 import wtf.iskra.core.media.MediaSettings
 import wtf.iskra.core.media.PhotoPreparation
 import wtf.iskra.core.media.VoiceWaveform
+import wtf.iskra.core.media.VideoPreparation
+import org.matrix.rustcomponents.sdk.ThumbnailInfo
+import org.matrix.rustcomponents.sdk.VideoInfo
 import wtf.iskra.core.search.SearchHit
 import wtf.iskra.core.search.SearchStore
 import wtf.iskra.core.rooms.MessagePreview
@@ -778,6 +781,73 @@ class TimelineStore internal constructor(
         } catch (error: Exception) {
             if (error is CancellationException) throw error
             Log.error(Log.Category.MEDIA, "фото не отправилось: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
+        }
+    }
+
+    /**
+     * Видео — по настройкам: сжатое и без места, дат и устройства (`VideoPreparation`). Не очистилось —
+     * не уходит, как фото. SDK получает *путь*: сотни мегабайт байтами держали бы память; копия живёт,
+     * пока идёт загрузка, и удаляется, когда SDK её дочитал, — или при следующем запуске.
+     */
+    suspend fun sendVideo(
+        context: android.content.Context,
+        source: android.net.Uri,
+        filename: String,
+        settings: MediaSettings,
+        caption: String? = null,
+        replyingTo: String? = null,
+    ): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val prepared = VideoPreparation.prepare(context, source, filename, VideoPreparation.outgoing(context.cacheDir), settings)
+        if (prepared == null) {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val parameters = UploadParameters(
+            source = UploadSource.File(prepared.file.absolutePath),
+            caption = caption?.trim()?.ifEmpty { null },
+            formattedCaption = null,
+            mentions = null,
+            inReplyTo = replyingTo?.let(::eventId),
+        )
+        // Кадр едет своей загрузкой и только вместе с описанием: без `ThumbnailInfo` SDK молча не шлёт
+        // ни того, ни другого, и в зашифрованной комнате получателю не из чего сделать картинку.
+        val thumbnail = prepared.thumbnail
+        val info = VideoInfo(
+            duration = java.time.Duration.ofMillis(prepared.durationMs),
+            height = prepared.height.toULong(),
+            width = prepared.width.toULong(),
+            mimetype = prepared.mimeType,
+            size = prepared.file.length().toULong(),
+            thumbnailInfo = thumbnail?.let { ThumbnailInfo(it.height.toULong(), it.width.toULong(), "image/jpeg", it.jpeg.size.toULong()) },
+            thumbnailSource = null,
+            blurhash = prepared.blurhash,
+        )
+        return try {
+            val handle = withTimeLimit(SDK_LIMIT) {
+                timeline.sendVideo(parameters, thumbnail?.let { UploadSource.Data(it.jpeg, "thumbnail.jpg") } ?: UploadSource.Data(ByteArray(0), "thumbnail.jpg"), info)
+            }
+            scope.launch {
+                try {
+                    handle.join()
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    Log.error(Log.Category.MEDIA, "видео не загрузилось: ${Log.describe(error)}")
+                } finally {
+                    handle.destroy()
+                    withContext(Dispatchers.IO) { prepared.file.delete() }
+                }
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "видео не отправилось: ${Log.describe(error)}")
+            prepared.file.delete()
             fail(TimelineFailure.SEND)
             false
         }

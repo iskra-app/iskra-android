@@ -9,6 +9,9 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import wtf.iskra.core.timeline.ComposerMention
@@ -234,7 +237,7 @@ fun RoomScreen(
     val context = LocalContext.current
     // Системный выбор: без разрешения на всю галерею, до десяти за раз (docs/PROMPT.md, 11.5).
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(MAX_ATTACHMENTS)) { picked ->
-        attachments = (attachments + picked.map { PendingAttachment(it, isFile = false) }).distinct().take(MAX_ATTACHMENTS)
+        attachments = (attachments + picked.map { PendingAttachment.visual(context, it) }).distinct().take(MAX_ATTACHMENTS)
     }
     val recorder = remember(store.roomId) { VoiceRecorder(context) }
     val recordingElapsed by recorder.elapsed.collectAsStateWithLifecycle()
@@ -243,7 +246,21 @@ fun RoomScreen(
     DisposableEffect(recorder) { onDispose { recorder.cancel() } }
     // Файл — системным выбором документов: любой тип, уйдёт как есть.
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
-        if (picked != null) attachments = (attachments + PendingAttachment(picked, isFile = true)).distinct().take(MAX_ATTACHMENTS)
+        if (picked != null) attachments = (attachments + PendingAttachment(picked, PendingAttachment.Kind.FILE)).distinct().take(MAX_ATTACHMENTS)
+    }
+    // Камера — системным приложением, в свой файл: снятое встаёт в композер, как выбранное из галереи.
+    var capturing by remember(store.roomId) { mutableStateOf<PendingAttachment?>(null) }
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
+        val shot = capturing
+        capturing = null
+        if (shot == null) return@rememberLauncherForActivityResult
+        if (taken) attachments = (attachments + shot).distinct().take(MAX_ATTACHMENTS) else Camera.discard(context, shot.uri)
+    }
+    val recordVideo = rememberLauncherForActivityResult(ActivityResultContracts.CaptureVideo()) { taken ->
+        val clip = capturing
+        capturing = null
+        if (clip == null) return@rememberLauncherForActivityResult
+        if (taken) attachments = (attachments + clip).distinct().take(MAX_ATTACHMENTS) else Camera.discard(context, clip.uri)
     }
 
     LaunchedEffect(store) {
@@ -321,7 +338,25 @@ fun RoomScreen(
                 replyingTo = replyingTo,
                 editing = editing,
                 attachments = attachments,
-                onAttachPhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                onAttachPhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+                onTakePhoto = {
+                    val uri = Camera.newCapture(context, video = false)
+                    capturing = PendingAttachment(uri, PendingAttachment.Kind.PHOTO)
+                    runCatching { takePhoto.launch(uri) }.onFailure { capturing = null }
+                },
+                onRecordVideo = {
+                    val uri = Camera.newCapture(context, video = true)
+                    capturing = PendingAttachment(uri, PendingAttachment.Kind.VIDEO)
+                    runCatching { recordVideo.launch(uri) }.onFailure { capturing = null }
+                },
+                canPaste = { Camera.clipboardHasMedia(context) },
+                onPaste = {
+                    scope.launch {
+                        Camera.paste(context)?.let { pasted ->
+                            attachments = (attachments + PendingAttachment.visual(context, pasted)).distinct().take(MAX_ATTACHMENTS)
+                        }
+                    }
+                },
                 onAttachFile = { filePicker.launch(arrayOf(ANY_TYPE)) },
                 onRemoveAttachment = { attachment -> attachments = attachments - attachment },
                 recordingElapsed = recordingElapsed,
@@ -372,14 +407,20 @@ fun RoomScreen(
                                 val settings = mediaSettings()
                                 var captioned = false
                                 photos.forEachIndexed { index, attachment ->
-                                    val (bytes, name) = readPicked(context, attachment.uri) ?: return@forEachIndexed
                                     val caption = text.takeIf { !captioned && it.isNotBlank() }
                                     val replyId = reply?.id.takeIf { index == 0 }
-                                    val sent = if (attachment.isFile) {
-                                        store.sendFile(bytes, name, context.contentResolver.getType(attachment.uri), caption, replyId)
-                                    } else {
-                                        store.sendPhoto(bytes, name, settings, caption, replyId)
+                                    val sent = when (attachment.kind) {
+                                        // Видео — адресом, не байтами: его готовит и читает подготовка, а не память.
+                                        PendingAttachment.Kind.VIDEO ->
+                                            store.sendVideo(context, attachment.uri, pickedName(context, attachment.uri), settings, caption, replyId)
+                                        PendingAttachment.Kind.FILE -> readPicked(context, attachment.uri)?.let { (bytes, name) ->
+                                            store.sendFile(bytes, name, context.contentResolver.getType(attachment.uri), caption, replyId)
+                                        } ?: false
+                                        PendingAttachment.Kind.PHOTO -> readPicked(context, attachment.uri)?.let { (bytes, name) ->
+                                            store.sendPhoto(bytes, name, settings, caption, replyId)
+                                        } ?: false
                                     }
+                                    Camera.discard(context, attachment.uri)
                                     if (sent && caption != null) captioned = true
                                 }
                                 if (!captioned && text.isNotBlank()) store.send(text, reply?.id, called)
@@ -1256,6 +1297,10 @@ private fun Composer(
     attachments: List<PendingAttachment>,
     onAttachPhoto: () -> Unit,
     onAttachFile: () -> Unit,
+    onTakePhoto: () -> Unit = {},
+    onRecordVideo: () -> Unit = {},
+    canPaste: () -> Boolean = { false },
+    onPaste: () -> Unit = {},
     onRemoveAttachment: (PendingAttachment) -> Unit,
     recordingElapsed: Long?,
     mic: @Composable () -> Unit,
@@ -1288,8 +1333,10 @@ private fun Composer(
             // В правке вложению взяться неоткуда: правится слово, а не событие.
             if (editing == null) {
                 var choosing by remember { mutableStateOf(false) }
+                // Буфер спрашивается, когда меню открывают: что в нём, меняется без нас.
+                var pastable by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { choosing = true }, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
+                    IconButton(onClick = { pastable = canPaste(); choosing = true }, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
                         Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach), tint = accent.control)
                     }
                     DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
@@ -1299,10 +1346,27 @@ private fun Composer(
                             onClick = { choosing = false; onAttachPhoto() },
                         )
                         DropdownMenuItem(
+                            text = { Text(stringResource(R.string.room_attach_take_photo)) },
+                            leadingIcon = { Icon(Icons.Filled.PhotoCamera, contentDescription = null) },
+                            onClick = { choosing = false; onTakePhoto() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.room_attach_record_video)) },
+                            leadingIcon = { Icon(Icons.Filled.Videocam, contentDescription = null) },
+                            onClick = { choosing = false; onRecordVideo() },
+                        )
+                        DropdownMenuItem(
                             text = { Text(stringResource(R.string.room_attach_file)) },
                             leadingIcon = { Icon(Icons.AutoMirrored.Filled.InsertDriveFile, contentDescription = null) },
                             onClick = { choosing = false; onAttachFile() },
                         )
+                        if (pastable) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.room_paste_image)) },
+                                leadingIcon = { Icon(Icons.Filled.ContentPaste, contentDescription = null) },
+                                onClick = { choosing = false; onPaste() },
+                            )
+                        }
                     }
                 }
             }

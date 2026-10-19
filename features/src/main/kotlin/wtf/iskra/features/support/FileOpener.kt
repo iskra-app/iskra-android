@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import wtf.iskra.core.media.MediaLoader
+import wtf.iskra.core.media.VideoPreparation
 import wtf.iskra.core.support.Log
 import wtf.iskra.core.timeline.Attachment
 import java.io.File
@@ -49,6 +50,9 @@ object FileOpener {
         sweep(context)
         runCatching { File(context.cacheDir, PLAYING).deleteRecursively() }
         runCatching { File(context.cacheDir, RECORDING).deleteRecursively() }
+        // Видео, которые уходили, когда процесс умер: SDK их уже прочёл или не прочтёт никогда.
+        runCatching { VideoPreparation.outgoing(context.cacheDir).deleteRecursively() }
+        wtf.iskra.features.room.Camera.sweep(context)
     }
 
     /** False — не вышло: не скачалось или открыть нечем. */

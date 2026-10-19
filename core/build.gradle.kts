@@ -31,6 +31,9 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.exifinterface)
+    // Подготовка видео к отправке: сжатие и чистый контейнер без метаданных (Apache-2.0).
+    implementation(libs.media3.transformer)
+    implementation(libs.media3.effect)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

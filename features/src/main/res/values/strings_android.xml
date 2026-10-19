@@ -19,4 +19,7 @@
     <string name="recovery_elsewhere_title">Your account already has a backup</string>
     <string name="recovery_elsewhere_has_devices">It was made on another device, and there’s no recovery code for it — so this device can’t open your earlier messages yet. Confirm this device from a phone or computer where you’re already signed in, and we’ll give you a recovery code.</string>
     <string name="recovery_elsewhere_alone">It was made on another device, and there’s no recovery code for it. Without that device your old messages can’t come back — they stay encrypted for good. New messages will arrive as usual, and we’ll give you a recovery code.</string>
+    <!-- «+» в композере: камера системным приложением. На iOS камера — только у кружочков, общей строки нет. -->
+    <string name="room_attach_take_photo">Take a photo</string>
+    <string name="room_attach_record_video">Record a video</string>
 </resources>

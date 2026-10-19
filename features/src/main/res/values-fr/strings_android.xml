@@ -4,4 +4,6 @@
     <string name="recovery_elsewhere_title">Votre compte a déjà une sauvegarde</string>
     <string name="recovery_elsewhere_has_devices">Elle a été faite sur un autre appareil, et elle n’a pas de code — cet appareil ne peut donc pas encore ouvrir vos anciens messages. Confirmez cet appareil depuis un téléphone ou un ordinateur où vous êtes déjà connecté, et nous vous donnerons un code de récupération.</string>
     <string name="recovery_elsewhere_alone">Elle a été faite sur un autre appareil, et elle n’a pas de code. Sans cet appareil, vos anciens messages ne peuvent pas revenir : ils restent chiffrés pour toujours. Les nouveaux messages arriveront normalement, et nous vous donnerons un code de récupération.</string>
+    <string name="room_attach_take_photo">Prendre une photo</string>
+    <string name="room_attach_record_video">Filmer une vidéo</string>
 </resources>

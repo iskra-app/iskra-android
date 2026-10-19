@@ -4,4 +4,6 @@
     <string name="recovery_elsewhere_title">Su cuenta ya tiene una copia de seguridad</string>
     <string name="recovery_elsewhere_has_devices">La hizo otro dispositivo y no tiene código, así que este dispositivo aún no puede abrir sus mensajes anteriores. Confirme este dispositivo desde un teléfono u ordenador donde ya haya iniciado sesión y le daremos un código de recuperación.</string>
     <string name="recovery_elsewhere_alone">La hizo otro dispositivo y no tiene código. Sin ese dispositivo, sus mensajes antiguos no pueden volver: se quedan cifrados para siempre. Los mensajes nuevos llegarán como siempre y le daremos un código de recuperación.</string>
+    <string name="room_attach_take_photo">Hacer una foto</string>
+    <string name="room_attach_record_video">Grabar un vídeo</string>
 </resources>

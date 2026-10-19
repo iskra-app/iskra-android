@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Что FileProvider может отдать: только папку открываемых файлов (FileOpener.DIRECTORY). -->
+<!-- Что FileProvider может отдать: папку открываемых файлов (FileOpener.DIRECTORY) и папку, куда
+     системная камера кладёт снятое для отправки (Camera.DIRECTORY). -->
 <paths>
     <cache-path name="opened" path="opened/" />
+    <cache-path name="captured" path="captured/" />
 </paths>
