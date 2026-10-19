@@ -64,6 +64,10 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.Dialog
@@ -241,6 +245,21 @@ fun RoomScreen(
     }
     val recorder = remember(store.roomId) { VoiceRecorder(context) }
     val recordingElapsed by recorder.elapsed.collectAsStateWithLifecycle()
+    // Жест вверх к замку (−1 — не идёт) и пойманный замок: запись идёт без пальца.
+    var lockReach by remember(store.roomId) { mutableFloatStateOf(-1f) }
+    var voiceLocked by remember(store.roomId) { mutableStateOf(false) }
+    var justLocked by remember(store.roomId) { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    // Закрытый замок виден миг — подтверждение, — потом пилюля уходит.
+    LaunchedEffect(justLocked) {
+        if (justLocked) {
+            delay(LOCK_CONFIRM_MS)
+            justLocked = false
+            lockReach = -1f
+        }
+    }
+    // Запись кончилась (ушла, отменена, комнату оставили) — замка больше нет.
+    LaunchedEffect(recordingElapsed == null) { if (recordingElapsed == null) voiceLocked = false }
     var micDenied by remember { mutableStateOf(false) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (!granted) micDenied = true }
     DisposableEffect(recorder) { onDispose { recorder.cancel() } }
@@ -360,25 +379,58 @@ fun RoomScreen(
                 onAttachFile = { filePicker.launch(arrayOf(ANY_TYPE)) },
                 onRemoveAttachment = { attachment -> attachments = attachments - attachment },
                 recordingElapsed = recordingElapsed,
+                onCancelLocked = if (voiceLocked) ({ voiceLocked = false; recorder.cancel() }) else null,
                 mic = {
-                    MicButton(
-                        recording = recordingElapsed != null,
-                        hasPermission = { ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED },
-                        onNeedPermission = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
-                        onStart = {
-                            VoicePlayback.stop()
-                            recorder.start(scope)
-                        },
-                        onFinish = {
-                            val reply = replyingTo
-                            recorder.finish()?.let { voice ->
-                                replyingTo = null
-                                scope.launch { store.sendVoice(voice.bytes, voice.filename, VoiceRecorder.MIME_TYPE, voice.durationMs, voice.waveform, reply?.id) }
+                    val sendRecording = {
+                        val reply = replyingTo
+                        recorder.finish()?.let { voice ->
+                            replyingTo = null
+                            scope.launch { store.sendVoice(voice.bytes, voice.filename, VoiceRecorder.MIME_TYPE, voice.durationMs, voice.waveform, reply?.id) }
+                        }
+                        Unit
+                    }
+                    Box(contentAlignment = Alignment.BottomCenter) {
+                        if (voiceLocked && recordingElapsed != null) {
+                            // Без пальца: отправка — кнопкой на месте микрофона.
+                            IconButton(
+                                onClick = { voiceLocked = false; sendRecording() },
+                                modifier = Modifier
+                                    .padding(bottom = Theme.Spacing.tight)
+                                    .size(Theme.Size.minimumTapTarget)
+                                    .clip(CircleShape)
+                                    .background(LocalAccent.current.control),
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.recording_send), tint = LocalAccent.current.foreground)
                             }
-                        },
-                        onCancel = { recorder.cancel() },
-                        modifier = Modifier.padding(bottom = Theme.Spacing.tight),
-                    )
+                        } else {
+                            MicButton(
+                                recording = recordingElapsed != null,
+                                hasPermission = { ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED },
+                                onNeedPermission = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
+                                onStart = {
+                                    VoicePlayback.stop()
+                                    recorder.start(scope)
+                                },
+                                onFinish = sendRecording,
+                                onCancel = { recorder.cancel() },
+                                onLock = {
+                                    voiceLocked = true
+                                    justLocked = true
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                },
+                                onReach = { lockReach = it },
+                                modifier = Modifier.padding(bottom = Theme.Spacing.tight),
+                            )
+                        }
+                        // Пилюля — над кнопкой, вне её рамки: композер не растёт от жеста.
+                        if (lockReach >= 0f || justLocked) {
+                            RecordLock(
+                                reach = lockReach,
+                                locked = justLocked,
+                                modifier = Modifier.offset(y = -(Theme.Size.minimumTapTarget + Theme.Spacing.close)),
+                            )
+                        }
+                    }
                 },
                 onCancel = {
                     if (editing != null) {
@@ -699,6 +751,9 @@ private const val HIGHLIGHT_MS = 1500L
 private const val MAX_JUMP_PAGES = 10
 
 /** Сколько вложений за раз — столько же, сколько у системного выбора и в альбоме. */
+/** Сколько виден закрытый замок, прежде чем пилюля уйдёт. */
+private const val LOCK_CONFIRM_MS = 600L
+
 private const val MAX_ATTACHMENTS = 10
 
 /** Сколько людей показывает список «@»: больше — уже не подсказка, а список участников. */
@@ -1303,6 +1358,7 @@ private fun Composer(
     onPaste: () -> Unit = {},
     onRemoveAttachment: (PendingAttachment) -> Unit,
     recordingElapsed: Long?,
+    onCancelLocked: (() -> Unit)? = null,
     mic: @Composable () -> Unit,
     onCancel: () -> Unit,
     onSend: () -> Unit,
@@ -1371,7 +1427,7 @@ private fun Composer(
                 }
             }
             if (recordingElapsed != null) {
-                RecordingStrip(recordingElapsed, Modifier.weight(1f))
+                RecordingStrip(recordingElapsed, Modifier.weight(1f), onCancel = onCancelLocked)
             } else OutlinedTextField(
                 value = field,
                 onValueChange = onFieldChange,
