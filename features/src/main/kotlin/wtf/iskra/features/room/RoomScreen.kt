@@ -49,6 +49,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -88,12 +90,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
+import wtf.iskra.design.pillColors
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -308,7 +313,6 @@ fun RoomScreen(
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true })
-        HorizontalDivider()
         // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
         pinned.messages.lastOrNull()?.takeIf { hasPinned && !isThread }?.let { latest ->
             PinnedStrip(latest, count = pinned.messages.size, onClick = { jumpTo = latest.id }, onOpenList = { showsPinned = true })
@@ -407,15 +411,11 @@ fun RoomScreen(
                     Box(contentAlignment = Alignment.BottomCenter) {
                         if (voiceLocked && recordingElapsed != null) {
                             // Без пальца: отправка — кнопкой на месте микрофона.
-                            IconButton(
+                            FilledIconButton(
                                 onClick = { voiceLocked = false; sendRecording() },
-                                modifier = Modifier
-                                    .padding(bottom = Theme.Spacing.tight)
-                                    .size(Theme.Size.minimumTapTarget)
-                                    .clip(CircleShape)
-                                    .background(LocalAccent.current.control),
+                                modifier = Modifier.padding(bottom = Theme.Spacing.tight),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.recording_send), tint = LocalAccent.current.foreground)
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.recording_send))
                             }
                         } else {
                             MicButton(
@@ -531,55 +531,61 @@ fun RoomScreen(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit) {
     val header = state.header
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.close),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
-        }
-        RoomAvatar(
-            name = header.name,
-            url = header.avatarUrl,
-            size = Theme.Size.avatarToolbar,
-            shape = AvatarShape.CIRCLE,
-            seed = header.avatarSeed,
-            faces = header.faces,
-        )
-        Column(Modifier.weight(1f)) {
-            // В треде заголовок — «Тред», а под ним — чей он: комната.
-            Text(
-                if (isThread) stringResource(R.string.thread_title) else header.name,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            val status = when {
-                isThread -> header.name
-                state.typing.isNotEmpty() -> stringResource(R.string.room_typing)
-                !header.isOneToOne && header.memberCount > 0 ->
-                    pluralStringResource(R.plurals.room_participants, header.memberCount, header.memberCount)
-                else -> null
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
             }
-            if (status != null) {
-                Text(
-                    status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (state.typing.isNotEmpty()) LocalAccent.current.control else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal)) {
+                RoomAvatar(
+                    name = header.name,
+                    url = header.avatarUrl,
+                    size = Theme.Size.avatarToolbar,
+                    shape = AvatarShape.CIRCLE,
+                    seed = header.avatarSeed,
+                    faces = header.faces,
                 )
+                Column {
+                    // В треде заголовок — «Тред», а под ним — чей он: комната.
+                    Text(
+                        if (isThread) stringResource(R.string.thread_title) else header.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val status = when {
+                        isThread -> header.name
+                        state.typing.isNotEmpty() -> stringResource(R.string.room_typing)
+                        !header.isOneToOne && header.memberCount > 0 ->
+                            pluralStringResource(R.plurals.room_participants, header.memberCount, header.memberCount)
+                        else -> null
+                    }
+                    if (status != null) {
+                        Text(
+                            status,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.typing.isNotEmpty()) LocalAccent.current.control else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
-        }
-        // Поиск — по комнате; из треда он вёл бы туда, куда тред не покажет.
-        if (!isThread) {
-            IconButton(onClick = onSearch) {
-                Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.room_search_in_chat))
+        },
+        actions = {
+            // Поиск — по комнате; из треда он вёл бы туда, куда тред не покажет.
+            if (!isThread) {
+                IconButton(onClick = onSearch) {
+                    Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.room_search_in_chat))
+                }
             }
-        }
-    }
+        },
+        windowInsets = WindowInsets(0),
+    )
 }
 
 @Composable
@@ -919,9 +925,9 @@ private fun Bubble(
 @Composable
 private fun PinnedStrip(message: Message, count: Int, onClick: () -> Unit, onOpenList: () -> Unit) {
     val accent = LocalAccent.current
-    Column {
+    Column(Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = Theme.Spacing.roomy, end = Theme.Spacing.tight, top = Theme.Spacing.tight, bottom = Theme.Spacing.tight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(accent.control))
@@ -947,7 +953,6 @@ private fun PinnedStrip(message: Message, count: Int, onClick: () -> Unit, onOpe
                 )
             }
         }
-        HorizontalDivider()
     }
 }
 
@@ -1058,16 +1063,16 @@ private fun BubbleBody(
         Modifier
             .widthIn(max = Dp(maxWidth.toFloat()))
             .clip(RoundedCornerShape(Theme.Radius.bubble))
-            .background(if (own) accent.bubble else MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (own) accent.bubble else accent.incomingBubble)
             .bubbleGestures(
 interactive = interactive,
                 onClick = onReveal,
                 onDoubleClick = onDoubleTap,
                 onLongClick = onLongPress,
             )
-            .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.close),
+            .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close + Theme.Spacing.withinRun),
     ) {
-        val ink = if (own) accent.onBubble else MaterialTheme.colorScheme.onSurface
+        val ink = if (own) accent.onBubble else accent.onIncomingBubble
         message.replyTo?.let { reply ->
             Row(
                 Modifier
@@ -1272,11 +1277,19 @@ private fun Reactions(message: Message, onReact: (String) -> Unit) {
             Text(
                 stringResource(R.string.room_reaction_pill, reaction.key, reaction.count),
                 style = MaterialTheme.typography.labelLarge,
+                color = if (reaction.isMine) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(if (reaction.isMine) accent.control.copy(alpha = Theme.Opacity.SELECTED_TAB) else MaterialTheme.colorScheme.surfaceVariant)
+                    .background(if (reaction.isMine) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .then(
+                        if (reaction.isMine) {
+                            Modifier.border(Theme.Border.hairline, MaterialTheme.colorScheme.primary, CircleShape)
+                        } else {
+                            Modifier
+                        },
+                    )
                     .clickable(enabled = message.canReact) { onReact(reaction.key) }
-                    .padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.withinRun),
+                    .padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
             )
         }
     }
@@ -1328,10 +1341,10 @@ private fun DayLine(date: Instant) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.tight),
         )
     }
@@ -1347,7 +1360,7 @@ private fun UnreadLine() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = Theme.Spacing.close)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(vertical = Theme.Spacing.tight),
     )
 }
@@ -1408,8 +1421,12 @@ private fun Composer(
                 // Буфер спрашивается, когда меню открывают: что в нём, меняется без нас.
                 var pastable by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { pastable = canPaste(); choosing = true }, modifier = Modifier.padding(bottom = Theme.Spacing.tight)) {
-                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach), tint = accent.control)
+                    IconButton(
+                        onClick = { pastable = canPaste(); choosing = true },
+                        modifier = Modifier.padding(bottom = Theme.Spacing.tight),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(),
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.room_attach))
                     }
                     DropdownMenu(expanded = choosing, onDismissRequest = { choosing = false }) {
                         DropdownMenuItem(
@@ -1449,27 +1466,26 @@ private fun Composer(
             }
             if (recordingElapsed != null) {
                 RecordingStrip(recordingElapsed, Modifier.weight(1f), onCancel = onCancelLocked)
-            } else OutlinedTextField(
+            } else TextField(
+                // Пилюля без рамки, как в Google Messages: поле — поверхность, а не обведённая форма.
                 value = field,
                 onValueChange = onFieldChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = Theme.Size.composerControl),
                 placeholder = { Text(stringResource(R.string.room_composer_placeholder)) },
                 maxLines = COMPOSER_LINES,
                 shape = RoundedCornerShape(Theme.Radius.bubble),
-                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = accent.control, cursorColor = accent.control),
+                colors = pillColors(),
             )
             // Нечего отправить — микрофон: голосовое начинается там же, где уходят слова.
             if (!canSend && editing == null) {
                 mic()
             } else {
-                IconButton(
+                FilledIconButton(
                     onClick = onSend,
                     enabled = canSend,
-                    modifier = Modifier.padding(bottom = Theme.Spacing.tight).clip(CircleShape).background(
-                        if (canSend) accent.control else MaterialTheme.colorScheme.surfaceVariant,
-                    ),
+                    modifier = Modifier.padding(bottom = Theme.Spacing.tight),
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send), tint = accent.foreground)
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.room_send))
                 }
             }
         }

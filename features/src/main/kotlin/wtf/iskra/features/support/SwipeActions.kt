@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 import wtf.iskra.design.Theme
 
 /** Кнопка под строкой: слово, значок, цвет и что сделать. */
-class SwipeAction(val title: String, val icon: ImageVector, val color: Color, val run: () -> Unit)
+class SwipeAction(val title: String, val icon: ImageVector, val color: Color, val onColor: Color, val run: () -> Unit)
 
 /**
  * Строка, которую смахивают, — как в «Почте» и «Сообщениях» (`swipeActions` на iOS). Смахнутая
@@ -118,8 +118,8 @@ private fun Button(action: SwipeAction, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(action.icon, contentDescription = null, tint = Color.White)
-        Text(action.title, color = Color.White, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Icon(action.icon, contentDescription = null, tint = action.onColor)
+        Text(action.title, color = action.onColor, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

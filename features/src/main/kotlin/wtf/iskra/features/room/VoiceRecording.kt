@@ -66,7 +66,7 @@ internal fun MicButton(
         modifier
             .size(Theme.Size.minimumTapTarget)
             .clip(CircleShape)
-            .background(if (recording) accent.control else MaterialTheme.colorScheme.surfaceVariant)
+            .background(if (recording) accent.control else MaterialTheme.colorScheme.secondaryContainer)
             .semantics { contentDescription = label }
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -108,7 +108,7 @@ internal fun MicButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Mic, contentDescription = null, tint = if (recording) accent.foreground else accent.control)
+        Icon(Icons.Filled.Mic, contentDescription = null, tint = if (recording) accent.foreground else MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }
 
@@ -125,7 +125,7 @@ internal fun RecordLock(reach: Float, locked: Boolean, modifier: Modifier = Modi
         modifier
             .size(Theme.Size.recordLock)
             .clip(RoundedCornerShape(Theme.Size.recordLock.width / 2))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Box(Modifier.fillMaxWidth().fillMaxHeight(filled).background(accent.control))

@@ -39,7 +39,7 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.delay
 import wtf.iskra.core.search.SearchHit
 import wtf.iskra.core.timeline.TimelineStore
-import wtf.iskra.design.EntryField
+import androidx.compose.material.icons.filled.Search
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.Theme
 import wtf.iskra.features.R
@@ -80,10 +80,11 @@ internal fun RoomSearch(store: TimelineStore, onOpen: (String) -> Unit, onClose:
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
                 ) {
-                    EntryField(
+                    wtf.iskra.design.PillField(
                         value = query,
                         onValueChange = { query = it },
                         placeholder = stringResource(R.string.room_search_prompt),
+                        leading = { Icon(Icons.Filled.Search, contentDescription = null) },
                         modifier = Modifier.weight(1f).focusRequester(focus),
                     )
                     IconButton(onClick = onClose) {

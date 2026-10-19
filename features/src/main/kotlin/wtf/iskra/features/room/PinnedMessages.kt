@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,16 +59,16 @@ internal fun PinnedMessages(store: PinnedStore, isOneToOne: Boolean, onOpen: (St
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.tight),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
-                    }
-                    Text(stringResource(R.string.room_pinned_title), style = MaterialTheme.typography.titleMedium)
-                }
-                HorizontalDivider()
+                @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+                androidx.compose.material3.TopAppBar(
+                    title = { Text(stringResource(R.string.room_pinned_title)) },
+                    navigationIcon = {
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                        }
+                    },
+                    windowInsets = WindowInsets(0),
+                )
                 when {
                     !state.hasLoaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = LocalAccent.current.control)

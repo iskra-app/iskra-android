@@ -51,7 +51,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import wtf.iskra.design.EntryField
 import wtf.iskra.design.LocalAccent
-import wtf.iskra.design.PageColors
 import wtf.iskra.design.PrimaryActionButton
 import wtf.iskra.design.SecondaryActionButton
 import wtf.iskra.design.Theme
@@ -103,7 +102,7 @@ private fun Header() {
         AppIcon()
         Text(
             stringResource(R.string.sign_in_title),
-            style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.displaySmall,
         )
         Text(
             stringResource(R.string.sign_in_tagline),
@@ -155,7 +154,7 @@ private fun Choice(model: SignInModel<*>, state: SignInModel.State) {
         ) {
             Text(stringResource(R.string.sign_in_server, state.serverName), style = MaterialTheme.typography.bodySmall, color = secondary())
             TextButton(onClick = model::startOver, enabled = !state.isBusy) {
-                Text(stringResource(R.string.sign_in_change_server), color = LocalAccent.current.control)
+                Text(stringResource(R.string.sign_in_change_server))
             }
         }
     }
@@ -167,11 +166,11 @@ private fun Form(model: SignInModel<*>, state: SignInModel.State) {
     var usingPassword by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy)) {
         TextButton(onClick = { usingPassword = false; model.back() }, enabled = !state.isBusy) {
-            Text(stringResource(R.string.sign_in_back), color = LocalAccent.current.control)
+            Text(stringResource(R.string.sign_in_back))
         }
         Text(
             stringResource(R.string.sign_in_sign_in_to, state.serverName),
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineMedium,
         )
         if (options.canUseSingleSignOn && !(usingPassword && options.supportsPassword)) {
             Text(stringResource(R.string.sign_in_browser_help), style = MaterialTheme.typography.bodyMedium, color = secondary())
@@ -212,15 +211,14 @@ private fun Form(model: SignInModel<*>, state: SignInModel.State) {
 /** Красная панель с предложением, которое говорит, что делать дальше. Объявляется вслух (live region). */
 @Composable
 private fun Problem(text: Int) {
-    val red = MaterialTheme.colorScheme.error
     Text(
         stringResource(text),
         modifier = Modifier
             .fillMaxWidth()
-            .background(red.copy(alpha = Theme.Backdrop.WASH), RoundedCornerShape(Theme.Radius.card))
-            .padding(Theme.Spacing.normal)
+            .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(Theme.Radius.card))
+            .padding(Theme.Spacing.roomy)
             .semantics { liveRegion = LiveRegionMode.Polite },
-        color = red,
+        color = MaterialTheme.colorScheme.onErrorContainer,
         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
     )
 }
@@ -239,9 +237,7 @@ private fun BusyLabel(text: Int, spinning: Boolean) {
 }
 
 @Composable
-private fun secondary(): Color = PageColors.primary(LocalAccent.current.isDark).copy(alpha = SECONDARY_TEXT)
-
-private const val SECONDARY_TEXT = 0.6f
+private fun secondary(): Color = MaterialTheme.colorScheme.onSurfaceVariant
 
 /**
  * Знак Искры над словом «Iskra» — иконка приложения, как она стоит на рабочем столе (`AppIcon.artwork`

@@ -198,7 +198,7 @@ private fun Actions(actions: List<MenuAction>, onDismiss: () -> Unit) {
         return
     }
     Surface(
-        shape = RoundedCornerShape(Theme.Radius.control),
+        shape = RoundedCornerShape(Theme.Radius.card),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = Theme.Spacing.close,
         modifier = Modifier.width(Theme.Size.menuWidth),
@@ -244,7 +244,7 @@ private fun EmojiPanel(recent: List<String>, mine: Set<String>, onPick: (String)
         sections.map { section -> index.also { index += section.emoji.size + 1 } }
     }
     Surface(
-        shape = RoundedCornerShape(topStart = Theme.Radius.control, topEnd = Theme.Radius.control),
+        shape = RoundedCornerShape(topStart = Theme.Radius.menu, topEnd = Theme.Radius.menu),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier.fillMaxWidth().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {},
     ) {

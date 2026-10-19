@@ -91,12 +91,20 @@ fun Avatar(
     val image = rememberAvatarImage(url.takeUnless { faces.creatures && faces.forced && seed != null }, size)
     val outline = shape.shape(size)
     val drawsCreature = faces.creatures && seed != null && image == null
+    // Подложка под буквами — один из трёх тональных контейнеров схемы, по человеку, а не по порядку:
+    // как в Google Messages, соседние лица различимы, а один и тот же человек всегда одного цвета.
+    val scheme = MaterialTheme.colorScheme
+    val (fill, ink) = when (Math.floorMod((seed ?: name).hashCode(), 3)) {
+        0 -> scheme.primaryContainer to scheme.onPrimaryContainer
+        1 -> scheme.secondaryContainer to scheme.onSecondaryContainer
+        else -> scheme.tertiaryContainer to scheme.onTertiaryContainer
+    }
     Box(
         modifier
             .size(size)
             .clip(outline)
             // Под существом серой подложки нет: оно рисует своё тело и сидит прямо на фоне.
-            .then(if (drawsCreature) Modifier else Modifier.background(MaterialTheme.colorScheme.surfaceVariant)),
+            .then(if (drawsCreature) Modifier else Modifier.background(fill)),
         contentAlignment = Alignment.Center,
     ) {
         Crossfade(targetState = image, animationSpec = tween(Theme.Timing.reaction.inWholeMilliseconds.toInt()), label = "avatar") { loaded ->
@@ -108,7 +116,7 @@ fun Avatar(
                         initials(name),
                         fontSize = initialsSize(size),
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = ink,
                     )
                 }
             }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.Icon
@@ -40,14 +41,15 @@ fun RecoveryBanner(session: UserSession, onOpen: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.tight)
-            .background(LocalAccent.current.control.copy(alpha = Theme.Opacity.SELECTED_TAB), RoundedCornerShape(Theme.Radius.control))
+            .clip(RoundedCornerShape(Theme.Radius.card))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onOpen)
             .semantics { onClick(label) { onOpen(); true } }
-            .padding(Theme.Spacing.normal),
+            .padding(Theme.Spacing.roomy),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Outlined.Lock, contentDescription = null, tint = LocalAccent.current.control)
-        Text(stringResource(R.string.recovery_banner_locked), style = MaterialTheme.typography.bodyMedium)
+        Icon(Icons.Outlined.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        Text(stringResource(R.string.recovery_banner_locked), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }

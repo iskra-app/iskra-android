@@ -9,8 +9,7 @@ import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.MarkEmailUnread
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Unarchive
-import wtf.iskra.design.AccentTheme
-import wtf.iskra.design.systemColor
+import wtf.iskra.design.PillField
 import wtf.iskra.features.support.SwipeAction
 import wtf.iskra.features.support.SwipeActions
 import androidx.activity.compose.BackHandler
@@ -31,7 +30,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import wtf.iskra.design.EntryField
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,6 +98,7 @@ import java.time.ZoneId
  * открылся (docs/PROMPT.md, 4.2: не побочным эффектом composable).
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun RoomListScreen(
     store: RoomListStore,
     onOpen: (roomId: String) -> Unit,
@@ -133,9 +137,11 @@ fun RoomListScreen(
         onLeave = { leaving = it },
     )
 
-    Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    // Панель тонирует себя, когда под неё уезжает список: так Material показывает, что выше есть ещё.
+    val scroll = TopAppBarDefaults.pinnedScrollBehavior()
+    Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).nestedScroll(scroll.nestedScrollConnection)) {
         if (showingArchive) {
-            ArchiveHeader(onBack = { showingArchive = false })
+            ArchiveHeader(onBack = { showingArchive = false }, scroll = scroll)
         } else {
             Header(
                 status = when {
@@ -145,16 +151,18 @@ fun RoomListScreen(
                 },
                 onSettings = onSettings,
                 accountMenu = accountMenu,
+                scroll = scroll,
             )
         }
         if (!showingArchive) banner()
         if (!state.isLoadingInitialRooms && source.isNotEmpty()) {
-            EntryField(
+            PillField(
                 value = query,
                 onValueChange = { query = it },
                 // «Поиск», а не «по сообщениям»: пока ищутся названия чатов; сообщения — с поиском SDK.
                 placeholder = stringResource(R.string.profile_search),
-                modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.tight),
+                leading = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
             )
         }
 
@@ -226,46 +234,45 @@ fun RoomListScreen(
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
-private fun Header(status: Int?, onSettings: () -> Unit, accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null) {
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+private fun Header(status: Int?, onSettings: () -> Unit, accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null, scroll: androidx.compose.material3.TopAppBarScrollBehavior? = null) {
     var showsAccounts by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                stringResource(R.string.room_list_title),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-            if (status != null) {
-                Text(
-                    stringResource(status),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+    TopAppBar(
+        title = {
+            Column {
+                Text(stringResource(R.string.room_list_title))
+                if (status != null) {
+                    Text(
+                        stringResource(status),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-        }
-        // Касание — настройки, долгое — аккаунты, как на iOS. Кнопка своя: у `IconButton` нет долгого.
-        Box {
-            Box(
-                Modifier
-                    .size(Theme.Size.minimumTapTarget)
-                    .clip(CircleShape)
-                    .combinedClickable(
-                        role = Role.Button,
-                        onClickLabel = stringResource(R.string.settings_title),
-                        onClick = onSettings,
-                        onLongClick = accountMenu?.let { { showsAccounts = true } },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title), tint = LocalAccent.current.control)
+        },
+        actions = {
+            // Касание — настройки, долгое — аккаунты, как на iOS. Кнопка своя: у `IconButton` нет долгого.
+            Box {
+                Box(
+                    Modifier
+                        .size(Theme.Size.minimumTapTarget)
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            role = Role.Button,
+                            onClickLabel = stringResource(R.string.settings_title),
+                            onClick = onSettings,
+                            onLongClick = accountMenu?.let { { showsAccounts = true } },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title))
+                }
+                accountMenu?.invoke(showsAccounts) { showsAccounts = false }
             }
-            accountMenu?.invoke(showsAccounts) { showsAccounts = false }
-        }
-    }
+        },
+        windowInsets = WindowInsets(0),
+        scrollBehavior = scroll,
+    )
 }
 
 @Composable
@@ -296,27 +303,30 @@ private fun Empty(title: Int, message: Int?) {
 private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
-    val dark = LocalAccent.current.isDark
+    val scheme = MaterialTheme.colorScheme
     // Как на iOS: вправо — прочитано и закрепить, влево — архив и удалить. Удаление спрашивает.
+    // Цвета — роли схемы: смысл тот же (прочитано — акцентом, удалить — ошибкой), тон — Material.
     val leading = listOf(
         if (room.hasUnread) {
-            SwipeAction(stringResource(R.string.room_list_swipe_mark_read), Icons.Filled.MarkEmailRead, AccentTheme.BLUE.systemColor(dark)) { actions.onRead(room) }
+            SwipeAction(stringResource(R.string.room_list_swipe_mark_read), Icons.Filled.MarkEmailRead, scheme.primary, scheme.onPrimary) { actions.onRead(room) }
         } else {
-            SwipeAction(stringResource(R.string.room_list_swipe_mark_unread), Icons.Filled.MarkEmailUnread, AccentTheme.BLUE.systemColor(dark)) { actions.onUnread(room) }
+            SwipeAction(stringResource(R.string.room_list_swipe_mark_unread), Icons.Filled.MarkEmailUnread, scheme.primary, scheme.onPrimary) { actions.onUnread(room) }
         },
         SwipeAction(
             stringResource(if (room.isPinned) R.string.room_list_swipe_unpin else R.string.room_list_swipe_pin),
             Icons.Filled.PushPin,
-            AccentTheme.ORANGE.systemColor(dark),
+            scheme.tertiary,
+            scheme.onTertiary,
         ) { actions.onPin(room) },
     )
     val trailing = listOf(
         SwipeAction(
             stringResource(if (room.isArchived) R.string.room_list_swipe_unarchive else R.string.room_list_swipe_archive),
             if (room.isArchived) Icons.Filled.Unarchive else Icons.Filled.Archive,
-            AccentTheme.VIOLET.systemColor(dark),
+            scheme.secondary,
+            scheme.onSecondary,
         ) { actions.onArchive(room) },
-        SwipeAction(stringResource(R.string.room_list_swipe_delete), Icons.Filled.Delete, AccentTheme.RED.systemColor(dark)) { actions.onLeave(room) },
+        SwipeAction(stringResource(R.string.room_list_swipe_delete), Icons.Filled.Delete, scheme.error, scheme.onError) { actions.onLeave(room) },
     )
     SwipeActions(leading, trailing) {
     Box {
@@ -335,6 +345,8 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
                     room.name,
                     modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleMedium,
+                    // Непрочитанный чат — жирнее, как в Google Messages: видно и без цвета.
+                    fontWeight = if (room.hasUnread) FontWeight.Bold else null,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -435,6 +447,10 @@ private fun Badge(room: RoomSummary) {
         UnreadEmphasis.ORDINARY -> accent.control
         UnreadEmphasis.MUTED -> MaterialTheme.colorScheme.outline
     }
+    val ink = when (room.unreadEmphasis) {
+        UnreadEmphasis.ORDINARY -> accent.foreground
+        UnreadEmphasis.MUTED -> MaterialTheme.colorScheme.surface
+    }
     Row(
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
         verticalAlignment = Alignment.CenterVertically,
@@ -444,7 +460,7 @@ private fun Badge(room: RoomSummary) {
                 Modifier.size(Theme.Size.unreadBadge).clip(CircleShape).background(fill),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(stringResource(R.string.room_list_mention_mark), style = MaterialTheme.typography.labelMedium, color = accent.foreground)
+                Text(stringResource(R.string.room_list_mention_mark), style = MaterialTheme.typography.labelMedium, color = ink)
             }
         }
         if (room.hasUnreadCount) {
@@ -459,7 +475,7 @@ private fun Badge(room: RoomSummary) {
                 Text(
                     room.unreadNotifyingMessages.toString(),
                     style = MaterialTheme.typography.labelMedium,
-                    color = accent.foreground,
+                    color = ink,
                 )
             }
         } else if (room.hasUnread) {
@@ -557,10 +573,10 @@ private fun ArchiveRow(count: Int, hasUnread: Boolean, onOpen: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            Modifier.size(Theme.Size.roomAvatar).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant),
+            Modifier.size(Theme.Size.roomAvatar).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(Icons.Outlined.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Archive, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
         }
         Text(stringResource(R.string.room_list_archive_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
         Text(
@@ -572,14 +588,16 @@ private fun ArchiveRow(count: Int, hasUnread: Boolean, onOpen: () -> Unit) {
 }
 
 @Composable
-private fun ArchiveHeader(onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.close),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
-        }
-        Text(stringResource(R.string.room_list_archive_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-    }
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ArchiveHeader(onBack: () -> Unit, scroll: androidx.compose.material3.TopAppBarScrollBehavior? = null) {
+    TopAppBar(
+        title = { Text(stringResource(R.string.room_list_archive_title)) },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+            }
+        },
+        windowInsets = WindowInsets(0),
+        scrollBehavior = scroll,
+    )
 }

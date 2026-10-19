@@ -1,6 +1,8 @@
 package wtf.iskra.design
 
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -34,37 +36,50 @@ class AccentThemeTest {
         assertFalse(AccentTheme.SYSTEM in AccentTheme.choices(sdk = 29))
     }
 
+    /** На каждом акценте, в обеих темах, слова на акценте и в своём пузыре читаются (WCAG AA). */
     @Test
-    fun yellowCarriesBlackWords() {
-        assertEquals(Color.Black, AccentTheme.YELLOW.resolve(dark = false).foreground)
-        assertEquals(Color.White, AccentTheme.RED.resolve(dark = false).foreground)
+    fun everyAccentCarriesReadableWords() {
+        for (theme in AccentTheme.entries) for (dark in listOf(false, true)) {
+            val colors = theme.resolve(dark)
+            assertTrue(contrast(colors.color, colors.foreground) >= 4.5, "$theme dark=$dark: слова на акценте")
+            assertTrue(contrast(colors.bubble, colors.onBubble) >= 4.5, "$theme dark=$dark: свой пузырь")
+            assertTrue(contrast(colors.incomingBubble, colors.onIncomingBubble) >= 4.5, "$theme dark=$dark: чужой пузырь")
+        }
     }
 
-    /** Моно: на акценте только цвет фона, и пузырь — серый, а не чёрная плитка. */
+    /** Моно — без цвета: схема серая, и свой пузырь — не чёрная плитка. */
     @Test
-    fun monoIsTheBlackWhitePair() {
+    fun monoHasNoHue() {
         val light = AccentTheme.MONO.resolve(dark = false)
-        val dark = AccentTheme.MONO.resolve(dark = true)
-        assertEquals(Color.Black, light.color)
-        assertEquals(Color.White, light.foreground)
-        assertEquals(Color.White, dark.color)
-        assertEquals(Color.Black, dark.foreground)
+        for (color in listOf(light.color, light.bubble, light.scheme.surface)) {
+            assertEquals(color.red, color.green, 0.01f)
+            assertEquals(color.green, color.blue, 0.01f)
+        }
         assertNotEquals(light.color, light.bubble)
-        assertTrue(light.bubble.alpha < 1f)
         assertEquals(1f, light.bubbleOnWallpaper.alpha, "на обоях пузырь непрозрачный")
-        assertNotEquals(light.color, light.control, "белая дорожка под белой ручкой — переключатель без состояния")
-        assertEquals(Theme.Tint.MONO, light.washOpacity)
     }
 
-    /** Material You меняет акцент и то, что на нём, — и ничего больше. */
+    /** Схема — из своего цвета: красный акцент и синий дают разные `primary`. */
     @Test
-    fun systemTakesPrimaryAndOnPrimary() {
-        val primary = Color(0xFF6750A4)
-        val onPrimary = Color(0xFFFFFFFF)
-        val colors = AccentTheme.SYSTEM.resolve(dark = false, systemPrimary = primary, systemOnPrimary = onPrimary)
-        assertEquals(primary, colors.color)
-        assertEquals(onPrimary, colors.foreground)
-        assertEquals(primary, colors.bubble)
+    fun accentsBuildTheirOwnScheme() {
+        assertNotEquals(AccentTheme.RED.resolve(dark = false).color, AccentTheme.BLUE.resolve(dark = false).color)
+        assertNotEquals(AccentTheme.BLUE.resolve(dark = false).scheme.surface, AccentTheme.BLUE.resolve(dark = true).scheme.surface)
+    }
+
+    /** Material You — вся динамическая схема, а не только акцент. */
+    @Test
+    fun systemTakesTheWholeDynamicScheme() {
+        val dynamic = lightColorScheme(primary = Color(0xFF6750A4), surface = Color(0xFFFEF7FF))
+        val colors = AccentTheme.SYSTEM.resolve(dark = false, system = dynamic)
+        assertEquals(dynamic, colors.scheme)
+        assertEquals(dynamic.primary, colors.color)
+        // Без динамической схемы (ниже API 31) — синяя.
+        assertEquals(AccentTheme.BLUE.resolve(dark = false).color, AccentTheme.SYSTEM.resolve(dark = false).color)
+    }
+
+    private fun contrast(a: Color, b: Color): Double {
+        val (light, dark) = listOf(a.luminance(), b.luminance()).sortedDescending()
+        return (light + 0.05) / (dark + 0.05)
     }
 
     @Test

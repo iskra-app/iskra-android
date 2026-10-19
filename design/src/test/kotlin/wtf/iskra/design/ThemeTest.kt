@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  */
 class ThemeTest {
     private val offGrid = setOf(
-        "Spacing.withinRun", "Spacing.albumGap", "Size.recordingDot", "Size.unreadDot",
+        "Spacing.withinRun", "Spacing.albumGap", "Spacing.groupGap", "Size.recordingDot", "Size.unreadDot",
         "Size.menuIcon", "Size.waveformBar", "Size.waveformBarMinimum", "Border.hairline",
         "Border.thick",
     )

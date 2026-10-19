@@ -60,8 +60,9 @@ JDK 21. `local.properties` (`sdk.dir=…`) не коммитится.
 - **Семь языков полные.** Android тихо берёт английский вместо пропавшего ключа — `LocalizationTest`
   и lint `MissingTranslation`/`MissingQuantity` (ошибки) не дают.
 - **Размеры только из `Theme`**, все кратны 4 (исключения названы в `Theme.kt`, держит `ThemeTest`).
-- **Главная кнопка — `PrimaryActionButton`**, не системный `Button`: на моно-акценте тот выходит
-  белой плитой с белыми словами. Акцент — из `LocalAccent`, не из `colorScheme.primary`.
+- **Цвета — роли схемы Material** (`MaterialTheme.colorScheme`, `LocalAccent` — та же схема), не
+  числа: схема строится из акцента, и литерал цвета на экране не поменяется вместе с ней.
+  Главная кнопка — `PrimaryActionButton`, вторая — `SecondaryActionButton`.
 - **Каждое ожидание SDK ограничено** `withTimeLimit` (не `kotlinx.coroutines.withTimeout`: тот ждёт
   зависший вызов FFI и бросает отмену, которую никто не увидит).
 - **Бэкап выключен** целиком (`SourceRulesTest.backupIsOff`).

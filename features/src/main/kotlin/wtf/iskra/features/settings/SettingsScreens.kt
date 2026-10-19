@@ -1,8 +1,8 @@
 package wtf.iskra.features.settings
 
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.ui.semantics.Role
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -37,7 +37,15 @@ import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +53,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -98,6 +105,7 @@ enum class SettingsPage { MAIN, SECURITY, APPEARANCE, CHATS, MEDIA, BETA, ABOUT 
  * уведомления и прочее — с их этапами.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun SettingsScreen(
     session: UserSession,
     settings: AppSettings,
@@ -115,8 +123,11 @@ fun SettingsScreen(
     browser: WebAuthentication? = null,
 ) {
     BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    // Большой заголовок, который сворачивается в панель, когда страницу листают, — как в настройках Android.
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).nestedScroll(scroll.nestedScrollConnection)) {
         TopBar(
+            scroll = scroll,
             title = when (page) {
                 SettingsPage.MAIN -> R.string.settings_title
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
@@ -128,7 +139,10 @@ fun SettingsScreen(
             },
             onBack = { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) },
         )
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Theme.Spacing.generous),
+            verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
+        ) {
             when (page) {
                 SettingsPage.MAIN -> Main(session, onNavigate, onSignOut, hasSeveralAccounts = accounts.hasSeveral) {
                     if (accounts.isAvailable) AccountsSection(accounts, onSwitchAccount, onAddAccount, onSignOutOther)
@@ -145,17 +159,46 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun TopBar(title: Int, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.tight, vertical = Theme.Spacing.close),
-        verticalAlignment = Alignment.CenterVertically,
+@OptIn(ExperimentalMaterial3Api::class)
+private fun TopBar(scroll: TopAppBarScrollBehavior, title: Int, onBack: () -> Unit) {
+    LargeTopAppBar(
+        title = { Text(stringResource(title)) },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+            }
+        },
+        windowInsets = WindowInsets(0),
+        scrollBehavior = scroll,
+    )
+}
+
+/**
+ * Группа строк, как в настройках Android: плитки на поверхности на тон выше страницы, крупные углы
+ * у группы и маленькие между её строками. Строки внутри — [ListItem] без своей заливки.
+ */
+@Composable
+private fun Group(vararg rows: @Composable () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy),
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.groupGap),
     ) {
-        IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+        rows.forEachIndexed { index, row ->
+            val top = if (index == 0) Theme.Radius.group else Theme.Radius.groupInner
+            val bottom = if (index == rows.lastIndex) Theme.Radius.group else Theme.Radius.groupInner
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom))
+                    .background(MaterialTheme.colorScheme.surfaceContainer),
+            ) { row() }
         }
-        Text(stringResource(title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     }
 }
+
+/** Строка без своей заливки: её даёт [Group]. */
+@Composable
+private fun rowColors() = ListItemDefaults.colors(containerColor = Color.Transparent)
 
 @Composable
 private fun Main(
@@ -178,7 +221,6 @@ private fun Main(
         Text(profile.displayName ?: session.userId, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Text(session.userId, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    HorizontalDivider()
     accountsSection()
     // «Выйти» — или, когда аккаунтов несколько и неясно, из какого, — «Выйти из Саши».
     val signOutTitle = if (hasSeveralAccounts) {
@@ -186,21 +228,28 @@ private fun Main(
     } else {
         stringResource(R.string.account_sign_out)
     }
-    Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) }
-    Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) }
-    Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) }
-    Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) }
-    Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) }
-    Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) }
-    HorizontalDivider()
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable { confirming = true }.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.roomy),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy),
-    ) {
-        Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-        Text(signOutTitle, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyLarge)
-    }
+    Group(
+        { Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) } },
+        { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
+        { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
+        { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
+    )
+    Group(
+        { Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) } },
+        { Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) } },
+    )
+    Group({
+        ListItem(
+            headlineContent = { Text(signOutTitle) },
+            leadingContent = { Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null) },
+            modifier = Modifier.clickable { confirming = true },
+            colors = ListItemDefaults.colors(
+                containerColor = Color.Transparent,
+                headlineColor = MaterialTheme.colorScheme.error,
+                leadingIconColor = MaterialTheme.colorScheme.error,
+            ),
+        )
+    })
 
     if (confirming) {
         AlertDialog(
@@ -219,24 +268,22 @@ private fun Main(
 
 @Composable
 private fun Link(icon: ImageVector, title: Int, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.roomy),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy),
-    ) {
-        Icon(icon, contentDescription = null, tint = LocalAccent.current.control)
-        Text(stringResource(title), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        leadingContent = { Icon(icon, contentDescription = null, tint = LocalAccent.current.control) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+        modifier = Modifier.clickable(onClick = onClick),
+        colors = rowColors(),
+    )
 }
 
 @Composable
 private fun SectionTitle(title: Int) {
     Text(
         stringResource(title),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = Theme.Spacing.roomy, end = Theme.Spacing.roomy, top = Theme.Spacing.generous, bottom = Theme.Spacing.close),
+        style = MaterialTheme.typography.titleSmall,
+        color = LocalAccent.current.color,
+        modifier = Modifier.padding(start = Theme.Spacing.generous + Theme.Spacing.close, end = Theme.Spacing.roomy, top = Theme.Spacing.roomy),
     )
 }
 
@@ -256,7 +303,6 @@ private fun Appearance(settings: AppSettings) {
                 selected = option == mode,
                 onClick = { settings.setAppearance(option.storageName) },
                 shape = SegmentedButtonDefaults.itemShape(index, AppearanceMode.entries.size),
-                colors = SegmentedButtonDefaults.colors(activeContainerColor = LocalAccent.current.control.copy(alpha = Theme.Opacity.SELECTED_TAB)),
             ) {
                 Text(
                     stringResource(
@@ -322,37 +368,27 @@ private fun accentName(theme: AccentTheme): Int = when (theme) {
 @Composable
 private fun Media(settings: AppSettings) {
     val media by settings.media.collectAsStateWithLifecycle()
-    Toggle(R.string.media_strip_metadata, null, media.stripsMetadata, { settings.setMedia(media.copy(stripsMetadata = it)) })
-    Toggle(R.string.media_compress, null, media.compresses, { settings.setMedia(media.copy(compresses = it)) })
+    Group(
+        { Toggle(R.string.media_strip_metadata, null, media.stripsMetadata, { settings.setMedia(media.copy(stripsMetadata = it)) }) },
+        { Toggle(R.string.media_compress, null, media.compresses, { settings.setMedia(media.copy(compresses = it)) }) },
+    )
     if (media.compresses) {
         SectionTitle(R.string.media_compression)
         // Списком, а не сегментами: «Средне (720p)» на немецком в треть ширины экрана не помещается.
-        MediaCompression.entries.forEach { option ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .selectable(selected = option == media.compression, role = Role.RadioButton) { settings.setMedia(media.copy(compression = option)) }
-                    .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(
-                        when (option) {
+        Group(
+            *MediaCompression.entries.map { option ->
+                @Composable {
+                    Choice(
+                        title = when (option) {
                             MediaCompression.STRONG -> R.string.media_compression_strong
                             MediaCompression.BALANCED -> R.string.media_compression_balanced
                             MediaCompression.LIGHT -> R.string.media_compression_light
                         },
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.weight(1f),
-                )
-                RadioButton(
-                    selected = option == media.compression,
-                    onClick = null,
-                    colors = RadioButtonDefaults.colors(selectedColor = LocalAccent.current.control),
-                )
-            }
-        }
+                        selected = option == media.compression,
+                    ) { settings.setMedia(media.copy(compression = option)) }
+                }
+            }.toTypedArray(),
+        )
     }
 }
 
@@ -361,39 +397,29 @@ private fun Media(settings: AppSettings) {
 private fun Chats(settings: AppSettings) {
     val threads by settings.threads.collectAsStateWithLifecycle()
     SectionTitle(R.string.chats_threads)
-    ThreadSettings.Shown.entries.forEach { option ->
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .selectable(selected = option == threads.shown, role = Role.RadioButton) { settings.setThreads(threads.copy(shown = option)) }
-                .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(
-                    when (option) {
+    Group(
+        *ThreadSettings.Shown.entries.map { option ->
+            @Composable {
+                Choice(
+                    title = when (option) {
                         ThreadSettings.Shown.ALWAYS -> R.string.chats_threads_always
                         ThreadSettings.Shown.IN_LARGE_ROOMS -> R.string.chats_threads_large_rooms
                         ThreadSettings.Shown.NEVER -> R.string.chats_threads_never
                     },
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            RadioButton(
-                selected = option == threads.shown,
-                onClick = null,
-                colors = RadioButtonDefaults.colors(selectedColor = LocalAccent.current.control),
-            )
-        }
-    }
-    Toggle(
-        R.string.chats_threads_hide_replies,
-        R.string.chats_threads_help,
-        threads.hidesReplies,
-        { settings.setThreads(threads.copy(hidesReplies = it)) },
-        enabled = threads.shown != ThreadSettings.Shown.NEVER,
+                    selected = option == threads.shown,
+                ) { settings.setThreads(threads.copy(shown = option)) }
+            }
+        }.toTypedArray(),
     )
+    Group({
+        Toggle(
+            R.string.chats_threads_hide_replies,
+            R.string.chats_threads_help,
+            threads.hidesReplies,
+            { settings.setThreads(threads.copy(hidesReplies = it)) },
+            enabled = threads.shown != ThreadSettings.Shown.NEVER,
+        )
+    })
 }
 
 /** Бета-функции (`BetaView`): существа вместо инициалов и демо-сервер. */
@@ -407,11 +433,19 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
-    Toggle(R.string.beta_blobatar, R.string.beta_blobatar_help, creatures, settings::setCreatures)
-    Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures)
+    Group(
+        { Toggle(R.string.beta_blobatar, R.string.beta_blobatar_help, creatures, settings::setCreatures) },
+        { Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures) },
+    )
     SectionTitle(R.string.beta_developers)
-    Toggle(R.string.beta_mock_backend, R.string.beta_mock_backend_help, isDemo, onDemo)
-    if (browser != null) DemoSignIn(browser, appVersion)
+    if (browser != null) {
+        Group(
+            { Toggle(R.string.beta_mock_backend, R.string.beta_mock_backend_help, isDemo, onDemo) },
+            { DemoSignIn(browser, appVersion) },
+        )
+    } else {
+        Group({ Toggle(R.string.beta_mock_backend, R.string.beta_mock_backend_help, isDemo, onDemo) })
+    }
 }
 
 /**
@@ -425,21 +459,12 @@ private fun DemoSignIn(browser: WebAuthentication, appVersion: String) {
     val scope = rememberCoroutineScope()
     var address by remember { mutableStateOf<String?>(null) }
     var signedIn by remember { mutableStateOf<String?>(null) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { scope.launch { address = withContext(Dispatchers.IO) { MockSignIn.start() } } }
-            .padding(Theme.Spacing.roomy),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.beta_demo_sign_in), style = MaterialTheme.typography.bodyLarge, color = LocalAccent.current.control)
-            Text(
-                stringResource(R.string.beta_demo_sign_in_help),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    ListItem(
+        headlineContent = { Text(stringResource(R.string.beta_demo_sign_in)) },
+        supportingContent = { Text(stringResource(R.string.beta_demo_sign_in_help)) },
+        modifier = Modifier.clickable { scope.launch { address = withContext(Dispatchers.IO) { MockSignIn.start() } } },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent, headlineColor = LocalAccent.current.control),
+    )
     address?.let { server ->
         val model = remember(server) {
             SignInModel(MockSignIn.authentication(context, appVersion), browser, scope, onSignedIn = { session ->
@@ -474,22 +499,24 @@ private fun DemoSignIn(browser: WebAuthentication, appVersion: String) {
 
 @Composable
 private fun Toggle(title: Int, help: Int?, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
-    Row(
-        modifier = Modifier.fillMaxWidth().clickable(enabled = enabled) { onChange(!checked) }.padding(Theme.Spacing.roomy),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
-            if (help != null) Text(stringResource(help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.width(Theme.Spacing.roomy))
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(checkedTrackColor = LocalAccent.current.control, checkedThumbColor = LocalAccent.current.foreground),
-        )
-    }
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = help?.let { { Text(stringResource(it)) } },
+        trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        modifier = Modifier.toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange),
+        colors = rowColors(),
+    )
+}
+
+/** Один из вариантов: строка с кружком справа, вся строка — нажатие. */
+@Composable
+private fun Choice(title: Int, selected: Boolean, onSelect: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        trailingContent = { RadioButton(selected = selected, onClick = null) },
+        modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
+        colors = rowColors(),
+    )
 }
 
 /**
@@ -522,7 +549,6 @@ private fun Licence(resource: Int) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
     )
-    HorizontalDivider(Modifier.padding(horizontal = Theme.Spacing.roomy))
 }
 
 /**
