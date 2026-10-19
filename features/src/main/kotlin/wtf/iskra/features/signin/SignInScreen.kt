@@ -1,6 +1,12 @@
 package wtf.iskra.features.signin
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
+import android.graphics.Canvas
+import android.graphics.Bitmap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -94,6 +100,7 @@ private fun Header() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
     ) {
+        AppIcon()
         Text(
             stringResource(R.string.sign_in_title),
             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
@@ -235,3 +242,25 @@ private fun BusyLabel(text: Int, spinning: Boolean) {
 private fun secondary(): Color = PageColors.primary(LocalAccent.current.isDark).copy(alpha = SECONDARY_TEXT)
 
 private const val SECONDARY_TEXT = 0.6f
+
+/**
+ * Знак Искры над словом «Iskra» — иконка приложения, как она стоит на рабочем столе (`AppIcon.artwork`
+ * на iOS): в маске этого устройства и та, что выбрана, когда появятся альтернативные. Слова рядом
+ * говорят то же, поэтому для доступности её нет.
+ */
+@Composable
+private fun AppIcon() {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val side = with(density) { Theme.Size.signInLogo.roundToPx() }
+    val icon = remember(side) {
+        runCatching {
+            val drawable = context.packageManager.getApplicationIcon(context.packageName)
+            val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+            drawable.setBounds(0, 0, side, side)
+            drawable.draw(Canvas(bitmap))
+            bitmap.asImageBitmap()
+        }.getOrNull()
+    } ?: return
+    Image(icon, contentDescription = null, modifier = Modifier.size(Theme.Size.signInLogo))
+}
