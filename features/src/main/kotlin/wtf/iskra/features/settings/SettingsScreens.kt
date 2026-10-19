@@ -68,6 +68,19 @@ import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.features.RootModel
+import wtf.iskra.features.signin.WebAuthentication
+import wtf.iskra.features.signin.SignInScreen
+import wtf.iskra.features.signin.SignInModel
+import wtf.iskra.features.signin.MockSignIn
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.Dialog
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import wtf.iskra.design.AccentTheme
 import wtf.iskra.design.AppearanceMode
 import wtf.iskra.design.LocalAccent
@@ -98,6 +111,8 @@ fun SettingsScreen(
     onSwitchAccount: (String) -> Unit = {},
     onAddAccount: () -> Unit = {},
     onSignOutOther: (String) -> Unit = {},
+    /** Браузер для входа — «Бета → Демо-вход» проходит тот же вход, что настоящий. */
+    browser: WebAuthentication? = null,
 ) {
     BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -122,7 +137,7 @@ fun SettingsScreen(
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
                 SettingsPage.SECURITY -> Security(session)
-                SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo)
+                SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
                 SettingsPage.ABOUT -> About(appVersion)
             }
         }
@@ -383,7 +398,7 @@ private fun Chats(settings: AppSettings) {
 
 /** Бета-функции (`BetaView`): существа вместо инициалов и демо-сервер. */
 @Composable
-private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit) {
+private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit, browser: WebAuthentication?, appVersion: String) {
     val creatures by settings.creatures.collectAsStateWithLifecycle()
     val forced by settings.forceCreatures.collectAsStateWithLifecycle()
     Text(
@@ -396,6 +411,65 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
     Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures)
     SectionTitle(R.string.beta_developers)
     Toggle(R.string.beta_mock_backend, R.string.beta_mock_backend_help, isDemo, onDemo)
+    if (browser != null) DemoSignIn(browser, appVersion)
+}
+
+/**
+ * «Демо-вход»: настоящий экран входа, настоящий SDK, придуманный сервер (`MockSignIn`) — и сеанс,
+ * который закрывается, едва открывшись: смысл в дороге внутрь, а не в том, что за ней. Аккаунт
+ * устройства не трогается: у демо-входа свой стор во временном каталоге и секреты в памяти.
+ */
+@Composable
+private fun DemoSignIn(browser: WebAuthentication, appVersion: String) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var address by remember { mutableStateOf<String?>(null) }
+    var signedIn by remember { mutableStateOf<String?>(null) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { scope.launch { address = withContext(Dispatchers.IO) { MockSignIn.start() } } }
+            .padding(Theme.Spacing.roomy),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.beta_demo_sign_in), style = MaterialTheme.typography.bodyLarge, color = LocalAccent.current.control)
+            Text(
+                stringResource(R.string.beta_demo_sign_in_help),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    address?.let { server ->
+        val model = remember(server) {
+            SignInModel(MockSignIn.authentication(context, appVersion), browser, scope, onSignedIn = { session ->
+                signedIn = session.userId
+                session.close()
+                address = null
+            }, address = server)
+        }
+        Dialog(
+            onDismissRequest = { address = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Box(Modifier.fillMaxSize()) {
+                    SignInScreen(model)
+                    TextButton(
+                        onClick = { address = null },
+                        modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(Theme.Spacing.close),
+                    ) { Text(stringResource(R.string.beta_close)) }
+                }
+            }
+        }
+    }
+    signedIn?.let { who ->
+        AlertDialog(
+            onDismissRequest = { signedIn = null },
+            confirmButton = { TextButton(onClick = { signedIn = null }) { Text(stringResource(android.R.string.ok)) } },
+            text = { Text(stringResource(R.string.beta_demo_signed_in, who)) },
+        )
+    }
 }
 
 @Composable

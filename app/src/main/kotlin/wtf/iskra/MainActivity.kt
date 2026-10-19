@@ -12,13 +12,13 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import wtf.iskra.features.IskraRoot
 import wtf.iskra.features.Probes
-import wtf.iskra.features.RootModel
 import wtf.iskra.features.signin.CustomTabsAuthentication
+import wtf.iskra.features.signin.MockSignIn
 
 class MainActivity : ComponentActivity() {
     /** Корень переживает поворот экрана: сеанс не пересобирается из-за смены конфигурации. */
-    class RootHolder(application: IskraApplication, demo: Boolean) : ViewModel() {
-        val root = RootModel(application.graph.authentication, viewModelScope, demo, application.graph.settings)
+    class RootHolder(application: IskraApplication, demo: Boolean, mockSignIn: String?) : ViewModel() {
+        val root = application.graph.rootModel(viewModelScope, demo, mockSignIn)
     }
 
     private lateinit var browser: CustomTabsAuthentication
@@ -30,7 +30,11 @@ class MainActivity : ComponentActivity() {
         val app = application as IskraApplication
         holder = ViewModelProvider(this, object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(app, intent.getBooleanExtra(EXTRA_MOCK_BACKEND, false)) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T = RootHolder(
+                app,
+                intent.getBooleanExtra(EXTRA_MOCK_BACKEND, false),
+                intent.getStringExtra(MockSignIn.EXTRA),
+            ) as T
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
         setContent { IskraRoot(holder.root, browser, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})") }

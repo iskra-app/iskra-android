@@ -4,7 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import wtf.iskra.core.security.AccountRecord
 import wtf.iskra.core.session.AuthenticationError
 import wtf.iskra.core.session.AuthenticationService
@@ -32,7 +34,15 @@ class RootModel(
     private val demo: Boolean = false,
     /** Настройки приложения: «Бета → Демо-сервер» решает, с чего начинать, наравне с флагом запуска. */
     val settings: AppSettings? = null,
+    /**
+     * Демо-вход (`MockSignIn`): поднимает сервер входа и отдаёт его адрес для поля. Null — обычный
+     * запуск. С ним [authentication] — сервис демо-входа, и вспоминать некого: его секреты в памяти.
+     */
+    private val signInAddress: (suspend () -> String?)? = null,
 ) {
+    /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
+    private var address = ""
+
     sealed interface Phase {
         data object Starting : Phase
 
@@ -70,7 +80,7 @@ class RootModel(
         // заново без extras (вернулись «Назад» и открыли снова, система пересоздала после установки),
         // молча открывала вход вместо демо. Выключается там же, в «Бете», или выходом.
         if (demo) settings?.setDemoBackend(true)
-        if (demo || settings?.demoBackend?.value == true) startDemo() else restore()
+        if (signInAddress == null && (demo || settings?.demoBackend?.value == true)) startDemo() else restore()
     }
 
     /**
@@ -166,7 +176,7 @@ class RootModel(
 
     /** Модель входа для ещё одного аккаунта: тот же экран, что при первом входе. */
     fun addAccountModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = ::added)
+        SignInModel(authentication, browser, scope, onSignedIn = ::added, address = address)
 
     /** Вошли ещё в один. Он — на экран; тот, что был, закрыт и остаётся вошедшим, в одно касание. */
     private fun added(session: UserSession) {
@@ -193,7 +203,7 @@ class RootModel(
 
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */
     fun signInModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) })
+        SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) }, address = address)
 
     /** На экране ли приложение. Вне экрана синхронизация спит — сообщения приносят пуши (этап 7). */
     private var isForeground = true
@@ -273,6 +283,10 @@ class RootModel(
      * остальных за экраном входа.
      */
     private fun restore() = scope.launch {
+        // Под демо-входом сервер должен подняться прежде экрана входа.
+        if (signInAddress != null && address.isEmpty()) {
+            address = withContext(Dispatchers.IO) { signInAddress.invoke() }.orEmpty()
+        }
         // Чьё-то брошенное: сторы входов, которые не закончились, и сеансов, которые заменили. Они
         // читаемы — пароль стабилен, — так что это не мусор, а копия переписки, на которую ничто не
         // указывает. Безопасно сказать это можно только сейчас.
