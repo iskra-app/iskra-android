@@ -76,6 +76,14 @@ import wtf.iskra.core.timeline.MessageKind
 import wtf.iskra.design.Theme
 import wtf.iskra.features.R
 import wtf.iskra.features.support.LocalMediaLoader
+import wtf.iskra.features.support.FileOpener
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Share
 import java.text.DateFormat
 import java.util.Date
 import kotlin.math.abs
@@ -188,12 +196,10 @@ private fun ViewerHeader(message: Message, position: Int, total: Int, onClose: (
     }
 }
 
-/** Подпись фото и все фото чата полоской — текущее шире, нажатие ведёт туда. */
+/** Подпись фото, все фото чата полоской — текущее шире, нажатие ведёт туда, — и что с ним сделать. */
 @Composable
 private fun ViewerFooter(items: List<Message>, current: Int, player: Player?, onSelect: (Int) -> Unit) {
     val caption = items.getOrNull(current)?.kind?.picture?.caption
-    // Нечего сказать — нет и плашки: пустая тёмная полоса под одиноким фото — просто шум.
-    if (caption == null && items.size < 2 && player == null) return
     val strip = rememberLazyListState(initialFirstVisibleItemIndex = current)
     LaunchedEffect(current) { strip.animateScrollToItem(max(0, current - STRIP_LEAD)) }
     Column(
@@ -242,6 +248,62 @@ private fun ViewerFooter(items: List<Message>, current: Int, player: Player?, on
                         if (image != null) Image(image, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
                 }
+            }
+        }
+        items.getOrNull(current)?.let { ViewerActions(it) }
+    }
+}
+
+/** Как прошло «Сохранить» — у текущей страницы; новая страница сохраняется заново. */
+private enum class SaveState { IDLE, SAVING, SAVED, FAILED }
+
+/**
+ * «Поделиться» и «Сохранить в Фото» — что делают со снимком впереди (`GalleryActions` на iOS). Файл
+ * качается по нажатию: просмотрщик не держит полные файлы всех страниц ради кнопки, которую нажмут редко.
+ */
+@Composable
+private fun ViewerActions(message: Message) {
+    val attachment = message.kind.picture ?: return
+    val context = LocalContext.current
+    val loader = LocalMediaLoader.current ?: return
+    val scope = rememberCoroutineScope()
+    val shareTitle = stringResource(R.string.message_media_share)
+    var save by remember(message.id) { mutableStateOf(SaveState.IDLE) }
+    var sharing by remember(message.id) { mutableStateOf(false) }
+    val isVideo = message.kind is MessageKind.Video || message.kind is MessageKind.VideoNote
+    Row(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(
+            enabled = !sharing,
+            onClick = {
+                sharing = true
+                scope.launch {
+                    FileOpener.share(context, attachment, loader, shareTitle)
+                    sharing = false
+                }
+            },
+        ) {
+            Icon(Icons.Filled.Share, contentDescription = shareTitle, tint = Color.White)
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(
+            enabled = save == SaveState.IDLE,
+            onClick = {
+                save = SaveState.SAVING
+                scope.launch { save = if (FileOpener.saveToGallery(context, attachment, loader, isVideo)) SaveState.SAVED else SaveState.FAILED }
+            },
+        ) {
+            if (save == SaveState.SAVING) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(Theme.Size.menuIcon))
+            } else {
+                Icon(
+                    when (save) {
+                        SaveState.SAVED -> Icons.Filled.CheckCircle
+                        SaveState.FAILED -> Icons.Filled.ErrorOutline
+                        else -> Icons.Filled.Download
+                    },
+                    contentDescription = stringResource(R.string.message_media_save),
+                    tint = Color.White,
+                )
             }
         }
     }
