@@ -5,6 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import wtf.iskra.core.media.MediaLoader
+import wtf.iskra.core.notifications.PushRegistration
+import wtf.iskra.core.notifications.PushTarget
+import wtf.iskra.core.notifications.ReactionPushRule
 import wtf.iskra.core.rooms.RoomListStore
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.timeline.ThreadSettings
@@ -99,11 +102,22 @@ class UserSession internal constructor(
         return TimelineStore(room = room, roomId = roomId, ownUserId = userId, strings = strings, scope = scope, threadRootId = rootEventId)
     }
 
+    /**
+     * Сказать серверу слать пуши этого аккаунта на [target], и включить пуши о реакциях. Зовётся при
+     * входе и восстановлении, и когда транспорт выдал новый адрес. Демо — никогда: его сервер живёт в
+     * этом же процессе, и пушить ему некуда. [language] — на каком языке сервер напишет свою заглушку.
+     */
+    suspend fun registerPush(target: PushTarget, language: String) {
+        if (isDemo || closed) return
+        PushRegistration(client, sessionId).register(target, authentication.deviceName, language)
+        ReactionPushRule.enable(client)
+    }
+
     @Volatile
     private var closed = false
 
     init {
-        if (!isDemo) authentication.sessionOpened(sessionId)
+        if (!isDemo) authentication.sessionOpened(this)
     }
 
     /**
@@ -126,8 +140,9 @@ class UserSession internal constructor(
         if (closed) return
         closed = true
         scope.cancel()
-        if (!isDemo) authentication.sessionClosed(sessionId)
-        client.close()
+        // Клиент в аренде (`AuthenticationService.leaseClient`): закроется, когда отдаст и пуш, если тот
+        // ещё расшифровывает. У демо аренды нет — он только здесь.
+        if (isDemo) client.close() else authentication.sessionClosed(this)
     }
 
     /** Выход: сервер забывает устройство (если ответит), локально исчезает всё этого аккаунта. */

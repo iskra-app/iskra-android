@@ -13,6 +13,7 @@ import wtf.iskra.core.session.AuthenticationService
 import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.support.Log
+import wtf.iskra.features.push.RootPushes
 import wtf.iskra.features.signin.SignInModel
 import wtf.iskra.features.signin.WebAuthentication
 
@@ -39,6 +40,8 @@ class RootModel(
      * запуск. С ним [authentication] — сервис демо-входа, и вспоминать некого: его секреты в памяти.
      */
     private val signInAddress: (suspend () -> String?)? = null,
+    /** Пуши: регистрация, нажатия, видимый чат. Null — без пушей (демо-вход, тесты). */
+    val pushes: RootPushes? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""
@@ -161,6 +164,17 @@ class RootModel(
         }
     }
 
+    /**
+     * Нажали уведомление другого аккаунта на этом телефоне — сначала на него; чат откроет экран, когда
+     * тот аккаунт будет на нём (запрос ждёт в [RootPushes.router]). Аккаунта уже нет — false: запрос
+     * выбрасывается, а не открывает чужой чат в том, что на экране.
+     */
+    fun switchForNotification(sessionId: String): Boolean {
+        if (authentication.accounts().none { it.sessionId == sessionId }) return false
+        switchTo(sessionId)
+        return true
+    }
+
     /** «Добавить аккаунт»: вход поверх приложения, а открытый аккаунт под ним работает, пока новый не вошёл. */
     fun addAccount() {
         if (sessionNow?.isDemo != false) return
@@ -194,6 +208,7 @@ class RootModel(
         scope.launch {
             try {
                 authentication.signOutInBackground(sessionId)
+                pushes?.signedOut(sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
             } finally {
                 mutableAccounts.value = mutableAccounts.value.copy(signingOut = mutableAccounts.value.signingOut - sessionId)
                 reloadAccounts()
@@ -211,9 +226,30 @@ class RootModel(
     fun setForeground(foreground: Boolean) {
         if (isForeground == foreground) return
         isForeground = foreground
+        reportVisibleRoom()
         val session = sessionNow ?: return
         scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
     }
+
+    /** Чат, открытый на экране сейчас, — от экрана. Null — список, настройки, ничего. */
+    private var openRoomId: String? = null
+
+    /** Экран открыл чат или ушёл из него. Уведомления открытого чата не показываются и снимаются. */
+    fun roomOnScreen(roomId: String?) {
+        openRoomId = roomId
+        reportVisibleRoom()
+    }
+
+    /** Видимый чат — только пока приложение на экране: в фоне каждое сообщение снова новость. */
+    private fun reportVisibleRoom() {
+        val pushes = pushes ?: return
+        val session = sessionNow
+        val room = openRoomId.takeIf { isForeground && session != null }
+        pushes.visible(room, session?.sessionId?.takeIf { session.isDemo.not() })
+    }
+
+    /** Подписка сеанса на адрес пушей; у следующего сеанса — своя. */
+    private var pushRegistration: kotlinx.coroutines.Job? = null
 
     /**
      * Сеанс открыт — и синхронизация запускается *здесь*, явным вызовом, а не `LaunchedEffect` на
@@ -223,6 +259,16 @@ class RootModel(
         // Демо не о чем спрашивать: его ключи живут один запуск.
         mutablePhase.value = if (settingUp && !session.isDemo) Phase.SettingUp(session) else Phase.SignedIn(session)
         reloadAccounts()
+        pushRegistration?.cancel()
+        pushRegistration = null
+        val pushes = pushes
+        if (pushes != null && !session.isDemo) {
+            pushes.signedIn()
+            // Каждый новый адрес транспорта — серверу. Первый может прийти раньше сеанса или позже.
+            pushRegistration = scope.launch {
+                pushes.target.collect { target -> if (target != null) session.registerPush(target, pushes.language()) }
+            }
+        }
         scope.launch {
             // Имя и картинка — в запись аккаунта: переключатель покажет их, когда он закрыт.
             if (!session.isDemo) {
@@ -266,7 +312,9 @@ class RootModel(
         // Выход из демо — это выход из демо: следующий запуск открывает настоящий аккаунт.
         if (session.isDemo) settings?.setDemoBackend(false)
         scope.launch {
+            pushRegistration?.cancel()
             session.signOut()
+            if (!session.isDemo) pushes?.signedOut(session.sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
             mutablePhase.value = Phase.SignedOut()
             reloadAccounts()
             // Если на устройстве есть ещё аккаунты — открыть следующий, а не показывать вход.

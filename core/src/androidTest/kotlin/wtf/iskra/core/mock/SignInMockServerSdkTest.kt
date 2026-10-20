@@ -202,6 +202,41 @@ class SignInMockServerSdkTest {
         bob.signOut()
     }
 
+    // MARK: Один клиент на стор (пуш и приложение в одном процессе)
+
+    /** Пуш при открытом сеансе берёт его клиент, а не собирает второй поверх того же SQLite. */
+    @Test
+    fun aPushBorrowsTheOpenSessionsClient() = runBlocking {
+        val authentication = service()
+        val alice = signIn(authentication, server().start(), "alice")
+        val leased = assertNotNull(authentication.leaseClient(alice.sessionId))
+        assertTrue(leased === alice.client)
+        authentication.releaseClient(alice.sessionId, leased)
+        // Отдал — сеанс жив: клиент закрывает последний держатель, а это сеанс.
+        assertEquals("@alice:iskra.test", alice.client.userId())
+        alice.signOut()
+    }
+
+    /**
+     * Своё, не из iOS. Пуш открыл закрытый аккаунт, и тут человек открыл приложение: восстановление
+     * получает клиент пуша. И пуш, закончив, не закрывает его из-под сеанса.
+     */
+    @Test
+    fun theAppOpeningDuringAPushGetsThePushsClient() = runBlocking {
+        val authentication = service()
+        val first = signIn(authentication, server().start(), "alice")
+        val id = first.sessionId
+        first.close()
+
+        val pushClient = assertNotNull(authentication.leaseClient(id))
+        val session = assertNotNull(authentication.restoreSession(id))
+        assertTrue(session.client === pushClient)
+
+        authentication.releaseClient(id, pushClient)
+        assertEquals("@alice:iskra.test", session.client.userId())
+        session.signOut()
+    }
+
     /** Играет браузер: открывает страницу, заполняет её форму, как человек, и не идёт по перенаправлению. */
     private object Browser {
         data class Answer(val status: Int, val location: String?, val body: String)

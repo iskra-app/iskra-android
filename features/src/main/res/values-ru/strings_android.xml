@@ -6,4 +6,5 @@
     <string name="recovery_elsewhere_alone">Её сделало другое устройство, и кода к ней нет. Без того устройства старую переписку не вернуть — она останется зашифрованной навсегда. Новые сообщения будут приходить как обычно, и мы дадим вам код восстановления.</string>
     <string name="room_attach_take_photo">Сделать фото</string>
     <string name="room_attach_record_video">Снять видео</string>
+    <string name="notification_channel_other">Другие сообщения</string>
 </resources>

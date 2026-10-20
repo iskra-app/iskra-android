@@ -35,6 +35,12 @@ data class PushNotification(
     val avatar: ByteArray? = null,
     /** Групповой ли это разговор — для `MessagingStyle.isGroupConversation`. */
     val isGroup: Boolean = sender != null,
+    /** Приглашение в чат, а не сообщение: свой канал, и ответить на него нечем. */
+    val isInvitation: Boolean = false,
+    /** Упомянули ли читателя (или весь чат) — у упоминаний свой канал, громче остальных. */
+    val isMention: Boolean = false,
+    /** Чей пуш — ID сессии аккаунта, расшифровавшего его. Ставит [PushDecoder]; нажатие ведёт в этот аккаунт. */
+    val accountId: String? = null,
 ) {
     // ByteArray сравнивается по ссылке; для тестов и замены уведомления важно содержимое.
     override fun equals(other: Any?): Boolean {
@@ -43,7 +49,9 @@ data class PushNotification(
         return roomId == other.roomId && eventId == other.eventId && title == other.title &&
             sender == other.sender && body == other.body && isNoisy == other.isNoisy &&
             personName == other.personName && personId == other.personId && avatarUrl == other.avatarUrl &&
-            avatar.contentEquals(other.avatar) && isGroup == other.isGroup
+            avatar.contentEquals(other.avatar) && isGroup == other.isGroup &&
+            accountId == other.accountId && isMention == other.isMention &&
+            isInvitation == other.isInvitation
     }
 
     override fun hashCode(): Int {
@@ -76,8 +84,11 @@ sealed interface PushOutcome {
      */
     data object NotSignedIn : PushOutcome
 
-    /** До события не дотянуться или его не прочесть. */
-    data class Failed(val reason: String) : PushOutcome
+    /**
+     * До события не дотянуться или его не прочесть. [timedOut] — не успели в бюджет: тогда стоит
+     * попробовать ещё раз, дольше, и поставить настоящее уведомление на место заглушки.
+     */
+    data class Failed(val reason: String, val timedOut: Boolean = false) : PushOutcome
 }
 
 /** Почему чисто расшифрованный пуш всё равно не показан. Ни одна причина не ошибка — каждая правило. */

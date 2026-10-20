@@ -92,6 +92,16 @@ class AppSettings(context: Context) {
     fun setAccent(name: String) = save(ACCENT, name, mutableAccent)
     fun setAppearance(name: String) = save(APPEARANCE, name, mutableAppearance)
     fun setDemoBackend(on: Boolean) = save(DEMO, on, mutableDemo)
+
+    /**
+     * Спрашивали ли уже разрешение на уведомления. Один раз, после первого входа: система показывает
+     * вопрос не больше двух раз за жизнь приложения, и спрашивать на каждом запуске — растратить оба.
+     */
+    val askedForNotifications: Boolean get() = preferences.getBoolean(NOTIFICATIONS_ASKED, false)
+
+    fun setAskedForNotifications() {
+        preferences.edit().putBoolean(NOTIFICATIONS_ASKED, true).apply()
+    }
     fun setCreatures(on: Boolean) = save(CREATURES, on, mutableCreatures)
     fun setForceCreatures(on: Boolean) = save(FORCE_CREATURES, on, mutableForceCreatures)
 
@@ -110,6 +120,7 @@ class AppSettings(context: Context) {
         const val ACCENT = "appearance.accent"
         const val APPEARANCE = "appearance.mode"
         const val DEMO = "beta.mockBackend"
+        const val NOTIFICATIONS_ASKED = "notifications.permissionAsked"
         const val CREATURES = "beta.blobatar"
         const val FORCE_CREATURES = "beta.blobatar.force"
 

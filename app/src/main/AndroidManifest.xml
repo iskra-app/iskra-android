@@ -9,6 +9,8 @@
     <!-- «Место»: одна точка по просьбе человека, из видимого приложения. Фоновой геопозиции нет. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Уведомления (docs/PROMPT.md, 10.5): спрашивается после первого входа, не на экране входа. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!--
         Бэкап выключен целиком (docs/PROMPT.md, 5.1). Это аналог `ThisDeviceOnly` на iOS: зашифрованный
@@ -51,6 +53,20 @@
                 <data android:scheme="wtf.iskra" android:path="/oauth-callback" />
             </intent-filter>
         </activity>
+
+        <!--
+            «Ответить» и «Прочитано» на уведомлении (PushPresenter). Интенты к нему — с явным компонентом;
+            наружу не торчит.
+        -->
+        <receiver
+            android:name="wtf.iskra.features.push.NotificationActionReceiver"
+            android:exported="false" />
+
+        <!-- Второй заход на пуш, не успевший расшифроваться, пока ждал транспорт (PushRetryJob). -->
+        <service
+            android:name="wtf.iskra.features.push.PushRetryJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!--
             Присланный файл, открытый в другом приложении (FileOpener): только cache/opened, только на

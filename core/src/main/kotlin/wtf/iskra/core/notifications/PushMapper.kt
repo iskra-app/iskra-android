@@ -63,6 +63,7 @@ internal object PushMapper {
                         personId = event.sender,
                         avatarUrl = picture(item),
                         isGroup = !item.roomInfo.isDm,
+                        isInvitation = true,
                     ),
                 )
             }
@@ -76,6 +77,7 @@ internal object PushMapper {
                     roomName = roomName,
                     isDirect = item.roomInfo.isDm,
                     isNoisy = item.isNoisy ?: false,
+                    isMention = item.hasMention ?: false,
                     avatarUrl = picture(item),
                     roomId = roomId,
                     eventId = eventId,
@@ -99,6 +101,7 @@ internal object PushMapper {
         eventId: String,
         strings: Strings,
         localName: String? = null,
+        isMention: Boolean = false,
     ): PushOutcome {
         val body = messageLike?.let { text(it, strings) } ?: return PushOutcome.Silence(SilenceReason.NOT_WORTH_WAKING)
         val (title, sender) = attribution(roomName, senderName, isDirect, localName)
@@ -114,6 +117,7 @@ internal object PushMapper {
                 personId = senderId,
                 avatarUrl = avatarUrl,
                 isGroup = sender != null,
+                isMention = isMention,
             ),
         )
     }

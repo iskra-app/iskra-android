@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Пуши `foss` — UnifiedPush (docs/PROMPT.md, 10.2). Протокол свой, без библиотеки: см. FlavorPush. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Видеть дистрибьюторы на телефоне (Android 11+ прячет чужие приложения). -->
+    <queries>
+        <intent>
+            <action android:name="org.unifiedpush.android.distributor.REGISTER" />
+        </intent>
+    </queries>
+
+    <application>
+        <!--
+            Экспортирован: шлёт ему дистрибьютор, другое приложение. Чужое отсекается токеном соединения,
+            который знают только Искра и выбранный дистрибьютор.
+        -->
+        <receiver
+            android:name=".UnifiedPushReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="org.unifiedpush.android.connector.NEW_ENDPOINT" />
+                <action android:name="org.unifiedpush.android.connector.MESSAGE" />
+                <action android:name="org.unifiedpush.android.connector.UNREGISTERED" />
+                <action android:name="org.unifiedpush.android.connector.REGISTRATION_FAILED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

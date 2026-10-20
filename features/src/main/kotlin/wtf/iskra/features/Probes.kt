@@ -1,5 +1,6 @@
 package wtf.iskra.features
 
+import wtf.iskra.core.notifications.PushPayload
 import wtf.iskra.core.security.StorageCheck
 import wtf.iskra.core.session.AuthenticationError
 import wtf.iskra.core.support.Log
@@ -11,6 +12,7 @@ import wtf.iskra.core.support.Log
  * ```
  * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe signin --es address matrix.org
  * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe verify-storage
+ * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe push --es room '!id' --es event '\$id'
  * adb logcat -s Iskra:*
  * ```
  *
@@ -36,6 +38,16 @@ object Probes {
                     graph.authentication.cancelSignIn()
                 }
             }
+
+            // Пуш без транспорта: тот же путь «расшифровать → показать», что у FCM и UnifiedPush, на
+            // настоящем событии. ID события — «Показать исходный код» в любом клиенте Matrix.
+            "push" -> {
+                val room = extras["room"] ?: return Log.error(Log.Category.PROBE, "нужен --es room <!id> --es event <\$id>")
+                val event = extras["event"] ?: return Log.error(Log.Category.PROBE, "нужен --es event <\$id>")
+                graph.push.handle(PushPayload(room, event, extras["account"] ?: graph.authentication.activeAccountId(), extras["unread"]?.toIntOrNull()))
+            }
+
+            "push-sample" -> graph.push.sample()
 
             else -> Log.error(Log.Category.PROBE, "не знаю пробы $probe")
         }

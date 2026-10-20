@@ -14,6 +14,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +33,7 @@ import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.PrimaryActionButton
 import wtf.iskra.design.Theme
 import wtf.iskra.core.session.UserSession
+import wtf.iskra.features.push.NotificationPermission
 import wtf.iskra.features.room.RoomScreen
 import wtf.iskra.features.recovery.RecoveryBanner
 import wtf.iskra.features.recovery.RecoverySetupModel
@@ -166,6 +169,31 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
         roomId?.let { id -> session.timeline(id) { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() } }
     }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
+
+    // Нажатое уведомление: в *этот* разговор, и один раз. Чужой аккаунт — сначала переключиться на него;
+    // запрос подождёт в роутере, пока тот аккаунт не окажется здесь.
+    val pushes = model.pushes
+    if (pushes != null) {
+        val request by pushes.router.request.collectAsStateWithLifecycle()
+        LaunchedEffect(request, session.sessionId) {
+            val wanted = request ?: return@LaunchedEffect
+            val account = wanted.accountId
+            if (account != null && account != session.sessionId && !session.isDemo) {
+                if (model.switchForNotification(account)) return@LaunchedEffect
+            }
+            pushes.router.takeRequest()
+            settingsPage = null
+            openEvent = null
+            openRoom = wanted.roomId
+        }
+        NotificationPermission(session, settings)
+        // Какой чат на экране — уведомления о нём не показываются и снимаются, когда его открыли.
+        DisposableEffect(roomId, session.sessionId) {
+            model.roomOnScreen(roomId)
+            onDispose { model.roomOnScreen(null) }
+        }
+    }
+
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
         when {

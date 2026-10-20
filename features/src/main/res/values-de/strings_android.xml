@@ -6,4 +6,5 @@
     <string name="recovery_elsewhere_alone">Ein anderes Gerät hat sie angelegt, und es gibt keinen Code dafür. Ohne dieses Gerät kommen Ihre alten Nachrichten nicht zurück – sie bleiben für immer verschlüsselt. Neue Nachrichten kommen wie gewohnt an, und wir geben Ihnen einen Wiederherstellungscode.</string>
     <string name="room_attach_take_photo">Foto aufnehmen</string>
     <string name="room_attach_record_video">Video aufnehmen</string>
+    <string name="notification_channel_other">Weitere Nachrichten</string>
 </resources>

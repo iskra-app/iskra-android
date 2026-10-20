@@ -114,6 +114,13 @@ class RoomListStore(
     private val ownUserId: String? = runCatching { client.userId() }.getOrNull()
 
     private var syncService: SyncService? = null
+
+    /**
+     * Цикл синхронизации сеанса, если поднят, — для клиента уведомлений в том же процессе
+     * (`NotificationProcessSetup.SingleProcess`): расшифровка пуша и цикл берут одно разрешение на
+     * шифрованную синхронизацию, а не две, бок о бок, над одним стором.
+     */
+    internal val runningSyncService: SyncService? get() = syncService
     private var entriesResult: RoomListEntriesWithDynamicAdaptersResult? = null
 
     /**

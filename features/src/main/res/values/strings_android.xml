@@ -22,4 +22,6 @@
     <!-- «+» в композере: камера системным приложением. На iOS камера — только у кружочков, общей строки нет. -->
     <string name="room_attach_take_photo">Take a photo</string>
     <string name="room_attach_record_video">Record a video</string>
+    <!-- Канал уведомлений для пушей, которые не расшифровались: «Iskra · Новое сообщение». -->
+    <string name="notification_channel_other">Other messages</string>
 </resources>

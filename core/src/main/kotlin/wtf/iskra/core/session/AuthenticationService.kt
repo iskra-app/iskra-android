@@ -3,6 +3,8 @@ package wtf.iskra.core.session
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import wtf.iskra.core.mock.DemoBackend
+import wtf.iskra.core.notifications.PushRegistration
+import wtf.iskra.core.notifications.PushTargets
 import wtf.iskra.core.security.AccountRecord
 import wtf.iskra.core.security.SessionDelegate
 import wtf.iskra.core.security.SessionStore
@@ -52,11 +54,13 @@ class AuthenticationService(
     private val environment: AppEnvironment,
     private val sessionStore: SessionStore,
     /** Как устройство называется в списке сеансов человека: «Iskra на Android». */
-    private val deviceName: String,
+    internal val deviceName: String,
     /** `Iskra/<версия> (<модель>; Android <версия>)` — см. `DeviceDescription`. */
     private val userAgent: String,
     /** Слова, которые рождаются в `:core`: «Фото» в строке списка, «Без названия». */
     private val strings: Strings,
+    /** Куда едут пуши этого телефона — чтобы выход снял pusher. Null — пушей нет (демо-вход). */
+    private val pushTargets: PushTargets? = null,
 ) : SignInFlow<UserSession> {
     /** Состояние входа меняется только под этим замком — аналог `actor` в iOS. */
     private val mutex = Mutex()
@@ -68,11 +72,74 @@ class AuthenticationService(
     private var pendingSso: SsoHandler? = null
 
     /** Аккаунты, которые сейчас держит открытыми живой [UserSession]. */
-    private val openSessions = mutableSetOf<String>()
+    private val openSessions = mutableMapOf<String, UserSession>()
 
-    internal fun sessionOpened(id: String) = synchronized(openSessions) { openSessions.add(id) }
-    internal fun sessionClosed(id: String) = synchronized(openSessions) { openSessions.remove(id) }
+    internal fun sessionOpened(session: UserSession) = synchronized(openSessions) { openSessions[session.sessionId] = session }
+
+    /** Сеанс закрылся: убрать из открытых и отпустить его аренду клиента. */
+    internal fun sessionClosed(session: UserSession) {
+        synchronized(openSessions) { if (openSessions[session.sessionId] === session) openSessions.remove(session.sessionId) }
+        releaseClient(session.sessionId, session.client)
+    }
+
     private fun isOpen(account: AccountRecord) = synchronized(openSessions) { account.sessionId in openSessions }
+
+    /** Сеанс аккаунта, открытый сейчас в этом процессе, — для пуша, который не должен открывать второй. */
+    internal fun openSession(sessionId: String): UserSession? = synchronized(openSessions) { openSessions[sessionId] }
+
+    // ---------------------------------------------------------------------------- клиенты
+
+    /**
+     * Один `Client` на стор в процессе — **никогда** два на один SQLite (docs/PROMPT.md, 10.3). Пуш
+     * приходит, когда приложение закрыто, и открывает клиент сам; если человек открывает приложение,
+     * пока пуш ещё расшифровывает, восстановление должно получить *тот же* клиент, а не собрать второй
+     * поверх того же файла. Поэтому клиент — в аренде: берут [leaseClient], отдают [releaseClient], и
+     * закрывается он, когда отдал последний.
+     */
+    private class Lease(val client: Client) {
+        var holders = 1
+    }
+
+    private val leases = HashMap<String, Lease>()
+
+    /** Сборка клиента под этим замком: двое, пришедшие за одним аккаунтом разом, не соберут два. */
+    private val leaseBuild = Mutex()
+
+    /**
+     * Клиент аккаунта: уже открытый в процессе или восстановленный заново. Null — аккаунта нет.
+     * Каждому успешному вызову — свой [releaseClient].
+     */
+    internal suspend fun leaseClient(sessionId: String): Client? = leaseBuild.withLock {
+        synchronized(leases) {
+            leases[sessionId]?.let { lease ->
+                lease.holders += 1
+                return@withLock lease.client
+            }
+        }
+        val client = restoreClient(sessionId) ?: return@withLock null
+        synchronized(leases) { leases[sessionId] = Lease(client) }
+        client
+    }
+
+    /** Отдаёт аренду. Последний закрывает клиент: хендл — нативный, GC о памяти за ним не знает. */
+    internal fun releaseClient(sessionId: String, client: Client) {
+        val close = synchronized(leases) {
+            val lease = leases[sessionId]
+            if (lease == null || lease.client !== client) {
+                true
+            } else {
+                lease.holders -= 1
+                if (lease.holders == 0) leases.remove(sessionId)
+                lease.holders == 0
+            }
+        }
+        if (close) client.close()
+    }
+
+    /** Клиент свежего входа становится арендой с одним держателем — сеансом, который его получит. */
+    private fun adoptClient(sessionId: String, client: Client) {
+        synchronized(leases) { leases[sessionId] = Lease(client) }
+    }
 
     // ---------------------------------------------------------------------------- аккаунты
 
@@ -123,11 +190,13 @@ class AuthenticationService(
      */
     suspend fun restoreSession(sessionId: String? = null): UserSession? {
         val id = sessionId ?: sessionStore.activeSessionId() ?: return null
-        val client = restoreClient(id) ?: return null
+        // Уже открытый сеанс того же аккаунта — тот же клиент, а не второй на тот же стор.
+        val client = leaseClient(id) ?: return null
         return UserSession(client, this, id, strings)
     }
 
-    internal suspend fun restoreClient(sessionId: String): Client? {
+    /** Собирает клиент заново. Только через [leaseClient]: напрямую — второй клиент на открытый стор. */
+    private suspend fun restoreClient(sessionId: String): Client? {
         val stored = sessionStore.loadSession(sessionId) ?: return null
 
         // `.NATIVE`, а не `.DISCOVER_NATIVE`, как при входе: узнавали тогда, и узнавать снова — ровно
@@ -365,6 +434,9 @@ class AuthenticationService(
             environment.sessionDirs(session.sessionId).forEach { it.deleteRecursively() }
             return
         }
+        // Pusher — до `logout()`: запросу нужен живой сеанс, а без него сервер продолжал бы слать пуши
+        // аккаунта на телефон, из которого вышли. Свои десять секунд — внутри.
+        pushTargets?.current?.value?.let { PushRegistration(session.client, session.sessionId).unregister(it) }
         runCatching { withTimeLimit(LOGOUT_TIMEOUT) { session.client.logout() } }
         session.close()
         forgetSession(session.sessionId)
@@ -393,6 +465,7 @@ class AuthenticationService(
         }
 
         sessionStore.register(session.toStored(sessionId))
+        adoptClient(sessionId, client)
         pendingClient = null
         pendingSessionId = null
         pendingOAuth = null

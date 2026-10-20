@@ -6,4 +6,5 @@
     <string name="recovery_elsewhere_alone">別のデバイスで作られたもので、コードはありません。そのデバイスがなければ、過去のメッセージは戻りません。ずっと暗号化されたままになります。新しいメッセージはいつも通り届き、復元コードもお渡しします。</string>
     <string name="room_attach_take_photo">写真を撮る</string>
     <string name="room_attach_record_video">ビデオを撮る</string>
+    <string name="notification_channel_other">その他のメッセージ</string>
 </resources>

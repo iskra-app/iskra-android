@@ -2,7 +2,14 @@ package wtf.iskra.features
 
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
+import wtf.iskra.features.push.Push
+import wtf.iskra.features.push.PushRouter
+import wtf.iskra.features.push.PushTransport
+import wtf.iskra.features.push.RootPushes
 import wtf.iskra.features.signin.MockSignIn
+import wtf.iskra.core.notifications.NotificationActions
+import wtf.iskra.core.notifications.PushDecoder
+import wtf.iskra.core.notifications.PushTargets
 import wtf.iskra.core.security.KeystoreSecrets
 import wtf.iskra.core.security.SessionStore
 import wtf.iskra.core.session.AuthenticationService
@@ -16,7 +23,14 @@ import wtf.iskra.core.support.Strings
  * Граф объектов приложения. DI-фреймворка нет, как и на iOS: всё собирается здесь, один раз на
  * процесс, и передаётся через конструкторы (docs/PROMPT.md, 2.2). Строит его `Application`.
  */
-class AppGraph(context: Context, private val appVersion: String) {
+class AppGraph(
+    context: Context,
+    private val appVersion: String,
+    /** Как пуши доезжают до телефона — у каждого flavor'а свой (`:app/src/gms`, `:app/src/foss`). */
+    pushTransport: PushTransport,
+    /** Значок уведомлений в строке состояния — знак Искры, живущий в `:app`. */
+    notificationIcon: Int,
+) {
     private val context: Context = context.applicationContext
 
     val environment = AppEnvironment(
@@ -32,12 +46,32 @@ class AppGraph(context: Context, private val appVersion: String) {
         wtf.iskra.features.support.FileOpener.sweepOnLaunch(context)
     }
     val sessionStore = SessionStore(secrets)
+
+    /** Куда едут пуши этого телефона: выдаёт транспорт flavor'а, помнится для выхода. */
+    val pushTargets = PushTargets(context)
+
     val authentication = AuthenticationService(
         environment = environment,
         sessionStore = sessionStore,
         deviceName = context.getString(wtf.iskra.core.R.string.device_android),
         userAgent = DeviceDescription.userAgent(appVersion),
         strings = Strings.of(context),
+        pushTargets = pushTargets,
+    )
+
+    /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */
+    val pushRouter = PushRouter()
+
+    /** Пуш → уведомление. Транспорты flavor'ов зовут [Push.handle]. */
+    val push = Push(
+        context = context,
+        decoder = PushDecoder(authentication, Strings.of(context)),
+        actions = NotificationActions(authentication),
+        router = pushRouter,
+        targets = pushTargets,
+        settings = settings,
+        transport = pushTransport,
+        smallIcon = notificationIcon,
     )
 
     init {
@@ -49,7 +83,7 @@ class AppGraph(context: Context, private val appVersion: String) {
      * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер.
      */
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
-        if (mockSignIn == null) return RootModel(authentication, scope, demo, settings)
+        if (mockSignIn == null) return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets))
         val words = MockSignIn.words(mockSignIn)
         return RootModel(
             MockSignIn.authentication(context, appVersion),

@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import wtf.iskra.features.IskraRoot
 import wtf.iskra.features.Probes
+import wtf.iskra.features.push.PushIntents
 import wtf.iskra.features.signin.CustomTabsAuthentication
 import wtf.iskra.features.signin.MockSignIn
 
@@ -38,7 +39,8 @@ class MainActivity : ComponentActivity() {
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
         setContent { IskraRoot(holder.root, browser, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})") }
-        handle(intent)
+        // Пересозданная активити получает тот же интент снова; нажатие уже забрано тогда.
+        if (savedInstanceState == null) handle(intent)
     }
 
     // Синхронизация живёт, пока приложение видно: onStart/onStop, а не onResume/onPause — диалог
@@ -60,6 +62,11 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent) {
         if (browser.handle(intent.data)) return
+        // Нажали уведомление или ярлык разговора: в этот чат, в его аккаунт (PushRouter).
+        intent.getStringExtra(PushIntents.EXTRA_ROOM)?.let { roomId ->
+            (application as IskraApplication).graph.pushRouter.tapped(roomId, intent.getStringExtra(PushIntents.EXTRA_ACCOUNT))
+            return
+        }
         val probe = intent.getStringExtra(EXTRA_PROBE) ?: return
         val extras = intent.extras?.keySet().orEmpty().associateWith { intent.extras?.getString(it).orEmpty() }
         lifecycleScope.launch { Probes.run(probe, extras, (application as IskraApplication).graph) }
