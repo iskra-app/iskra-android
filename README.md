@@ -8,8 +8,27 @@ Kotlin and Jetpack Compose on top; all of Matrix and all of its cryptography is
 [`matrix-rust-sdk`](https://github.com/matrix-org/matrix-rust-sdk) through its official Kotlin
 bindings. Nothing cryptographic is written here.
 
-**Status: early.** The project skeleton builds and runs; signing in is next. See
-[`ROADMAP.md`](ROADMAP.md).
+**Status: before the first release.** Sign-in, chats, messages, media, encryption recovery and push
+notifications are in; see [`ROADMAP.md`](ROADMAP.md) for what is done and what is left.
+
+## Installing
+
+Iskra is published only as APKs on this repository's
+[GitHub Releases](https://github.com/iskra-app/iskra-android/releases). Pick one file:
+
+- **`gms`** if your phone has Google services — notifications arrive through Firebase Cloud Messaging;
+- **`foss`** if it does not — notifications arrive through [UnifiedPush](https://unifiedpush.org), with
+  a distributor app such as [ntfy](https://ntfy.sh); this build contains no Google libraries at all;
+- **`arm64-v8a`** for almost every phone, **`x86_64`** for emulators and ChromeOS.
+
+Android asks once to allow installing apps from your browser. After that, Iskra checks for new
+versions itself (once a day, only a request for `release.json` to GitHub — it can be turned off in
+*Settings → About*) and installs them after verifying the download and its signature. If you prefer
+to manage updates yourself, [Obtainium](https://github.com/ImranR98/Obtainium) can follow this
+repository's releases.
+
+Every release lists the SHA-256 fingerprint of the signing certificate. To check a downloaded file:
+`apksigner verify --print-certs iskra-….apk`. A file signed with any other key is not Iskra.
 
 ## Building
 
@@ -22,8 +41,9 @@ repository and no Firebase configuration:
 ```
 
 Two flavours: **`gms`** delivers notifications through Firebase Cloud Messaging; **`foss`** uses
-[UnifiedPush](https://unifiedpush.org) and contains no Google libraries at all. Releases will be
-published as APKs on this repository's GitHub Releases, one per flavour and CPU architecture.
+[UnifiedPush](https://unifiedpush.org) and contains no Google libraries at all. `gms` gets push
+only when `app/src/gms/google-services.json` is present. How releases are cut:
+[`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Licence
 

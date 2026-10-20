@@ -34,6 +34,25 @@ android {
         generateLocaleConfig = false
     }
 
+    // Ключ релиза — только в секретах CI и у автора (docs/PROMPT.md, 19): потерян — ни один установленный
+    // APK больше не обновится поверх. Без переменных сборка неподписанная, как у любого клона.
+    val keystore = providers.environmentVariable("ISKRA_KEYSTORE_FILE").orNull
+    if (keystore != null) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(keystore)
+                storePassword = providers.environmentVariable("ISKRA_KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("ISKRA_KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("ISKRA_KEY_PASSWORD").get()
+                // v3 даёт ротацию ключа без потери обновлений. v1 (JAR) при minSdk 29 не нужен, а v2
+                // apksigner при нём и не ставит: каждый поддерживаемый Android проверяет v3.
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Стоит рядом с релизом на одном телефоне.
@@ -44,6 +63,7 @@ android {
         release {
             // Встроенная проверка обновлений. Сборка для магазина, который обновляет сам, выключит её здесь.
             buildConfigField("boolean", "UPDATE_CHECK", "true")
+            if (keystore != null) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

@@ -43,8 +43,10 @@
       проверки размера, SHA-256, пакета, versionCode и сертификата (`UpdateCheckTest`). На эмуляторе:
       версия 2 поставилась поверх 1, файл с чужим ключом — отказ словами
 - [ ] Дозагрузка обновления в фоне (user-initiated data transfer job), когда ушли из приложения
-- [ ] Workflow релиза: тег `v*` на `main`, проверка, что репозиторий публичный, подпись v2+v3,
-      `SHA256SUMS`, `release.json` на семи языках
+- [x] Workflow релиза (`release.yml`, `docs/RELEASING.md`): тег `v*` на `main`, проверка, что репозиторий
+      публичный, подпись v3 (v2 при minSdk 29 apksigner не ставит), отпечаток против `ISKRA_CERT_SHA256`,
+      16 KB, `SHA256SUMS`, `release.json` на семи языках из готовых APK (`scripts/release_json.py` — прогнан
+      на подписанных тестовым ключом APK). Ключ, секреты, «Что нового» и открытие репозитория — автор
 - [ ] `app.cash.licensee` в CI и `aboutlibraries` для экрана «О приложении»
 - [ ] Скриншот-тесты (Roborazzi)
 

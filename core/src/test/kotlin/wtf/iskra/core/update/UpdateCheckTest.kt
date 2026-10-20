@@ -106,6 +106,30 @@ class UpdateCheckTest {
         assertEquals("a.apk", parsed?.assets?.get("foss-arm64-v8a")?.name)
     }
 
+    /** Ровно та форма, что пишет `scripts/release_json.py` (прогнан на подписанных тестовым ключом APK). */
+    @Test
+    fun theReleaseScriptsOutputParses() {
+        val parsed = ReleaseManifest.parse(
+            """
+            {
+              "schema": 1,
+              "versionName": "0.3.0",
+              "versionCode": 1,
+              "minSdk": 29,
+              "published": "2026-10-20T19:32:31Z",
+              "notes": {"ru": "Проба", "en": "Test", "de": "Test", "es": "Prueba", "fr": "Essai", "ja": "テスト", "zh-Hans": "测试"},
+              "assets": {
+                "foss-arm64-v8a": {"name": "iskra-0.3.0-foss-arm64-v8a.apk", "size": 71525937, "sha256": "ed18bf5e90a5f5a35ca6fbecde16738d764f0a4f49000ac3ee274be9a0ef222a"},
+                "gms-arm64-v8a": {"name": "iskra-0.3.0-gms-arm64-v8a.apk", "size": 72009395, "sha256": "4d807e104118a34b8c981485de211bac0d8c1ed80f05ee42e5ab4c7aee2c20f0"}
+              },
+              "signingCertSha256": "a1996fd1c020ea8dca1802c67f90203820ea409be10f9f68cfe9545061c42ad8"
+            }
+            """.trimIndent(),
+        )
+        assertEquals(71525937L, parsed?.assets?.get("foss-arm64-v8a")?.size)
+        assertEquals("测试", parsed?.let { UpdatePolicy.notes(it.notes, "zh") })
+    }
+
     @Test
     fun anErrorPageIsNotAManifest() {
         assertNull(ReleaseManifest.parse("<html>Not Found</html>"))
