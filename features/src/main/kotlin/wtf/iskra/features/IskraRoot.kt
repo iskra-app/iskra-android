@@ -194,6 +194,10 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
         }
     }
 
+    // Точка на шестерёнке: есть версия новее. Не диалог и не уведомление — человек пришёл читать.
+    val offer by (model.updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
+    val updateWaiting = offer is wtf.iskra.core.update.UpdateOffer.Available
+
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
         when {
@@ -220,6 +224,10 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onSignOutOther = model::signOutOther,
                 browser = browser,
                 pushes = model.pushes.takeIf { !session.isDemo },
+                // Найденное показывается и в демо; *ходить* за ним демо не ходит (RootModel.setForeground).
+                updates = model.updates,
+                beforeUpdate = model::closeForUpdate,
+                afterFailedUpdate = { model.reopenAfterUpdate() },
             )
             timeline != null -> RoomScreen(
                 timeline,
@@ -240,6 +248,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                     openRoom = room
                 },
                 onSettings = { settingsPage = SettingsPage.MAIN },
+                settingsDot = updateWaiting,
                 banner = { RecoveryBanner(session) { unlocking = true } },
                 accountMenu = if (accounts.isAvailable) {
                     { expanded, onDismiss ->

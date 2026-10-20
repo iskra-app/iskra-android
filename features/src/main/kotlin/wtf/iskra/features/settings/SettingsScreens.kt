@@ -77,6 +77,10 @@ import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.features.RootModel
 import wtf.iskra.features.push.RootPushes
+import wtf.iskra.features.update.UpdateRow
+import wtf.iskra.features.update.UpdateSheet
+import wtf.iskra.features.update.Updates
+import wtf.iskra.core.update.UpdateOffer
 import wtf.iskra.features.signin.WebAuthentication
 import wtf.iskra.features.signin.SignInScreen
 import wtf.iskra.features.signin.SignInModel
@@ -125,7 +129,18 @@ fun SettingsScreen(
     browser: WebAuthentication? = null,
     /** Пуши: чем доезжают до телефона. Null — без пушей (демо-вход). */
     pushes: RootPushes? = null,
+    /** Обновления изнутри приложения. Null — без них (демо-вход). */
+    updates: Updates? = null,
+    /** Перед установкой обновления сеанс закрывается, после неудачной — открывается снова (`RootModel`). */
+    beforeUpdate: suspend () -> Unit = {},
+    afterFailedUpdate: suspend () -> Unit = {},
 ) {
+    val offer by (updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
+    var showingUpdate by remember { mutableStateOf(false) }
+    val available = offer as? UpdateOffer.Available
+    if (showingUpdate && updates != null && available != null) {
+        UpdateSheet(updates, available, onDismiss = { showingUpdate = false }, beforeInstall = beforeUpdate, afterFailure = afterFailedUpdate)
+    }
     BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
     // Большой заголовок, который сворачивается в панель, когда страницу листают, — как в настройках Android.
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -149,8 +164,11 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
         ) {
             when (page) {
-                SettingsPage.MAIN -> Main(session, onNavigate, onSignOut, hasSeveralAccounts = accounts.hasSeveral) {
-                    if (accounts.isAvailable) AccountsSection(accounts, onSwitchAccount, onAddAccount, onSignOutOther)
+                SettingsPage.MAIN -> {
+                    if (available != null) Group({ UpdateRow(available) { showingUpdate = true } })
+                    Main(session, onNavigate, onSignOut, hasSeveralAccounts = accounts.hasSeveral) {
+                        if (accounts.isAvailable) AccountsSection(accounts, onSwitchAccount, onAddAccount, onSignOutOther)
+                    }
                 }
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
@@ -158,7 +176,10 @@ fun SettingsScreen(
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
-                SettingsPage.ABOUT -> About(appVersion)
+                SettingsPage.ABOUT -> {
+                    About(appVersion)
+                    if (updates != null && updates.checker.isInBuild) UpdateChecks(settings, updates) { showingUpdate = true }
+                }
             }
         }
     }
@@ -532,7 +553,7 @@ internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) 
 
 /**
  * О приложении (`AboutView`): версия и лицензии того, что внутри. Нотис blobatar обязателен (MIT), и
- * Inter (SIL OFL) — с ним. Проверка обновлений — с первым релизом.
+ * Inter (SIL OFL) — с ним. Проверка обновлений — [UpdateChecks] под ним.
  */
 @Composable
 private fun About(appVersion: String) {

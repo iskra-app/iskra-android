@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <!-- Уведомления (docs/PROMPT.md, 10.5): спрашивается после первого входа, не на экране входа. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+        Обновления изнутри приложения (docs/PROMPT.md, 19.1): магазина нет, APK из GitHub Releases ставит
+        сама Искра через PackageInstaller — после проверки хэша и сертификата.
+    -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!--
         Бэкап выключен целиком (docs/PROMPT.md, 5.1). Это аналог `ThisDeviceOnly` на iOS: зашифрованный
@@ -60,6 +65,11 @@
         -->
         <receiver
             android:name="wtf.iskra.features.push.NotificationActionReceiver"
+            android:exported="false" />
+
+        <!-- Ответ PackageInstaller на установку обновления (UpdateInstallReceiver). -->
+        <receiver
+            android:name="wtf.iskra.features.update.UpdateInstallReceiver"
             android:exported="false" />
 
         <!-- Второй заход на пуш, не успевший расшифроваться, пока ждал транспорт (PushRetryJob). -->

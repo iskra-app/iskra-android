@@ -111,6 +111,8 @@ fun RoomListScreen(
     onOpenAt: (roomId: String, eventId: String) -> Unit = { room, _ -> onOpen(room) },
     /** Меню аккаунтов по долгому нажатию на шестерёнку: открыто ли и как закрыть. Null — его нет. */
     accountMenu: (@Composable (expanded: Boolean, onDismiss: () -> Unit) -> Unit)? = null,
+    /** Точка на шестерёнке: в настройках ждёт новое — версия приложения. */
+    settingsDot: Boolean = false,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -152,6 +154,7 @@ fun RoomListScreen(
                 onSettings = onSettings,
                 accountMenu = accountMenu,
                 scroll = scroll,
+                settingsDot = settingsDot,
             )
         }
         if (!showingArchive) banner()
@@ -235,7 +238,13 @@ fun RoomListScreen(
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
-private fun Header(status: Int?, onSettings: () -> Unit, accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null, scroll: androidx.compose.material3.TopAppBarScrollBehavior? = null) {
+private fun Header(
+    status: Int?,
+    onSettings: () -> Unit,
+    accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null,
+    scroll: androidx.compose.material3.TopAppBarScrollBehavior? = null,
+    settingsDot: Boolean = false,
+) {
     var showsAccounts by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
@@ -265,7 +274,9 @@ private fun Header(status: Int?, onSettings: () -> Unit, accountMenu: (@Composab
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title))
+                    androidx.compose.material3.BadgedBox(badge = { if (settingsDot) androidx.compose.material3.Badge() }) {
+                        Icon(Icons.Outlined.Settings, contentDescription = stringResource(R.string.settings_title))
+                    }
                 }
                 accountMenu?.invoke(showsAccounts) { showsAccounts = false }
             }

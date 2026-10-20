@@ -1,6 +1,8 @@
 package wtf.iskra
 
 import android.app.Application
+import android.os.Build
+import wtf.iskra.core.update.InstalledBuild
 import wtf.iskra.features.AppGraph
 import wtf.iskra.features.AppGraphOwner
 
@@ -10,6 +12,18 @@ import wtf.iskra.features.AppGraphOwner
  */
 class IskraApplication : Application(), AppGraphOwner {
     override val graph: AppGraph by lazy {
-        AppGraph(this, BuildConfig.VERSION_NAME, FlavorPush, R.drawable.ic_launcher_monochrome)
+        AppGraph(
+            context = this,
+            appVersion = BuildConfig.VERSION_NAME,
+            pushTransport = FlavorPush,
+            notificationIcon = R.drawable.ic_launcher_monochrome,
+            installed = InstalledBuild(
+                checksEnabled = BuildConfig.UPDATE_CHECK,
+                flavor = BuildConfig.FLAVOR,
+                versionCode = BuildConfig.VERSION_CODE.toLong(),
+                supportedAbis = Build.SUPPORTED_ABIS.toList(),
+                sdkInt = Build.VERSION.SDK_INT,
+            ),
+        )
     }
 }

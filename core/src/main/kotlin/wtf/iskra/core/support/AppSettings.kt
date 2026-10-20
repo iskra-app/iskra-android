@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.media.MediaSettings
 import wtf.iskra.core.timeline.ThreadSettings
+import wtf.iskra.core.update.UpdateStore
 
 /**
  * Настройки приложения, а не аккаунта: оформление, бета-функции. Не секреты — поэтому обычные
@@ -16,7 +17,7 @@ import wtf.iskra.core.timeline.ThreadSettings
  * Значения — строками и флагами: `:core` не знает, что такое акцент (`AccentTheme` — в `:design`),
  * экран переводит сам. Каждое — `StateFlow`, чтобы перемена в настройках сразу перекрашивала всё.
  */
-class AppSettings(context: Context) {
+class AppSettings(context: Context) : UpdateStore {
     private val preferences: SharedPreferences = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
     private fun string(key: String) = MutableStateFlow(preferences.getString(key, null))
@@ -93,6 +94,27 @@ class AppSettings(context: Context) {
     fun setAppearance(name: String) = save(APPEARANCE, name, mutableAppearance)
     fun setDemoBackend(on: Boolean) = save(DEMO, on, mutableDemo)
 
+    private val mutableUpdateChecks = flag(UPDATE_CHECK, true)
+
+    /** «Проверять обновления» (docs/PROMPT.md, 19.1): включено по умолчанию. */
+    val updateChecks: StateFlow<Boolean> = mutableUpdateChecks.asStateFlow()
+
+    fun setUpdateChecks(on: Boolean) = save(UPDATE_CHECK, on, mutableUpdateChecks)
+
+    override val checksForUpdates: Boolean get() = mutableUpdateChecks.value
+
+    override var lastUpdateCheck: Long
+        get() = preferences.getLong(UPDATE_LAST_CHECK, 0L)
+        set(value) = preferences.edit().putLong(UPDATE_LAST_CHECK, value).apply()
+
+    override var cachedRelease: String?
+        get() = preferences.getString(UPDATE_CACHED, null)
+        set(value) = preferences.edit().putString(UPDATE_CACHED, value).apply()
+
+    override var dismissedUpdate: Long?
+        get() = preferences.getLong(UPDATE_DISMISSED, -1L).takeIf { it >= 0 }
+        set(value) = preferences.edit().apply { if (value == null) remove(UPDATE_DISMISSED) else putLong(UPDATE_DISMISSED, value) }.apply()
+
     /**
      * Спрашивали ли уже разрешение на уведомления. Один раз, после первого входа: система показывает
      * вопрос не больше двух раз за жизнь приложения, и спрашивать на каждом запуске — растратить оба.
@@ -121,6 +143,10 @@ class AppSettings(context: Context) {
         const val APPEARANCE = "appearance.mode"
         const val DEMO = "beta.mockBackend"
         const val NOTIFICATIONS_ASKED = "notifications.permissionAsked"
+        const val UPDATE_CHECK = "update.check"
+        const val UPDATE_LAST_CHECK = "update.lastCheck"
+        const val UPDATE_CACHED = "update.cached"
+        const val UPDATE_DISMISSED = "update.dismissed"
         const val CREATURES = "beta.blobatar"
         const val FORCE_CREATURES = "beta.blobatar.force"
 

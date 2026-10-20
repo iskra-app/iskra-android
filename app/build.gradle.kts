@@ -38,8 +38,12 @@ android {
         debug {
             // Стоит рядом с релизом на одном телефоне.
             applicationIdSuffix = ".dev"
+            // Debug обновлять нечем: в релизах лежат подписанные релизным ключом APK (docs/PROMPT.md, 19.1).
+            buildConfigField("boolean", "UPDATE_CHECK", "false")
         }
         release {
+            // Встроенная проверка обновлений. Сборка для магазина, который обновляет сам, выключит её здесь.
+            buildConfigField("boolean", "UPDATE_CHECK", "true")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

@@ -7,6 +7,10 @@ import wtf.iskra.features.push.PushRouter
 import wtf.iskra.features.push.PushTransport
 import wtf.iskra.features.push.RootPushes
 import wtf.iskra.features.signin.MockSignIn
+import wtf.iskra.features.update.Updates
+import wtf.iskra.core.update.GitHubUpdateSource
+import wtf.iskra.core.update.InstalledBuild
+import wtf.iskra.core.update.UpdateChecker
 import wtf.iskra.core.notifications.NotificationActions
 import wtf.iskra.core.notifications.PushDecoder
 import wtf.iskra.core.notifications.PushTargets
@@ -30,6 +34,8 @@ class AppGraph(
     pushTransport: PushTransport,
     /** Значок уведомлений в строке состояния — знак Искры, живущий в `:app`. */
     notificationIcon: Int,
+    /** Что это за сборка — для проверки обновлений: flavor, versionCode, разрешена ли проверка. */
+    installed: InstalledBuild,
 ) {
     private val context: Context = context.applicationContext
 
@@ -74,6 +80,13 @@ class AppGraph(
         smallIcon = notificationIcon,
     )
 
+    /** Проверка и установка обновлений (docs/PROMPT.md, 19.1). */
+    val updates = Updates(
+        context = context,
+        checker = UpdateChecker(GitHubUpdateSource(), settings, installed, language = { appLanguage(context) }),
+        source = GitHubUpdateSource(),
+    )
+
     init {
         SdkLogging.start(environment.logsDir)
     }
@@ -83,7 +96,9 @@ class AppGraph(
      * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер.
      */
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
-        if (mockSignIn == null) return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets))
+        if (mockSignIn == null) {
+            return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates)
+        }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(
             MockSignIn.authentication(context, appVersion),
@@ -93,3 +108,7 @@ class AppGraph(
         )
     }
 }
+
+/** Язык приложения (`localeConfig`): на нём «Что нового» и заглушка сервера. */
+internal fun appLanguage(context: Context): String =
+    context.resources.configuration.locales[0]?.language?.ifEmpty { null } ?: "en"

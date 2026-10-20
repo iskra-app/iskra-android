@@ -14,6 +14,7 @@ import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.support.Log
 import wtf.iskra.features.push.RootPushes
+import wtf.iskra.features.update.Updates
 import wtf.iskra.features.signin.SignInModel
 import wtf.iskra.features.signin.WebAuthentication
 
@@ -42,6 +43,8 @@ class RootModel(
     private val signInAddress: (suspend () -> String?)? = null,
     /** Пуши: регистрация, нажатия, видимый чат. Null — без пушей (демо-вход, тесты). */
     val pushes: RootPushes? = null,
+    /** Проверка и установка обновлений. Null — без них (демо-вход, тесты). */
+    val updates: Updates? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""
@@ -79,6 +82,7 @@ class RootModel(
     val phase: StateFlow<Phase> = mutablePhase.asStateFlow()
 
     init {
+        updates?.onInstallFailed = { scope.launch { reopenAfterUpdate() } }
         // Флаг запуска — то же, что переключатель в «Бете»: запоминается. Иначе активити, созданная
         // заново без extras (вернулись «Назад» и открыли снова, система пересоздала после установки),
         // молча открывала вход вместо демо. Выключается там же, в «Бете», или выходом.
@@ -228,6 +232,9 @@ class RootModel(
         isForeground = foreground
         reportVisibleRoom()
         val session = sessionNow ?: return
+        // Обновления — при выходе на передний план, не на холодном старте под сплэшем; раз в сутки решает
+        // сама проверка. Демо — не проверяет: это не запуск человека.
+        if (foreground && !session.isDemo) updates?.let { scope.launch { it.checker.checkInBackground() } }
         scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
     }
 
@@ -290,6 +297,22 @@ class RootModel(
                 Log.error(Log.Category.ROOMS, "синхронизация не запустилась: ${Log.describe(error)}")
             }
         }
+    }
+
+    /**
+     * Ставим обновление: сеанс закрывается (стор закрыт, очередь отправки сохранена), иначе процесс убьют
+     * посреди записи в SQLite. После обновления — обычный `restore()` нового процесса.
+     */
+    suspend fun closeForUpdate() {
+        val session = sessionNow ?: return
+        mutablePhase.value = Phase.Starting
+        session.shutDown()
+    }
+
+    /** Установка не случилась — открыть то, что закрыли ради неё. */
+    fun reopenAfterUpdate() {
+        if (mutablePhase.value != Phase.Starting) return
+        restore()
     }
 
     /** «Повторить» на экране без сети: та же попытка, никто не разлогинен. */

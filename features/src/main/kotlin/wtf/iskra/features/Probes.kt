@@ -49,6 +49,24 @@ object Probes {
 
             "push-sample" -> graph.push.sample()
 
+            // Что нашлось бы и какой файл был бы выбран — без скачивания. `--es base http://…/dir` — свой
+            // сервер вместо GitHub, только в debug; тогда «Настройки» покажут найденное и дадут поставить.
+            "update" -> {
+                val base = extras["base"]
+                try {
+                    val offer = if (base != null) {
+                        graph.updates.probe(wtf.iskra.core.update.GitHubUpdateSource(base))
+                            ?: return Log.error(Log.Category.PROBE, "свой адрес релиза — только в debug")
+                    } else {
+                        graph.updates.checker.checkNow()
+                    }
+                    Log.info(Log.Category.PROBE, "обновление: $offer")
+                } catch (error: Exception) {
+                    if (error is kotlinx.coroutines.CancellationException) throw error
+                    Log.error(Log.Category.PROBE, "релиз не прочитался: ${Log.describe(error)}")
+                }
+            }
+
             else -> Log.error(Log.Category.PROBE, "не знаю пробы $probe")
         }
         Log.info(Log.Category.PROBE, "проба $probe закончена")

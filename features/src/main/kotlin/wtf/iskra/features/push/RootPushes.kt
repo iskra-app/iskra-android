@@ -19,7 +19,7 @@ class RootPushes(
     val target: StateFlow<PushTarget?> get() = targets.current
 
     /** На каком языке сервер напишет свою заглушку, если до расшифровки не дойдёт. */
-    fun language(): String = context.resources.configuration.locales[0]?.language?.ifEmpty { null } ?: "en"
+    fun language(): String = wtf.iskra.features.appLanguage(context)
 
     /** Вошли (или открыли вошедшего): попросить у транспорта адрес. Повторный вызов безвреден. */
     fun signedIn() = push.transport.start(context)

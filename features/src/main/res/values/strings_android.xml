@@ -32,4 +32,33 @@
     <string name="push_transport_unavailable">This build of Iskra can’t receive push notifications.</string>
     <string name="push_transport_learn_more">About UnifiedPush</string>
     <string name="push_transport_distributor">Delivered by</string>
+    <!-- Обновления изнутри приложения (docs/PROMPT.md, 19.1). На iOS обновляет App Store, своих строк там нет. -->
+    <string name="update_available">Version %s is available</string>
+    <string name="update_whats_new">What’s new</string>
+    <string name="update_size">%s to download</string>
+    <string name="update_install">Install</string>
+    <string name="update_not_now">Not now</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_verifying">Checking the download…</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_permission_title">Let Iskra install its updates</string>
+    <string name="update_permission_body">Android asks once whether Iskra may install apps. Allow it on the next screen. Iskra installs only its own updates, signed with the same key as this copy.</string>
+    <string name="update_permission_open">Open settings</string>
+    <string name="update_failed_damaged">The download is damaged. Try again.</string>
+    <string name="update_failed_unreadable">The downloaded file isn’t an app. Try again later.</string>
+    <string name="update_failed_other_app">The downloaded file isn’t Iskra, so nothing was installed.</string>
+    <string name="update_failed_not_newer">The downloaded version isn’t newer than this one.</string>
+    <string name="update_failed_signature">The downloaded file is signed with a different key, so it wasn’t installed. Your messages are safe. Download Iskra only from its releases page.</string>
+    <string name="update_failed_network">The update didn’t download. Check the connection and try again.</string>
+    <string name="update_failed_install">Android didn’t install the update.</string>
+    <string name="update_unsupported">Version %s doesn’t support your version of Android.</string>
+    <string name="update_no_asset">Version %s is out, but there’s no file for this phone here. Get it from the releases page.</string>
+    <string name="update_unknown_schema">A new version is out, but this one can’t read its description. Update from the releases page.</string>
+    <string name="update_open_page">Open the releases page</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_check_help">Once a day Iskra asks GitHub for the latest release. Only that request leaves the phone: no account, no device details.</string>
+    <string name="update_check_now">Check now</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">You have the latest version</string>
+    <string name="update_check_failed">Couldn’t reach GitHub. Try again later.</string>
 </resources>
