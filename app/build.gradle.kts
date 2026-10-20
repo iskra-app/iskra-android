@@ -3,6 +3,13 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// FCM (gms) включается файлом проекта Firebase: он не секрет и может лежать в репозитории, но только в
+// app/src/gms/ (docs/PROMPT.md, 10.2). Нет файла — gms собирается без пушей и так и говорит в настройках.
+val firebaseConfigured = file("src/gms/google-services.json").exists()
+if (firebaseConfigured) {
+    apply(plugin = libs.plugins.google.services.get().pluginId)
+}
+
 android {
     namespace = "wtf.iskra"
     compileSdk = libs.versions.compileSdk.get().toInt()
@@ -92,5 +99,15 @@ dependencies {
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
 
+    // Только gms: foss собирается без единой библиотеки Google (checkModuleRules).
+    "gmsImplementation"(libs.firebase.messaging)
+
     testImplementation(libs.kotlin.test)
+}
+
+if (firebaseConfigured) {
+    // У foss файла нет и быть не должно: плагин смотрит во все варианты, и молчать ему о foss — правильно.
+    extensions.configure<com.google.gms.googleservices.GoogleServicesPlugin.GoogleServicesPluginConfig> {
+        missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE
+    }
 }

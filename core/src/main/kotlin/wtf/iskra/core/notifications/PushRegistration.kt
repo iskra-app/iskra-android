@@ -32,12 +32,12 @@ data class PushTarget(val pushkey: String, val gateway: String) {
  * нести хоть слово сообщения. Слова собираются на устройстве, которому позволено их читать: см.
  * [PushDecoder].
  */
-internal class PushRegistration(private val client: Client, private val accountId: String) {
+class PushRegistration internal constructor(private val client: Client, private val accountId: String) {
     /**
      * Регистрирует устройство на сервере. Ошибки только в лог: пуши, которые не включились, — не повод
      * останавливать вход.
      */
-    suspend fun register(target: PushTarget, deviceName: String, language: String) {
+    internal suspend fun register(target: PushTarget, deviceName: String, language: String) {
         try {
             withTimeLimit(TIMEOUT) {
                 client.setPusher(
@@ -76,7 +76,7 @@ internal class PushRegistration(private val client: Client, private val accountI
      *
      * Под теми же десятью секундами, что `logout()`: зависший сервер не держит выход.
      */
-    suspend fun unregister(target: PushTarget) {
+    internal suspend fun unregister(target: PushTarget) {
         try {
             withTimeLimit(TIMEOUT) {
                 client.deletePusher(PusherIdentifiers(pushkey = target.pushkey, appId = APP_ID))

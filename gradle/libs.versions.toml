@@ -38,11 +38,17 @@ media3 = "1.11.1"
 # material-color-utilities Google, без Compose и без библиотек Google; MIT.
 materialColorUtilities = "5.0.1"
 
+# Пуши `gms` (docs/PROMPT.md, 10.2): только FCM, только во flavor'е gms — `foss` без них (checkModuleRules).
+# Плагин google-services применяется, только когда есть app/src/gms/google-services.json.
+firebaseMessaging = "25.1.3"
+googleServices = "4.4.4"
+
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
 turbine = "1.2.1"
 
 [libraries]
+firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }
 matrix-sdk = { module = "org.matrix.rustcomponents:sdk-android", version.ref = "matrixSdk" }
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -86,3 +92,4 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
