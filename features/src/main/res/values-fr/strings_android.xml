@@ -7,4 +7,11 @@
     <string name="room_attach_take_photo">Prendre une photo</string>
     <string name="room_attach_record_video">Filmer une vidéo</string>
     <string name="notification_channel_other">Autres messages</string>
+    <string name="push_transport">Distribution</string>
+    <string name="push_transport_ready">Les notifications arrivent sur ce téléphone</string>
+    <string name="push_transport_waiting">En attente de l’app de distribution</string>
+    <string name="push_transport_no_distributor">Aucune app de ce téléphone ne peut distribuer les notifications. Installez un distributeur UnifiedPush, comme ntfy, puis choisissez-le ici.</string>
+    <string name="push_transport_unavailable">Cette version d’Iskra ne peut pas recevoir de notifications.</string>
+    <string name="push_transport_learn_more">À propos d’UnifiedPush</string>
+    <string name="push_transport_distributor">Distribué par</string>
 </resources>

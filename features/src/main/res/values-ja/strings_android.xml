@@ -7,4 +7,11 @@
     <string name="room_attach_take_photo">写真を撮る</string>
     <string name="room_attach_record_video">ビデオを撮る</string>
     <string name="notification_channel_other">その他のメッセージ</string>
+    <string name="push_transport">配信</string>
+    <string name="push_transport_ready">通知はこのスマートフォンに届きます</string>
+    <string name="push_transport_waiting">配信アプリの応答を待っています</string>
+    <string name="push_transport_no_distributor">このスマートフォンには通知を配信するアプリがありません。ntfy などの UnifiedPush ディストリビューターをインストールして、ここで選んでください。</string>
+    <string name="push_transport_unavailable">この Iskra のビルドは通知を受け取れません。</string>
+    <string name="push_transport_learn_more">UnifiedPush について</string>
+    <string name="push_transport_distributor">配信元</string>
 </resources>

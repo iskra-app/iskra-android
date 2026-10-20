@@ -7,4 +7,11 @@
     <string name="room_attach_take_photo">Foto aufnehmen</string>
     <string name="room_attach_record_video">Video aufnehmen</string>
     <string name="notification_channel_other">Weitere Nachrichten</string>
+    <string name="push_transport">Zustellung</string>
+    <string name="push_transport_ready">Benachrichtigungen erreichen dieses Telefon</string>
+    <string name="push_transport_waiting">Warten auf Antwort der Zustell-App</string>
+    <string name="push_transport_no_distributor">Auf diesem Telefon gibt es keine App, die Benachrichtigungen zustellt. Installiere einen UnifiedPush-Distributor wie ntfy und wähle ihn hier aus.</string>
+    <string name="push_transport_unavailable">Diese Version von Iskra kann keine Benachrichtigungen empfangen.</string>
+    <string name="push_transport_learn_more">Über UnifiedPush</string>
+    <string name="push_transport_distributor">Zugestellt von</string>
 </resources>

@@ -7,4 +7,11 @@
     <string name="room_attach_take_photo">Сделать фото</string>
     <string name="room_attach_record_video">Снять видео</string>
     <string name="notification_channel_other">Другие сообщения</string>
+    <string name="push_transport">Доставка</string>
+    <string name="push_transport_ready">Уведомления доходят до этого телефона</string>
+    <string name="push_transport_waiting">Ждём ответа приложения доставки</string>
+    <string name="push_transport_no_distributor">На телефоне нет приложения, которое доставляет уведомления. Установите дистрибьютор UnifiedPush, например ntfy, и выберите его здесь.</string>
+    <string name="push_transport_unavailable">Эта сборка Искры не получает уведомления.</string>
+    <string name="push_transport_learn_more">Что такое UnifiedPush</string>
+    <string name="push_transport_distributor">Доставляет</string>
 </resources>

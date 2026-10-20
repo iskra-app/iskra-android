@@ -219,6 +219,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onAddAccount = model::addAccount,
                 onSignOutOther = model::signOutOther,
                 browser = browser,
+                pushes = model.pushes.takeIf { !session.isDemo },
             )
             timeline != null -> RoomScreen(
                 timeline,

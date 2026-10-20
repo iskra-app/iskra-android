@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import wtf.iskra.core.media.MediaLoader
+import wtf.iskra.core.notifications.NotificationRulesStore
 import wtf.iskra.core.notifications.PushRegistration
 import wtf.iskra.core.notifications.PushTarget
 import wtf.iskra.core.notifications.ReactionPushRule
@@ -54,6 +55,9 @@ class UserSession internal constructor(
     val rooms = RoomListStore(client, strings, scope)
 
     private val strings = strings
+
+    /** Правила уведомлений аккаунта — push rules на сервере (экран «Уведомления»). */
+    val notificationRules: NotificationRulesStore by lazy { NotificationRulesStore(client) }
 
     /** Поиск по своим сообщениям — по локальному индексу, на сервер не уходит. */
     val search = wtf.iskra.core.search.SearchStore(client, scope, strings)

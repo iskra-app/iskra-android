@@ -24,4 +24,12 @@
     <string name="room_attach_record_video">Record a video</string>
     <!-- Канал уведомлений для пушей, которые не расшифровались: «Iskra · Новое сообщение». -->
     <string name="notification_channel_other">Other messages</string>
+    <!-- «Уведомления → Доставка»: чем пуши доезжают до телефона. На iOS это APNs, и спрашивать нечего. -->
+    <string name="push_transport">Delivery</string>
+    <string name="push_transport_ready">Push notifications reach this phone</string>
+    <string name="push_transport_waiting">Waiting for the delivery app to answer</string>
+    <string name="push_transport_no_distributor">No app on this phone can deliver push notifications. Install a UnifiedPush distributor, such as ntfy, and choose it here.</string>
+    <string name="push_transport_unavailable">This build of Iskra can’t receive push notifications.</string>
+    <string name="push_transport_learn_more">About UnifiedPush</string>
+    <string name="push_transport_distributor">Delivered by</string>
 </resources>

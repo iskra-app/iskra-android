@@ -7,4 +7,11 @@
     <string name="room_attach_take_photo">拍照</string>
     <string name="room_attach_record_video">录像</string>
     <string name="notification_channel_other">其他消息</string>
+    <string name="push_transport">推送</string>
+    <string name="push_transport_ready">通知可以送达这部手机</string>
+    <string name="push_transport_waiting">正在等待推送应用响应</string>
+    <string name="push_transport_no_distributor">这部手机上没有可以推送通知的应用。请安装一个 UnifiedPush 分发器（例如 ntfy），并在这里选择它。</string>
+    <string name="push_transport_unavailable">此版本的 Iskra 无法接收通知。</string>
+    <string name="push_transport_learn_more">了解 UnifiedPush</string>
+    <string name="push_transport_distributor">推送方</string>
 </resources>

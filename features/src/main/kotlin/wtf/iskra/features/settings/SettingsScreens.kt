@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Forum
@@ -75,6 +76,7 @@ import wtf.iskra.core.session.UserSession
 import wtf.iskra.core.support.AppSettings
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.features.RootModel
+import wtf.iskra.features.push.RootPushes
 import wtf.iskra.features.signin.WebAuthentication
 import wtf.iskra.features.signin.SignInScreen
 import wtf.iskra.features.signin.SignInModel
@@ -97,7 +99,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, SECURITY, APPEARANCE, CHATS, MEDIA, BETA, ABOUT }
+enum class SettingsPage { MAIN, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -121,6 +123,8 @@ fun SettingsScreen(
     onSignOutOther: (String) -> Unit = {},
     /** Браузер для входа — «Бета → Демо-вход» проходит тот же вход, что настоящий. */
     browser: WebAuthentication? = null,
+    /** Пуши: чем доезжают до телефона. Null — без пушей (демо-вход). */
+    pushes: RootPushes? = null,
 ) {
     BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
     // Большой заголовок, который сворачивается в панель, когда страницу листают, — как в настройках Android.
@@ -134,6 +138,7 @@ fun SettingsScreen(
                 SettingsPage.MEDIA -> R.string.media_title
                 SettingsPage.CHATS -> R.string.settings_chats
                 SettingsPage.SECURITY -> R.string.settings_security
+                SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
             },
@@ -151,6 +156,7 @@ fun SettingsScreen(
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
                 SettingsPage.SECURITY -> Security(session)
+                SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
                 SettingsPage.ABOUT -> About(appVersion)
             }
@@ -178,7 +184,7 @@ private fun TopBar(scroll: TopAppBarScrollBehavior, title: Int, onBack: () -> Un
  * у группы и маленькие между её строками. Строки внутри — [ListItem] без своей заливки.
  */
 @Composable
-private fun Group(vararg rows: @Composable () -> Unit) {
+internal fun Group(vararg rows: @Composable () -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy),
         verticalArrangement = Arrangement.spacedBy(Theme.Spacing.groupGap),
@@ -198,7 +204,7 @@ private fun Group(vararg rows: @Composable () -> Unit) {
 
 /** Строка без своей заливки: её даёт [Group]. */
 @Composable
-private fun rowColors() = ListItemDefaults.colors(containerColor = Color.Transparent)
+internal fun rowColors() = ListItemDefaults.colors(containerColor = Color.Transparent)
 
 @Composable
 private fun Main(
@@ -230,6 +236,7 @@ private fun Main(
     }
     Group(
         { Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) } },
+        { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
         { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
         { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
         { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
@@ -278,7 +285,7 @@ private fun Link(icon: ImageVector, title: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SectionTitle(title: Int) {
+internal fun SectionTitle(title: Int) {
     Text(
         stringResource(title),
         style = MaterialTheme.typography.titleSmall,
@@ -498,7 +505,7 @@ private fun DemoSignIn(browser: WebAuthentication, appVersion: String) {
 }
 
 @Composable
-private fun Toggle(title: Int, help: Int?, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+internal fun Toggle(title: Int, help: Int?, checked: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
     ListItem(
         headlineContent = { Text(stringResource(title)) },
         supportingContent = help?.let { { Text(stringResource(it)) } },
@@ -510,9 +517,13 @@ private fun Toggle(title: Int, help: Int?, checked: Boolean, onChange: (Boolean)
 
 /** Один из вариантов: строка с кружком справа, вся строка — нажатие. */
 @Composable
-private fun Choice(title: Int, selected: Boolean, onSelect: () -> Unit) {
+internal fun Choice(title: Int, selected: Boolean, onSelect: () -> Unit) = ChoiceText(stringResource(title), selected, onSelect)
+
+/** То же, со словами, которые не строка ресурса: имя приложения-дистрибьютора. */
+@Composable
+internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) {
     ListItem(
-        headlineContent = { Text(stringResource(title)) },
+        headlineContent = { Text(title) },
         trailingContent = { RadioButton(selected = selected, onClick = null) },
         modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
         colors = rowColors(),
