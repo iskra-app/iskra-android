@@ -45,6 +45,8 @@ class RootModel(
     val pushes: RootPushes? = null,
     /** Проверка и установка обновлений. Null — без них (демо-вход, тесты). */
     val updates: Updates? = null,
+    /** Список библиотек для «О приложении» (`R.raw.aboutlibraries` из `:app`); 0 — нет. */
+    val librariesResource: Int = 0,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""

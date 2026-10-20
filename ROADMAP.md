@@ -47,7 +47,8 @@
       публичный, подпись v3 (v2 при minSdk 29 apksigner не ставит), отпечаток против `ISKRA_CERT_SHA256`,
       16 KB, `SHA256SUMS`, `release.json` на семи языках из готовых APK (`scripts/release_json.py` — прогнан
       на подписанных тестовым ключом APK). Ключ, секреты, «Что нового» и открытие репозитория — автор
-- [ ] `app.cash.licensee` в CI и `aboutlibraries` для экрана «О приложении»
+- [x] `app.cash.licensee` в `check` (Apache/MIT/BSD; Play services и Firebase — только в `gms`, адресом
+      условий Android SDK) и `aboutlibraries`: «О приложении → Открытые библиотеки» с текстами лицензий
 - [ ] Скриншот-тесты (Roborazzi)
 
 ## 2. Вход и сессия

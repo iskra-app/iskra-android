@@ -42,4 +42,6 @@
     <string name="update_checking">確認中…</string>
     <string name="update_up_to_date">最新バージョンです</string>
     <string name="update_check_failed">GitHub に接続できませんでした。後でもう一度お試しください。</string>
+    <string name="about_libraries">オープンソースライブラリ</string>
+    <string name="about_libraries_help">アプリ内で他の人が書いたものと、そのライセンス。</string>
 </resources>

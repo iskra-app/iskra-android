@@ -42,4 +42,6 @@
     <string name="update_checking">正在检查…</string>
     <string name="update_up_to_date">已是最新版本</string>
     <string name="update_check_failed">无法连接 GitHub。请稍后再试。</string>
+    <string name="about_libraries">开源库</string>
+    <string name="about_libraries_help">应用中由他人编写的所有内容及其许可证。</string>
 </resources>

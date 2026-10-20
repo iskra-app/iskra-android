@@ -36,6 +36,8 @@ class AppGraph(
     notificationIcon: Int,
     /** Что это за сборка — для проверки обновлений: flavor, versionCode, разрешена ли проверка. */
     installed: InstalledBuild,
+    /** Список библиотек, который плагин aboutlibraries кладёт в `:app` (`R.raw.aboutlibraries`). */
+    private val librariesResource: Int = 0,
 ) {
     private val context: Context = context.applicationContext
 
@@ -97,7 +99,8 @@ class AppGraph(
      */
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null) {
-            return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates)
+            return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
+                librariesResource = librariesResource)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

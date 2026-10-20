@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.licensee)
+    alias(libs.plugins.aboutlibraries)
 }
 
 // FCM (gms) включается файлом проекта Firebase: он не секрет и может лежать в репозитории, но только в
@@ -133,5 +135,22 @@ if (firebaseConfigured) {
     // У foss файла нет и быть не должно: плагин смотрит во все варианты, и молчать ему о foss — правильно.
     extensions.configure<com.google.gms.googleservices.GoogleServicesPlugin.GoogleServicesPluginConfig> {
         missingGoogleServicesStrategy = com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy.IGNORE
+    }
+}
+
+// Лицензии всего, что едет в APK (docs/PROMPT.md, 19.2): `check` падает на неразрешённой. GPL/AGPL сюда
+// не добавляются без вопроса автору — они ограничили бы выбор лицензии проекта.
+licensee {
+    allow("Apache-2.0")
+    allow("MIT")
+    allow("BSD-2-Clause")
+    allow("BSD-3-Clause")
+    allowUrl("https://github.com/jordond/materialkolor/blob/master/LICENSE") {
+        because("MIT — материал-схема из акцента; лицензия указана ссылкой на файл, а не SPDX")
+    }
+    // Только gms: Google Play services и Firebase под условиями Android SDK — цена FCM (docs/PROMPT.md,
+    // 10.2). В foss их нет и быть не может: это держит checkModuleRules.
+    allowUrl("https://developer.android.com/studio/terms.html") {
+        because("Play services и Firebase во flavor'е gms; foss без них (checkModuleRules)")
     }
 }

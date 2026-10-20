@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":design"))
     implementation(libs.androidx.core)
+    implementation(libs.aboutlibraries.core)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

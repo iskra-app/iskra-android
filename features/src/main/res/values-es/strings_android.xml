@@ -42,4 +42,6 @@
     <string name="update_checking">Comprobando…</string>
     <string name="update_up_to_date">Tienes la última versión</string>
     <string name="update_check_failed">No se pudo conectar con GitHub. Inténtalo más tarde.</string>
+    <string name="about_libraries">Bibliotecas de código abierto</string>
+    <string name="about_libraries_help">Todo lo que hay dentro de la app escrito por otros, y bajo qué licencia.</string>
 </resources>

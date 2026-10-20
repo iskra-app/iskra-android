@@ -228,6 +228,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 updates = model.updates,
                 beforeUpdate = model::closeForUpdate,
                 afterFailedUpdate = { model.reopenAfterUpdate() },
+                librariesResource = model.librariesResource,
             )
             timeline != null -> RoomScreen(
                 timeline,

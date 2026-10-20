@@ -103,7 +103,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT }
+enum class SettingsPage { MAIN, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT, LIBRARIES }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -134,6 +134,8 @@ fun SettingsScreen(
     /** Перед установкой обновления сеанс закрывается, после неудачной — открывается снова (`RootModel`). */
     beforeUpdate: suspend () -> Unit = {},
     afterFailedUpdate: suspend () -> Unit = {},
+    /** Список библиотек (`R.raw.aboutlibraries` из `:app`); 0 — его нет. */
+    librariesResource: Int = 0,
 ) {
     val offer by (updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
     var showingUpdate by remember { mutableStateOf(false) }
@@ -141,7 +143,13 @@ fun SettingsScreen(
     if (showingUpdate && updates != null && available != null) {
         UpdateSheet(updates, available, onDismiss = { showingUpdate = false }, beforeInstall = beforeUpdate, afterFailure = afterFailedUpdate)
     }
-    BackHandler { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) }
+    // Назад — на страницу выше: библиотеки живут внутри «О приложении».
+    val up = when (page) {
+        SettingsPage.MAIN -> null
+        SettingsPage.LIBRARIES -> SettingsPage.ABOUT
+        else -> SettingsPage.MAIN
+    }
+    BackHandler { onNavigate(up) }
     // Большой заголовок, который сворачивается в панель, когда страницу листают, — как в настройках Android.
     val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).nestedScroll(scroll.nestedScrollConnection)) {
@@ -156,8 +164,9 @@ fun SettingsScreen(
                 SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
+                SettingsPage.LIBRARIES -> R.string.about_libraries
             },
-            onBack = { onNavigate(if (page == SettingsPage.MAIN) null else SettingsPage.MAIN) },
+            onBack = { onNavigate(up) },
         )
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = Theme.Spacing.generous),
@@ -176,9 +185,13 @@ fun SettingsScreen(
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
-                SettingsPage.ABOUT -> {
-                    About(appVersion)
+                SettingsPage.LIBRARIES -> Libraries(librariesResource)
+                SettingsPage.ABOUT -> About(appVersion) {
+                    // Выше длинных текстов лицензий: под ними их никто не нашёл бы.
                     if (updates != null && updates.checker.isInBuild) UpdateChecks(settings, updates) { showingUpdate = true }
+                    if (librariesResource != 0) {
+                        Group({ Link(Icons.Outlined.Info, R.string.about_libraries) { onNavigate(SettingsPage.LIBRARIES) } })
+                    }
                 }
             }
         }
@@ -556,7 +569,7 @@ internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) 
  * Inter (SIL OFL) — с ним. Проверка обновлений — [UpdateChecks] под ним.
  */
 @Composable
-private fun About(appVersion: String) {
+private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {}) {
     Column(Modifier.padding(Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
         Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Row(horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
@@ -566,6 +579,7 @@ private fun About(appVersion: String) {
         Text(stringResource(R.string.about_free_software), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.about_copyright), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+    beforeLicences()
     SectionTitle(R.string.about_licences)
     Licence(R.raw.licence_blobatar)
     Licence(R.raw.licence_inter)

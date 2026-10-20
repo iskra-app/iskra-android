@@ -24,6 +24,7 @@ class IskraApplication : Application(), AppGraphOwner {
                 supportedAbis = Build.SUPPORTED_ABIS.toList(),
                 sdkInt = Build.VERSION.SDK_INT,
             ),
+            librariesResource = R.raw.aboutlibraries,
         )
     }
 }

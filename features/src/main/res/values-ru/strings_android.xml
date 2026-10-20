@@ -42,4 +42,6 @@
     <string name="update_checking">Проверяем…</string>
     <string name="update_up_to_date">У вас последняя версия</string>
     <string name="update_check_failed">Не удалось связаться с GitHub. Попробуйте позже.</string>
+    <string name="about_libraries">Открытые библиотеки</string>
+    <string name="about_libraries_help">Всё внутри приложения, что написали другие, и под какой лицензией.</string>
 </resources>

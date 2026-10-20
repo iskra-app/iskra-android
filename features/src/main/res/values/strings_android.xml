@@ -61,4 +61,7 @@
     <string name="update_checking">Checking…</string>
     <string name="update_up_to_date">You have the latest version</string>
     <string name="update_check_failed">Couldn’t reach GitHub. Try again later.</string>
+    <!-- Список зависимостей в «О приложении» (aboutlibraries). На iOS его показывает Settings bundle. -->
+    <string name="about_libraries">Open-source libraries</string>
+    <string name="about_libraries_help">Everything inside the app that someone else wrote, and the licence it comes under.</string>
 </resources>
