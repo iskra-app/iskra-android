@@ -33,6 +33,8 @@ import wtf.iskra.core.rooms.kind
 import wtf.iskra.core.rooms.of
 import wtf.iskra.core.rooms.pictureUrl
 import wtf.iskra.core.rooms.title
+import wtf.iskra.core.rooms.serverTitle
+import wtf.iskra.core.rooms.counterpart
 import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.support.withTimeLimit
@@ -174,7 +176,14 @@ class TimelineStore internal constructor(
     val threadRootId: String? = null,
     /** Настройки тредов на миг открытия: фокус открытой ленты не меняется. */
     private val threadSettings: () -> ThreadSettings = { ThreadSettings() },
+    /** Прозвища личных чатов: шапка, имена на сообщениях собеседника и в цитатах его. */
+    private val localNames: wtf.iskra.core.rooms.LocalNames.Account? = null,
 ) {
+    /** Имя от сервера — чтобы снять прозвище, пока экран открыт, не дожидаясь нового `RoomInfo`. */
+    private var serverTitle: String? = null
+
+    /** Собеседник личного чата — его сообщения подписываются прозвищем. */
+    private var counterpartId: String? = null
     private val mutableState = MutableStateFlow(TimelineState())
     val state: StateFlow<TimelineState> = mutableState.asStateFlow()
 
@@ -189,6 +198,7 @@ class TimelineStore internal constructor(
     private var diffsJob: Job? = null
     private var listenerHandle: TaskHandle? = null
     private var roomInfoHandle: TaskHandle? = null
+    private var localNamesJob: Job? = null
     private var typingHandle: TaskHandle? = null
 
     /**
@@ -265,6 +275,9 @@ class TimelineStore internal constructor(
         if (mine != generation) return
 
         // И держать в курсе: переименование, новое фото, кто-то вошёл.
+        localNamesJob = localNames?.let { names ->
+            scope.launch { names.changes.collect { changed -> if (changed == roomId && mine == generation) localNameChanged() } }
+        }
         roomInfoHandle = room.subscribeToRoomInfoUpdates(object : RoomInfoListener {
             override fun call(roomInfo: RoomInfo) {
                 scope.launch { if (mine == generation) adopt(roomInfo) else roomInfo.destroy() }
@@ -337,10 +350,12 @@ class TimelineStore internal constructor(
         val levels = info.powerLevels
         val people = info.joinedMembersCount.toLong() + info.invitedMembersCount.toLong()
         val oneToOne = info.isDirect && (if (people == 0L) info.isDm else people <= 2)
+        serverTitle = info.serverTitle(ownUserId, strings)
+        counterpartId = if (oneToOne) info.counterpart(ownUserId)?.userId else null
         mutableState.update { state ->
             state.copy(
                 header = RoomHeader(
-                    name = info.title(ownUserId, strings),
+                    name = info.title(ownUserId, strings, localNames?.name(roomId)),
                     avatarUrl = info.pictureUrl(ownUserId),
                     avatarSeed = info.avatarSeed(ownUserId),
                     faces = if (info.kind == RoomKind.GROUP) info.faces(ownUserId) else emptyList(),
@@ -453,6 +468,8 @@ class TimelineStore internal constructor(
         diffsJob = null
         roomInfoHandle?.cancel()
         roomInfoHandle = null
+        localNamesJob?.cancel()
+        localNamesJob = null
         typingHandle?.cancel()
         typingHandle = null
         pinnedStore?.stop()
@@ -519,9 +536,38 @@ class TimelineStore internal constructor(
         }
     }
 
+    /**
+     * В личном чате, которому дали имя, собеседник зовётся им и в самой переписке — на своих сообщениях и
+     * в каждой цитате их, а не только в шапке и списке: отвечаешь *Маме*, а над цитатой было `anna_1987`.
+     */
+    private fun applyingLocalName(rows: List<TimelineRow>): List<TimelineRow> {
+        val counterpart = counterpartId ?: return rows
+        val local = localNames?.name(roomId) ?: return rows
+        return rows.map { row ->
+            if (row !is TimelineRow.MessageRow) return@map row
+            val message = row.message
+            val renamed = message.copy(
+                senderName = if (message.senderId == counterpart) local else message.senderName,
+                replyTo = message.replyTo?.let { reply -> if (reply.senderId == counterpart) reply.copy(senderName = local) else reply },
+            )
+            if (renamed == message) row else TimelineRow.MessageRow(renamed)
+        }
+    }
+
+    /** Переименовали этот чат на устройстве: шапка и строки — сразу, нового `RoomInfo` не будет. */
+    private fun localNameChanged() {
+        val server = serverTitle ?: return
+        mutableState.update { state ->
+            val header = state.header
+            val local = if (header.kind == RoomKind.DIRECT) localNames?.name(roomId) else null
+            state.copy(header = header.copy(name = local ?: server))
+        }
+        rebuildRows()
+    }
+
     private fun rebuildRows() {
         // Альбомы — последним проходом: заходы, даты и «прочитано» считаются по отдельным сообщениям.
-        var rows = Album.grouping(TimelineRows.rows(memo.mapped(items, ownUserId, strings)))
+        var rows = Album.grouping(applyingLocalName(TimelineRows.rows(memo.mapped(items, ownUserId, strings))))
 
         // Отправленное и ещё не показанное — в конец, и снимается, как только среди строк выше
         // появится его эхо. Снимается *до* добавления: эхо приходит обычным диффом, и это та самая

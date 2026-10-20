@@ -140,7 +140,9 @@ class PushDecoder(
             return PushOutcome.Silence(SilenceReason.NOT_WORTH_WAKING)
         }
         // Блокировки приложения на Android пока нет; правило [PushMapper.redactIfLocked] уже есть.
-        val outcome = PushMapper.outcome(status, roomId, eventId, strings)
+        // Прозвища — того аккаунта, чей пуш, явно: два аккаунта расшифровывают бок о бок.
+        val localName = authentication.localNamesOf(account)?.name(roomId)
+        val outcome = PushMapper.outcome(status, roomId, eventId, strings, localName)
         if (outcome !is PushOutcome.Show) return outcome
         val notification = outcome.notification
         return PushOutcome.Show(notification.copy(avatar = avatar(notification, client), accountId = account))

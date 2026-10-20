@@ -173,6 +173,8 @@ fun RoomScreen(
     initialJump: String? = null,
     /** Лента треда по ID корня (`UserSession.threadTimeline`). Null — тредов отсюда не открыть. */
     openThread: ((String) -> TimelineStore?)? = null,
+    /** Нажали на шапку — «О чате». Null — его отсюда нет (тред). */
+    onOpenDetails: (() -> Unit)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -312,7 +314,7 @@ fun RoomScreen(
     }
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        Header(state, isThread, onBack, onSearch = { searching = true })
+        Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
         // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
         pinned.messages.lastOrNull()?.takeIf { hasPinned && !isThread }?.let { latest ->
             PinnedStrip(latest, count = pinned.messages.size, onClick = { jumpTo = latest.id }, onOpenList = { showsPinned = true })
@@ -532,7 +534,7 @@ fun RoomScreen(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit) {
+private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit, onOpenDetails: (() -> Unit)? = null) {
     val header = state.header
     TopAppBar(
         navigationIcon = {
@@ -541,7 +543,11 @@ private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, 
             }
         },
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal)) {
+            Row(
+                modifier = if (onOpenDetails != null) Modifier.clickable(onClick = onOpenDetails) else Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
+            ) {
                 RoomAvatar(
                     name = header.name,
                     url = header.avatarUrl,

@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 import wtf.iskra.core.mock.DemoBackend
 import wtf.iskra.core.notifications.PushRegistration
 import wtf.iskra.core.notifications.PushTargets
+import wtf.iskra.core.rooms.LocalNames
 import wtf.iskra.core.security.AccountRecord
 import wtf.iskra.core.security.SessionDelegate
 import wtf.iskra.core.security.SessionStore
@@ -61,7 +62,12 @@ class AuthenticationService(
     private val strings: Strings,
     /** Куда едут пуши этого телефона — чтобы выход снял pusher. Null — пушей нет (демо-вход). */
     private val pushTargets: PushTargets? = null,
+    /** Прозвища личных чатов: у каждого аккаунта свои, и выход их забывает. */
+    private val localNames: LocalNames? = null,
 ) : SignInFlow<UserSession> {
+    /** Прозвища аккаунта — для его сеанса и для пуша. */
+    internal fun localNamesOf(sessionId: String): LocalNames.Account? = localNames?.of(sessionId)
+
     /** Состояние входа меняется только под этим замком — аналог `actor` в iOS. */
     private val mutex = Mutex()
 
@@ -432,6 +438,7 @@ class AuthenticationService(
             // Выход из демо — это выход из демо: хранилище секретов и настоящие аккаунты не трогаются.
             session.close()
             environment.sessionDirs(session.sessionId).forEach { it.deleteRecursively() }
+            localNames?.forget(session.sessionId)
             return
         }
         // Pusher — до `logout()`: запросу нужен живой сеанс, а без него сервер продолжал бы слать пуши
@@ -445,6 +452,7 @@ class AuthenticationService(
     /** Забывает сеанс, не спрашивая сервер: для выхода, который совершил не человек здесь. */
     fun forgetSession(sessionId: String) {
         runCatching { sessionStore.remove(sessionId, environment) }
+        localNames?.forget(sessionId)
     }
 
     // ---------------------------------------------------------------------------- частное
@@ -458,6 +466,7 @@ class AuthenticationService(
         val existing = accounts().firstOrNull { it.userId == session.userId }
         if (existing != null && !isOpen(existing)) {
             runCatching { sessionStore.remove(existing.sessionId, environment) }
+            localNames?.forget(existing.sessionId)
         } else if (existing != null) {
             runCatching { withTimeLimit(LOGOUT_TIMEOUT) { client.logout() } }
             abandonPendingLocked()

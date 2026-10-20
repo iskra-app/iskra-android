@@ -106,6 +106,8 @@ class RoomListStore(
     private val strings: Strings,
     /** Поток стора. На устройстве — главный; JVM-тесты стора не поднимают (нужен клиент). */
     private val scope: CoroutineScope,
+    /** Прозвища личных чатов этого аккаунта; переименовали — строка пересобирается сразу. */
+    private val localNames: LocalNames.Account? = null,
 ) {
     private val mutableState = MutableStateFlow(RoomListState())
     val state: StateFlow<RoomListState> = mutableState.asStateFlow()
@@ -226,6 +228,12 @@ class RoomListStore(
         scope.launch {
             watchMuting()
             if (isStillWanted(started)) rebuilds.schedule()
+        }
+        // Прозвище ставится на устройстве, и синхронизации за ним нет: строку пересобирает само событие.
+        localNames?.let { names ->
+            scope.launch {
+                names.changes.collect { roomId -> if (isStillWanted(started)) rebuilds.schedule(setOf(roomId)) }
+            }
         }
 
         // Офлайн-режим — собственный ответ SDK на пропавшую сеть: без него цикл называет её ошибкой
@@ -699,6 +707,7 @@ class RoomListStore(
             isMuted = roomId in mutedRoomIds,
             draft = drafts[roomId],
             strings = strings,
+            localName = localNames?.name(roomId),
         )
     }
 

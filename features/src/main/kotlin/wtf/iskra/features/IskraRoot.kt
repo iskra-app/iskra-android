@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import wtf.iskra.design.AccentTheme
 import wtf.iskra.design.AppearanceMode
 import wtf.iskra.design.IskraTheme
@@ -169,6 +170,11 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
         roomId?.let { id -> session.timeline(id) { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() } }
     }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
+    // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
+    var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
+    val details = remember(roomId, showingDetails) { roomId?.takeIf { showingDetails }?.let(session::details) }
+    val rooms by session.rooms.state.collectAsStateWithLifecycle()
+    val rootScope = androidx.compose.runtime.rememberCoroutineScope()
 
     // Нажатое уведомление: в *этот* разговор, и один раз. Чужой аккаунт — сначала переключиться на него;
     // запрос подождёт в роутере, пока тот аккаунт не окажется здесь.
@@ -230,6 +236,17 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 afterFailedUpdate = { model.reopenAfterUpdate() },
                 librariesResource = model.librariesResource,
             )
+            details != null -> wtf.iskra.features.room.RoomDetailsScreen(
+                store = details,
+                isOffline = rooms.isUnreachable,
+                onBack = { showingDetails = false },
+                onLeave = {
+                    val leaving = details.roomId
+                    showingDetails = false
+                    openRoom = null
+                    rootScope.launch { session.rooms.leave(leaving) }
+                },
+            )
             timeline != null -> RoomScreen(
                 timeline,
                 onBack = {
@@ -239,6 +256,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
                 initialJump = openEvent,
                 openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
+                onOpenDetails = { showingDetails = true },
             )
             else -> RoomListScreen(
                 session.rooms,

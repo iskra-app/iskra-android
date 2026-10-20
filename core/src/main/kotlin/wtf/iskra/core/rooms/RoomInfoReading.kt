@@ -46,10 +46,22 @@ internal fun RoomInfo.counterpart(besides: String?): RoomHero? = heroes.firstOrN
 
 /**
  * Как назвать комнату. Комната без имени в Matrix — норма (у большинства личных чатов его нет),
- * поэтому имя падает на того, кто в ней, а не на сырой ID комнаты. Локальные имена (`LocalNames`)
- * лягут поверх — с этапом 8.
+ * поэтому имя падает на того, кто в ней, а не на сырой ID комнаты.
+ *
+ * А над всем этим — имя, данное на этом устройстве ([LocalNames]), и только личному чату: имя группы
+ * общее для всех в ней. Здесь, в единственном месте, где комната получает имя, — иначе список, шапка и
+ * «О чате» помнили бы каждый сам, и забывший стал бы экраном, где вернулось настоящее имя.
  */
-internal fun RoomInfo.title(besides: String?, strings: Strings): String =
+internal fun RoomInfo.title(besides: String?, strings: Strings, localName: String? = null): String {
+    if (kind == RoomKind.DIRECT && !localName.isNullOrEmpty()) return localName
+    return serverTitle(besides, strings)
+}
+
+/**
+ * Имя, которое дал бы *сервер*, без прозвища. Отдельно для экранов, которые переживают переименование,
+ * пока открыты: прозвище ставится на устройстве, и синхронизации за ним нет — нового `RoomInfo` не придёт.
+ */
+internal fun RoomInfo.serverTitle(besides: String?, strings: Strings): String =
     displayName?.takeIf { it.isNotBlank() }
         ?: counterpart(besides)?.displayName
         ?: heroes.firstOrNull()?.displayName
@@ -109,12 +121,13 @@ internal fun RoomSummary.Companion.of(
     isMuted: Boolean,
     draft: String?,
     strings: Strings,
+    localName: String? = null,
 ): RoomSummary? {
     val membership = RoomMembership.of(info.membership) ?: return null
     val kind = info.kind
     return RoomSummary(
         id = info.id,
-        name = info.title(ownUserId, strings),
+        name = info.title(ownUserId, strings, localName),
         avatarUrl = info.pictureUrl(ownUserId),
         avatarSeed = info.avatarSeed(ownUserId),
         // Кластер собирает только группа: у личного чата — картинка собеседника, у пространства — полка комнат.

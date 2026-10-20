@@ -51,8 +51,11 @@ class UserSession internal constructor(
     /** Картинки: аватарки сейчас, вложения — с лентой. */
     val media = MediaLoader(client)
 
+    /** Прозвища личных чатов этого аккаунта (`LocalNames`). У демо свои, и выход из демо их забывает. */
+    val localNames: wtf.iskra.core.rooms.LocalNames.Account? = authentication.localNamesOf(sessionId)
+
     /** Список чатов и цикл синхронизации под ним. Запускает его тот, кто показывает список. */
-    val rooms = RoomListStore(client, strings, scope)
+    val rooms = RoomListStore(client, strings, scope, localNames)
 
     private val strings = strings
 
@@ -93,6 +96,7 @@ class UserSession internal constructor(
             onDraftChanged = { rooms.noteDraft(roomId, it) },
             onOwnMessagesRead = { rooms.noteRead(roomId, it) },
             threadSettings = threadSettings,
+            localNames = localNames,
         )
     }
 
@@ -103,7 +107,15 @@ class UserSession internal constructor(
      */
     fun threadTimeline(roomId: String, rootEventId: String): TimelineStore? {
         val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
-        return TimelineStore(room = room, roomId = roomId, ownUserId = userId, strings = strings, scope = scope, threadRootId = rootEventId)
+        return TimelineStore(
+            room = room,
+            roomId = roomId,
+            ownUserId = userId,
+            strings = strings,
+            scope = scope,
+            threadRootId = rootEventId,
+            localNames = localNames,
+        )
     }
 
     /**
@@ -115,6 +127,12 @@ class UserSession internal constructor(
         if (isDemo || closed) return
         PushRegistration(client, sessionId).register(target, authentication.deviceName, language)
         ReactionPushRule.enable(client)
+    }
+
+    /** «О чате» комнаты — для экрана, который её показывает; [RoomDetailsStore.stop], когда он уходит. */
+    fun details(roomId: String): wtf.iskra.core.rooms.RoomDetailsStore? {
+        val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
+        return wtf.iskra.core.rooms.RoomDetailsStore(room, client, roomId, userId, strings, scope, localNames)
     }
 
     @Volatile

@@ -14,6 +14,7 @@ import wtf.iskra.core.update.UpdateChecker
 import wtf.iskra.core.notifications.NotificationActions
 import wtf.iskra.core.notifications.PushDecoder
 import wtf.iskra.core.notifications.PushTargets
+import wtf.iskra.core.rooms.LocalNames
 import wtf.iskra.core.security.KeystoreSecrets
 import wtf.iskra.core.security.SessionStore
 import wtf.iskra.core.session.AuthenticationService
@@ -65,6 +66,7 @@ class AppGraph(
         userAgent = DeviceDescription.userAgent(appVersion),
         strings = Strings.of(context),
         pushTargets = pushTargets,
+        localNames = LocalNames.of(context),
     )
 
     /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */
