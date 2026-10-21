@@ -1,5 +1,7 @@
 package wtf.iskra.core.mock
 
+import wtf.iskra.core.stickers.StickerArt
+
 /** Комната демо-сервера. Всё изменяемое — под замком [MockHomeserver]. */
 internal class MockRoom(val id: String) {
     /** Все события, старые первыми, состояние тоже. */
@@ -22,23 +24,6 @@ internal class MockRoom(val id: String) {
 }
 
 internal data class MockProfile(var name: String, var avatar: String?)
-
-/** Стикеры «Искорки» — те же PNG, что у iOS (`StickerArt`), привезённые `sync-from-ios`. */
-internal enum class StickerArt(val emoji: String) {
-    HELLO("👋"), JOY("🎉"), LOVE("❤️"), CURIOUS("🤔"), SURPRISE("😮"), SLEEPY("😴"),
-    SAD("😢"), GRUMPY("😒"), LOADING("⏳"), UNLOCKED("🔓"), BYPASS("🏃"), CONNECTED("📶");
-
-    val shortcode: String get() = name.lowercase()
-
-    /** PNG стикера: фигура на *ничём*. Пусто, только если ресурса нет, — это держит тест. */
-    fun png(): ByteArray =
-        StickerArt::class.java.getResourceAsStream("/stickers/sticker-$shortcode.png")?.use { it.readBytes() } ?: ByteArray(0)
-
-    companion object {
-        /** Сторона стикера: 512, как у Telegram и Element. */
-        const val SIDE = 512
-    }
-}
 
 /**
  * С чем демо-сервер начинает: люди, разговоры, картинки. Порт `MockWorld.swift` — **один в один**

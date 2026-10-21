@@ -1,5 +1,7 @@
 package wtf.iskra.core.mock
 
+import wtf.iskra.core.stickers.StickerArt
+
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
