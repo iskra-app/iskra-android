@@ -71,8 +71,8 @@ internal val IskraTypography: Typography = Typography().let { base ->
 /** Трекинг Inter для кегля в sp, в em. Коэффициенты — из «Dynamic Metrics» Inter. */
 internal fun interTracking(size: Float): Float = TRACKING_A + TRACKING_B * exp(TRACKING_C * size)
 
-/** Фичи Inter: зачёркнутый ноль, открытые формы цифр и букв, плоская «l» — `zero`, `ss01`, `ss02`, `ss07`. */
-private const val INTER_FEATURES = "zero, ss01, ss02, ss07"
+/** Фичи Inter: зачёркнутый ноль и альтернативные формы — `zero`, `ss02`, `ss07`. */
+private const val INTER_FEATURES = "zero, ss02, ss07"
 
 private const val TRACKING_A = -0.0223f
 private const val TRACKING_B = 0.185f
