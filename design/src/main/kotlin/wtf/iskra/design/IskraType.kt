@@ -44,7 +44,11 @@ private val WEIGHTS: List<FontWeight>
  * 22 sp — −0.018 em, заголовки — к −0.022 em. Как SF набирает текст по размеру на iOS.
  */
 internal val IskraTypography: Typography = Typography().let { base ->
-    fun TextStyle.inter() = copy(fontFamily = Inter, letterSpacing = interTracking(fontSize.value).em)
+    fun TextStyle.inter() = copy(
+        fontFamily = Inter,
+        letterSpacing = interTracking(fontSize.value).em,
+        fontFeatureSettings = INTER_FEATURES,
+    )
     Typography(
         displayLarge = base.displayLarge.inter(),
         displayMedium = base.displayMedium.inter(),
@@ -66,6 +70,9 @@ internal val IskraTypography: Typography = Typography().let { base ->
 
 /** Трекинг Inter для кегля в sp, в em. Коэффициенты — из «Dynamic Metrics» Inter. */
 internal fun interTracking(size: Float): Float = TRACKING_A + TRACKING_B * exp(TRACKING_C * size)
+
+/** Фичи Inter: зачёркнутый ноль, открытые формы цифр и букв, плоская «l» — `zero`, `ss01`, `ss02`, `ss07`. */
+private const val INTER_FEATURES = "zero, ss01, ss02, ss07"
 
 private const val TRACKING_A = -0.0223f
 private const val TRACKING_B = 0.185f
