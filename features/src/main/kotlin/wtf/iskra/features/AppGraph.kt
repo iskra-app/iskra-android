@@ -97,10 +97,11 @@ class AppGraph(
 
     /**
      * Корень приложения для этого запуска. [mockSignIn] — слова флага демо-входа (`MockSignIn`), null —
-     * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер.
+     * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер. В release
+     * демо-входа нет ([MockSignIn.isAvailable]), и флаг ничего не меняет.
      */
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
-        if (mockSignIn == null) {
+        if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
                 librariesResource = librariesResource)
         }

@@ -88,8 +88,10 @@ class RootModel(
         // Флаг запуска — то же, что переключатель в «Бете»: запоминается. Иначе активити, созданная
         // заново без extras (вернулись «Назад» и открыли снова, система пересоздала после установки),
         // молча открывала вход вместо демо. Выключается там же, в «Бете», или выходом.
-        if (demo) settings?.setDemoBackend(true)
-        if (signInAddress == null && (demo || settings?.demoBackend?.value == true)) startDemo() else restore()
+        // В release демо нет вовсе (`DemoServers`): ни флаг, ни запомненный переключатель его не открывают.
+        val demoAvailable = authentication.canStartDemo
+        if (demo && demoAvailable) settings?.setDemoBackend(true)
+        if (signInAddress == null && demoAvailable && (demo || settings?.demoBackend?.value == true)) startDemo() else restore()
     }
 
     /**
@@ -97,6 +99,7 @@ class RootModel(
      * демо — стирается целиком), и открывается другой. Настоящий аккаунт при этом не трогается.
      */
     fun setDemo(on: Boolean) {
+        if (on && !authentication.canStartDemo) return
         settings?.setDemoBackend(on)
         val current = sessionNow
         mutablePhase.value = Phase.Starting

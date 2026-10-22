@@ -463,7 +463,7 @@ private fun Chats(settings: AppSettings) {
     })
 }
 
-/** Бета-функции (`BetaView`): существа вместо инициалов и демо-сервер. */
+/** Бета-функции (`BetaView`): существа вместо инициалов и, в debug, демо-сервер. */
 @Composable
 private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit, browser: WebAuthentication?, appVersion: String) {
     val creatures by settings.creatures.collectAsStateWithLifecycle()
@@ -478,6 +478,8 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         { Toggle(R.string.beta_blobatar, R.string.beta_blobatar_help, creatures, settings::setCreatures) },
         { Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures) },
     )
+    // Демо-сервер и демо-вход — только в debug (`DemoServers`), как `#if DEBUG` на iOS.
+    if (!MockSignIn.isAvailable) return
     SectionTitle(R.string.beta_developers)
     if (browser != null) {
         Group(

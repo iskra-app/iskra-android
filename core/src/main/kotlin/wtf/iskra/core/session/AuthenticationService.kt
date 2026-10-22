@@ -2,7 +2,8 @@ package wtf.iskra.core.session
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import wtf.iskra.core.mock.DemoBackend
+import wtf.iskra.core.mock.DemoServers
+import wtf.iskra.core.mock.demoServers
 import wtf.iskra.core.notifications.PushRegistration
 import wtf.iskra.core.notifications.PushTargets
 import wtf.iskra.core.rooms.LocalNames
@@ -399,8 +400,11 @@ class AuthenticationService(
 
     // ---------------------------------------------------------------------------- демо
 
+    /** Есть ли в этой сборке демо-сервер: только debug, в release флаг и «Бета» его не включают. */
+    val canStartDemo: Boolean get() = demoServers != null
+
     /**
-     * Сеанс на демо-сервере ([wtf.iskra.core.mock.DemoBackend]). Порт `startDemoSession`.
+     * Сеанс на демо-сервере ([DemoServers]; только в debug — в release бросает). Порт `startDemoSession`.
      *
      * Сеанс как любой другой от [UserSession] вверх и нарочно ни на что не похожий внизу, потому что
      * единственное, чего он не должен делать никогда, — трогать настоящий аккаунт: в хранилище секретов
@@ -409,14 +413,15 @@ class AuthenticationService(
      * как любой вход, хотя в сеть здесь ничего не ходит: зависшее демо висело бы на экране запуска.
      */
     suspend fun startDemoSession(): UserSession {
-        val id = DemoBackend.SESSION_ID
+        val servers = checkNotNull(demoServers) { "демо-сервера в этой сборке нет" }
+        val id = DemoServers.DEMO_SESSION_ID
         environment.sessionDirs(id).forEach { it.deleteRecursively() }
         val client = withTimeLimit(DEMO_TIMEOUT) {
-            val homeserver = DemoBackend.homeserverUrl()
+            val login = servers.demoLogin()
             val client = makeClientBuilder(id, SlidingSyncVersionBuilder.NATIVE, demo = true)
-                .homeserverUrl(homeserver)
+                .homeserverUrl(login.homeserverUrl)
                 .build()
-            client.login(DemoBackend.USERNAME, DemoBackend.PASSWORD, DemoBackend.DEVICE_NAME, null)
+            client.login(login.username, login.password, login.deviceName, null)
             client
         }
         return UserSession(client, this, id, strings, isDemo = true)

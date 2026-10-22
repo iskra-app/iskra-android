@@ -110,8 +110,9 @@
 - [x] Демо-сервер (`MockHomeserver`, `MockWorld`, `MockMedia`, `DemoBackend`) на своём loopback-HTTP;
       `./android.sh -- --ez mock_backend true`; стикеры «Искорки» привозит `sync-from-ios`
 - [ ] Демо из «Бета» в настройках (этап 8) и инструментальный `DemoBackendTest` с настоящим SDK
-- [ ] Демо-сервер и сервер входа — только в debug: `core/mock/` в source set `debug`, экстры
-      `mock_backend` / `mock_signin` и пункт в «Бета» не работают в release (как на iOS — `#if DEBUG`)
+- [x] Демо-сервер и сервер входа — только в debug: `core/mock/` в source set `debug`, экстры
+      `mock_backend` / `mock_signin` и пункт в «Бета» не работают в release (как на iOS — `#if DEBUG`);
+      в main — только шов `DemoServers` (в release `null`) и `JsonValues`, нужный стикерам
 - [ ] *Готово:* демо и настоящий аккаунт выглядят как на iPhone рядом
 
 ## 4. Переписка

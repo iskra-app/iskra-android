@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val EXTRA_PROBE = "probe"
 
-        /** `./android.sh -- --ez mock_backend true` — демо-сервер вместо аккаунта (docs/PROMPT.md, 14). */
+        /** `./android.sh -- --ez mock_backend true` — демо-сервер вместо аккаунта (docs/PROMPT.md, 14); только debug. */
         const val EXTRA_MOCK_BACKEND = "mock_backend"
     }
 }

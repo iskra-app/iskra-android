@@ -1,19 +1,19 @@
 package wtf.iskra.features.signin
 
 import android.content.Context
-import wtf.iskra.core.mock.SignInMockServer
+import wtf.iskra.core.mock.demoServers
 import wtf.iskra.core.security.InMemorySecrets
 import wtf.iskra.core.security.SessionStore
 import wtf.iskra.core.session.AuthenticationService
 import wtf.iskra.core.support.AppEnvironment
 import wtf.iskra.core.support.DeviceDescription
-import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
 import java.io.File
 
 /**
- * Демо-вход: экраны входа и регистрации против сервера внутри приложения ([SignInMockServer]). Порт
- * `MockSignIn.swift`.
+ * Демо-вход: экраны входа и регистрации против сервера внутри приложения (`SignInMockServer`). Порт
+ * `MockSignIn.swift`. Только в debug ([isAvailable]), как `#if DEBUG` на iOS: сервер лежит в
+ * `core/src/debug`.
  *
  * Чтобы работать над этими экранами — и над несколькими аккаунтами — без аккаунта, который не жалко,
  * без сети и без мнения настоящего сервера о том, сколько аккаунтов человеку можно завести за день.
@@ -37,23 +37,13 @@ import java.io.File
 object MockSignIn {
     const val EXTRA = "mock_signin"
 
-    /** Какой сервер: по словам флага запуска. */
-    fun configuration(words: Collection<String>): SignInMockServer.Configuration {
-        var configuration = SignInMockServer.Configuration(accounts = ACCOUNTS)
-        if ("password" in words) configuration = configuration.copy(offersOAuth = false, offersRegistration = false)
-        if ("sso" in words) {
-            configuration = configuration.copy(offersPassword = false, offersOAuth = false, offersRegistration = false, offersLegacySso = true)
-        }
-        if ("closed" in words) configuration = configuration.copy(offersRegistration = false)
-        if ("slow" in words) configuration = configuration.copy(latencyMillis = SLOW_MS)
-        return configuration
-    }
+    /** Есть ли демо-вход в этой сборке: в release флаг и пункт в «Бете» ничего не делают. */
+    val isAvailable: Boolean get() = demoServers != null
 
     fun words(extra: String): Set<String> = extra.split(' ', ',').filter { it.isNotBlank() }.toSet()
 
     @Volatile
     private var service: AuthenticationService? = null
-    private var server: SignInMockServer? = null
 
     /**
      * Сервис входа, которым пользуются экраны, пока флаг включён. Один на процесс: выданный им сеанс
@@ -75,24 +65,9 @@ object MockSignIn {
 
     /**
      * Поднимает сервер — один раз — и возвращает адрес для поля входа. Null, если листенер не
-     * поднялся: экран входа откроется пустым, а не указывая на порт, где никого нет.
+     * поднялся или сборка release: экран входа откроется пустым, а не указывая на порт, где никого нет.
      */
-    @Synchronized
-    fun start(words: Collection<String> = emptySet()): String? {
-        server?.let { return it.start() }
-        return try {
-            val started = SignInMockServer(configuration(words))
-            val address = started.start()
-            server = started
-            Log.info(Log.Category.SESSION, "демо-вход: $address — alice / password")
-            address
-        } catch (error: Exception) {
-            Log.error(Log.Category.SESSION, "демо-вход не поднялся: ${Log.describe(error)}")
-            null
-        }
-    }
+    fun start(words: Collection<String> = emptySet()): String? = demoServers?.startSignIn(words)
 
-    private val ACCOUNTS = mapOf("alice" to "password", "bob" to "password")
-    private const val SLOW_MS = 2_000L
     private const val SCRATCH = "IskraMockServer"
 }
