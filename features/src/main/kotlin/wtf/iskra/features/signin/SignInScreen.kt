@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,6 +116,9 @@ private fun Header() {
 
 @Composable
 private fun Address(model: SignInModel<*>, state: SignInModel.State) {
+    // Открыт ли список серверов и «Что такое Matrix?» — листы поверх входа, не шаги самого входа.
+    var choosing by rememberSaveable { mutableStateOf(false) }
+    var reading by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.normal)) {
         Text(stringResource(R.string.sign_in_where_is_account), style = MaterialTheme.typography.titleMedium)
         Text(
@@ -134,7 +138,16 @@ private fun Address(model: SignInModel<*>, state: SignInModel.State) {
         PrimaryActionButton(onClick = model::findServer, enabled = state.canContinue, modifier = Modifier.fillMaxWidth()) {
             BusyLabel(R.string.sign_in_next, spinning = state.isBusy)
         }
+        // Помощь тому, кто слова «сервер» не слышал, — кнопкой прямо под полем, а не абзацем над ним.
+        SecondaryActionButton(onClick = { choosing = true }, enabled = !state.isBusy, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.sign_in_choose_server))
+        }
+        TextButton(onClick = { reading = true }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(stringResource(R.string.sign_in_what_is_matrix), style = MaterialTheme.typography.labelLarge, color = secondary())
+        }
     }
+    if (choosing) ServerPicker(onPick = model::setAddress, onDismiss = { choosing = false })
+    if (reading) AboutMatrix(onDismiss = { reading = false })
 }
 
 @Composable
