@@ -11,9 +11,9 @@ import android.net.Uri
 import wtf.iskra.core.media.MetadataCheck
 import wtf.iskra.core.support.Log
 import java.io.ByteArrayOutputStream
-import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /** Квадрат в пикселях картинки, отсчёт от левого верхнего угла. */
 data class CropSquare(val left: Float, val top: Float, val side: Float) {
@@ -68,8 +68,11 @@ data class AvatarCrop(
             return CropSquare(centreX - length / 2, centreY - length / 2, length)
         }
 
-    /** Сторона того, что уйдёт: квадрат, но не больше [MAX_SIDE]. */
-    val outputSide: Int get() = floor(min(MAX_SIDE.toFloat(), cropSquare.side)).toInt()
+    /**
+     * Сторона того, что уйдёт: квадрат, но не больше [MAX_SIDE]. До ближайшего пикселя, а не вниз:
+     * в `Float` квадрат в 500 пикселей выходит 499,99997, и вниз это был бы 499.
+     */
+    val outputSide: Int get() = min(MAX_SIDE, cropSquare.side.roundToInt())
 
     /** Квадрат, вырезанный из [image] и уменьшенный до [MAX_SIDE], — JPEG без единого байта метаданных. */
     fun render(image: Bitmap): ByteArray? {
