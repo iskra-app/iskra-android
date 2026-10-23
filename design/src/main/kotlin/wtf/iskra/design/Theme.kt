@@ -419,6 +419,9 @@ object Theme {
         val gestureReach = 60.dp
 
         /** Потолок камеры при записи кружочка. */
+        /** Не выше этого: список чатов в диалоге выбора (папки) прокручивается, а не растягивает диалог. */
+        val chatChooser = 360.dp
+
         val videoNoteCamera = 440.dp
         val videoNoteHint = 300.dp
 

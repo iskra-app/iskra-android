@@ -83,6 +83,12 @@ class UserSession internal constructor(
         upload = { mimeType, bytes -> client.uploadMedia(mimeType, bytes, null) },
     )
 
+    /** Папки чатов: правила в account data, общие для устройств аккаунта (`ChatFolders`). */
+    val folders = wtf.iskra.core.rooms.ChatFolders(
+        readAccountData = { type -> client.accountData(type) },
+        writeAccountData = { type, content -> client.setAccountData(type, content) },
+    )
+
     /** Картинка по `mxc://` — стикеру в зашифрованной комнате (`TimelineStore.sendSticker`). */
     private val downloadMedia: suspend (String) -> ByteArray = { url ->
         val source = org.matrix.rustcomponents.sdk.MediaSource.fromUrl(url)

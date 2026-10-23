@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Shield
@@ -105,7 +106,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, PROFILE, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT, LIBRARIES }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -163,6 +164,7 @@ fun SettingsScreen(
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
                 SettingsPage.MEDIA -> R.string.media_title
                 SettingsPage.CHATS -> R.string.settings_chats
+                SettingsPage.FOLDERS -> R.string.folders_title
                 SettingsPage.SECURITY -> R.string.settings_security
                 SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
@@ -186,6 +188,7 @@ fun SettingsScreen(
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
+                SettingsPage.FOLDERS -> FoldersPage(session)
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
@@ -280,6 +283,7 @@ private fun Main(
         { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
         { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
         { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
+        { Link(Icons.Outlined.Folder, R.string.folders_title) { onNavigate(SettingsPage.FOLDERS) } },
         { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
     )
     Group(

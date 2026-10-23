@@ -279,6 +279,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 },
                 onSettings = { settingsPage = SettingsPage.MAIN },
                 settingsDot = updateWaiting,
+                folders = session.folders,
+                onEditFolders = { settingsPage = SettingsPage.FOLDERS },
                 banner = { RecoveryBanner(session) { unlocking = true } },
                 accountMenu = if (accounts.isAvailable) {
                     { expanded, onDismiss ->

@@ -1,5 +1,8 @@
 package wtf.iskra.features.rooms
 
+import wtf.iskra.core.rooms.ChatFolder
+import wtf.iskra.core.rooms.ChatFolders
+import wtf.iskra.core.rooms.FoldersState
 import wtf.iskra.core.search.SearchHit
 import wtf.iskra.core.search.SearchState
 import wtf.iskra.core.search.SearchStore
@@ -30,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBar
@@ -113,6 +117,10 @@ fun RoomListScreen(
     accountMenu: (@Composable (expanded: Boolean, onDismiss: () -> Unit) -> Unit)? = null,
     /** Точка на шестерёнке: в настройках ждёт новое — версия приложения. */
     settingsDot: Boolean = false,
+    /** Папки аккаунта: вкладки над списком и «В папку» в меню строки. Null — без папок. */
+    folders: ChatFolders? = null,
+    /** Долгое нажатие на полосу папок — к их настройкам. */
+    onEditFolders: () -> Unit = {},
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -122,11 +130,21 @@ fun RoomListScreen(
     var query by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(query) { search?.search(query) }
     var showingArchive by rememberSaveable { mutableStateOf(false) }
+    val folderState by (folders?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(FoldersState()) }).collectAsStateWithLifecycle()
+    LaunchedEffect(folders) { folders?.load() }
+    // Выбранной папки больше нет (удалили здесь или на другом устройстве) — это «Все», без особого слова.
+    var folderId by rememberSaveable { mutableStateOf(ALL) }
+    val folder = folderState.folders.firstOrNull { it.id == folderId }
+    var filing by remember { mutableStateOf<RoomSummary?>(null) }
     var leaving by remember { mutableStateOf<RoomSummary?>(null) }
     BackHandler(enabled = showingArchive) { showingArchive = false }
 
     // Поиск — по уже собранным строкам: имя чата, без похода на сервер. Поиск по сообщениям — свой пункт.
-    val source = if (showingArchive) state.archivedRooms else state.rooms
+    val source = when {
+        showingArchive -> state.archivedRooms
+        folder != null -> folder.rooms(state.rooms, state.archivedRooms)
+        else -> state.rooms
+    }
     val shown = remember(source, query) {
         val needle = query.trim()
         if (needle.isEmpty()) source else source.filter { it.name.contains(needle, ignoreCase = true) }
@@ -137,6 +155,7 @@ fun RoomListScreen(
         onPin = { scope.launch { store.setPinned(it.id, !it.isPinned) } },
         onArchive = { scope.launch { store.setArchived(it.id, !it.isArchived) } },
         onLeave = { leaving = it },
+        onFolders = if (folderState.folders.isNotEmpty()) ({ filing = it }) else null,
     )
 
     // Панель тонирует себя, когда под неё уезжает список: так Material показывает, что выше есть ещё.
@@ -158,12 +177,23 @@ fun RoomListScreen(
             )
         }
         if (!showingArchive) banner()
+        if (!showingArchive && folderState.folders.isNotEmpty()) {
+            FolderTabs(
+                folders = folderState.folders,
+                rooms = state.rooms,
+                archived = state.archivedRooms,
+                selection = if (folder == null) ALL else folderId,
+                onSelect = { folderId = it },
+                onEdit = onEditFolders,
+            )
+        }
 
         when {
             state.isLoadingInitialRooms -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = LocalAccent.current.control)
             }
             showingArchive && source.isEmpty() -> Empty(R.string.room_list_archive_empty_title, R.string.room_list_archive_empty_message)
+            folder != null && !showingArchive && source.isEmpty() -> Empty(R.string.folders_empty_title, R.string.folders_empty_message)
             source.isEmpty() && state.archivedRooms.isEmpty() -> Empty(R.string.room_list_empty_title, R.string.room_list_empty_message)
             else -> {
                 val now = Instant.now()
@@ -183,7 +213,7 @@ fun RoomListScreen(
                         }
                     }
                     // Архив — строкой над списком, как в Telegram: смахнутые чаты никуда не делись.
-                    if (!showingArchive && query.isBlank() && state.archivedRooms.isNotEmpty()) {
+                    if (!showingArchive && folder == null && query.isBlank() && state.archivedRooms.isNotEmpty()) {
                         item(key = "archive") {
                             ArchiveRow(state.archivedRooms.size, state.archivedRooms.any { it.hasUnread }) { showingArchive = true }
                         }
@@ -212,6 +242,10 @@ fun RoomListScreen(
                 }
             }
         }
+    }
+
+    filing?.let { room ->
+        FolderMembership(room, folderState.folders, folders, onDismiss = { filing = null })
     }
 
     leaving?.let { room ->
@@ -546,6 +580,8 @@ private class RoomActions(
     val onPin: (RoomSummary) -> Unit,
     val onArchive: (RoomSummary) -> Unit,
     val onLeave: (RoomSummary) -> Unit,
+    /** «В папку» — только когда у аккаунта есть папки. */
+    val onFolders: ((RoomSummary) -> Unit)? = null,
 )
 
 /**
@@ -567,6 +603,13 @@ private fun RoomMenu(room: RoomSummary, expanded: Boolean, onDismiss: () -> Unit
                 text = { Text(stringResource(label)) },
                 leadingIcon = { Icon(icon, contentDescription = null) },
                 onClick = { onDismiss(); action(room) },
+            )
+        }
+        actions.onFolders?.let { toFolders ->
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.folders_add_to_folder)) },
+                leadingIcon = { Icon(Icons.Outlined.Folder, contentDescription = null) },
+                onClick = { onDismiss(); toFolders(room) },
             )
         }
         DropdownMenuItem(
@@ -614,5 +657,39 @@ private fun ArchiveHeader(onBack: () -> Unit, scroll: androidx.compose.material3
         },
         windowInsets = WindowInsets(0),
         scrollBehavior = scroll,
+    )
+}
+
+/**
+ * В какие папки входит чат — отметкой, как в «О чате» (`FolderMembershipView`). Отмеченный лежит в папке, даже
+ * если не подходит под правила; снятый — не лежит никогда, даже если подходит.
+ */
+@Composable
+private fun FolderMembership(room: RoomSummary, all: List<ChatFolder>, folders: ChatFolders?, onDismiss: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.folders_membership_title)) },
+        text = {
+            Column {
+                all.forEach { folder ->
+                    val isIn = folder.contains(room)
+                    Row(
+                        Modifier.fillMaxWidth().clickable { scope.launch { folders?.set(room.id, folder.id, !isIn) } }.padding(vertical = Theme.Spacing.tight),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        androidx.compose.material3.Checkbox(checked = isIn, onCheckedChange = null)
+                        Text(folder.name, modifier = Modifier.padding(start = Theme.Spacing.normal))
+                    }
+                }
+                Text(
+                    stringResource(R.string.folders_membership_footer),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = Theme.Spacing.close),
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.folders_done)) } },
     )
 }
