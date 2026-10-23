@@ -19,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import wtf.iskra.core.R
 import wtf.iskra.core.support.Log
+import wtf.iskra.core.support.NetworkWatch
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.support.withTimeLimit
 import wtf.iskra.core.timeline.DiffOutcome
@@ -51,6 +52,7 @@ import org.matrix.rustcomponents.sdk.SyncServiceStateObserver
 import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.TypingNotificationsListener
 import java.time.Instant
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -108,6 +110,8 @@ class RoomListStore(
     private val scope: CoroutineScope,
     /** Прозвища личных чатов этого аккаунта; переименовали — строка пересобирается сразу. */
     private val localNames: LocalNames.Account? = null,
+    /** Сеть устройства — только чтобы не ждать паузы, когда она вернулась (`watchNetwork`). Null — не следим. */
+    private val networkWatch: NetworkWatch? = null,
 ) {
     private val mutableState = MutableStateFlow(RoomListState())
     val state: StateFlow<RoomListState> = mutableState.asStateFlow()
@@ -139,6 +143,17 @@ class RoomListStore(
     private var roomListStateHandle: TaskHandle? = null
     private var sendQueueHandle: TaskHandle? = null
     private var sendQueueErrorHandle: TaskHandle? = null
+
+    /** Перезапуск синхронизации, который ждёт своей паузы, пока сервер не отвечает (`scheduleRecovery`). */
+    private var recovery: Job? = null
+    private var recoveryAttempts = 0
+
+    /** Подписка на сеть устройства; живёт, пока список поднят. */
+    private var networkHandle: AutoCloseable? = null
+
+    /** Перезапуск очередей отправки, ждущий паузы: один на все комнаты — `enableAllSendQueues` и есть вызов. */
+    private var sendQueueRestart: Job? = null
+    private val sendQueueRecovery = SendQueueRecovery()
 
     private var notificationSettings: NotificationSettings? = null
     private var mutedRoomIds: Set<String> = emptySet()
@@ -302,11 +317,12 @@ class RoomListStore(
         }
         sendQueueHandle = queueHandle
 
-        // Очередь, остановившая себя на сбое, который может пройти. Пока — сразу вслед за возвратом
-        // сети (`syncStateChanged`); перезапуск с паузой (`SendQueueRecovery`) придёт отдельным пунктом.
+        // Очередь, остановившая себя на сбое, который может пройти: включить снова — после паузы
+        // (`SendQueueRecovery`); вслед за возвратом сети — сразу (`syncStateChanged`).
         sendQueueErrorHandle = client.subscribeToSendQueueStatus(object : SendQueueRoomErrorListener {
             override fun onError(roomId: String, error: ClientException) {
                 Log.info(Log.Category.ROOMS, "очередь отправки остановилась: ${Log.describe(error)}")
+                scope.launch { sendQueueStopped() }
             }
         })
 
@@ -335,6 +351,7 @@ class RoomListStore(
         isSyncAsleep = false
         service.start()
         watchFirstAnswer()
+        watchNetwork()
     }
 
     // MARK: Пауза
@@ -406,6 +423,11 @@ class RoomListStore(
             firstAnswerWatch?.cancel()
             firstAnswerWatch = null
             mutableState.update { it.copy(isStalled = false) }
+            if (roomListAnswered && !mutableState.value.isOffline) recovered()
+            if (isPaused || hasStopped) {
+                recovery?.cancel()
+                recovery = null
+            }
             if (isAwaitingFirstAnswer) {
                 isAwaitingFirstAnswer = false
                 refreshUpdating()
@@ -425,6 +447,96 @@ class RoomListStore(
             if (mine != generation) return@launch
             Log.error(Log.Category.SESSION, "сервер молчит с тех пор, как синхронизация поднялась; так и говорим")
             mutableState.update { it.copy(isStalled = true) }
+            scheduleRecovery()
+        }
+    }
+
+    /** Всё в порядке: перезапуск никто не должен, и следующая плохая полоса начнётся с короткой паузы. */
+    private fun recovered() {
+        recovery?.cancel()
+        recovery = null
+        recoveryAttempts = 0
+    }
+
+    /**
+     * Поднимает синхронизацию снова и снова, с растущими паузами, пока список на экране, а сервер не отвечает —
+     * молчит или офлайн. Раньше заголовок только говорил «Ожидание сети» и после долгого фона мог говорить это
+     * вечно: собственные повторы SDK идут по тем же соединениям, а после часов сна они мертвы так, что быстро
+     * этого никто не замечает. Единственное, что чистит всё, — убить приложение и открыть снова; это — вежливая
+     * версия: цикл останавливается и запускается, ожидание первого ответа начинается заново. 10, 20, 40 с, потом
+     * раз в минуту — и сразу, когда устройство говорит, что сеть вернулась ([watchNetwork]).
+     */
+    private fun scheduleRecovery(now: Boolean = false) {
+        val state = mutableState.value
+        if (hasStopped || isPaused || !(state.isOffline || state.isStalled)) return
+        if (now) {
+            recovery?.cancel()
+            recovery = null
+        }
+        if (recovery != null) return
+        val mine = generation
+        val pause = if (now) Duration.ZERO else SyncRecovery.delay(recoveryAttempts)
+        recovery = scope.launch {
+            delay(pause)
+            if (mine != generation) return@launch
+            recovery = null
+            val current = mutableState.value
+            if (hasStopped || isPaused || !(current.isOffline || current.isStalled)) return@launch
+            recoveryAttempts += 1
+            Log.error(
+                Log.Category.SESSION,
+                "синхронизация не доходит до сервера (офлайн: ${current.isOffline}, молчит: ${current.isStalled}); поднимаем снова, попытка $recoveryAttempts",
+            )
+            recoverSync()
+            scheduleRecovery()
+        }
+    }
+
+    /** Через ту же очередь переходов, что пауза и возобновление: перезапуск не пересекает ни ту, ни другую. */
+    private suspend fun recoverSync() {
+        transitions.withLock {
+            val service = syncService ?: return
+            if (hasStopped || isPaused) return
+            runCatching { withTimeLimit(STOP_LIMIT) { service.stop() } }
+            if (hasStopped || isPaused) return
+            isSyncAsleep = false
+            service.start()
+        }
+        firstAnswerWatch?.cancel()
+        firstAnswerWatch = null
+        watchFirstAnswer()
+    }
+
+    /** Замечает возврат сети устройства и не ждёт паузы. */
+    private fun watchNetwork() {
+        if (networkHandle != null) return
+        val watch = networkWatch ?: return
+        networkHandle = watch.watch {
+            scope.launch {
+                if (hasStopped) return@launch
+                Log.info(Log.Category.SESSION, "сеть вернулась")
+                scheduleRecovery(now = true)
+            }
+        }
+    }
+
+    /**
+     * Очередь отправки остановилась сама на сбое, который может пройти. Включить снова — позже. Не офлайн: там
+     * синхронизация сообщит о возврате сети и включит все очереди разом, а таймер в пустоту только остановил бы их
+     * снова и удлинил следующую паузу ни за что. И не два перезапуска разом: пауза — и есть смысл, а второй сбой
+     * внутри неё — тот же плохой момент, не новый.
+     */
+    private fun sendQueueStopped() {
+        if (hasStopped || mutableState.value.isOffline || sendQueueRestart != null) return
+        val pause = sendQueueRecovery.failed()
+        Log.info(Log.Category.SESSION, "очередь отправки остановилась сама; включим снова через $pause")
+        val mine = generation
+        sendQueueRestart = scope.launch {
+            delay(pause)
+            if (mine != generation) return@launch
+            sendQueueRestart = null
+            if (hasStopped || mutableState.value.isOffline) return@launch
+            runCatching { withTimeLimit(SDK_LIMIT) { client.enableAllSendQueues(true) } }
         }
     }
 
@@ -443,10 +555,15 @@ class RoomListStore(
         // Всё, от чего очередь отправки не избавилась без сети. SDK останавливает очередь комнаты на
         // сбое и сам не запускает: без этого написанное офлайн лежало бы и после возвращения сети.
         if (state == SyncServiceState.RUNNING) {
+            // Раньше любой паузы, так что пауза отпускается: сеть вернулась, и следующая неудача — новая история.
+            sendQueueRestart?.cancel()
+            sendQueueRestart = null
+            sendQueueRecovery.reset()
             runCatching { withTimeLimit(SDK_LIMIT) { client.enableAllSendQueues(true) } }
         }
 
         watchFirstAnswer()
+        if (offline) scheduleRecovery() else if (state == SyncServiceState.RUNNING && roomListAnswered) recovered()
 
         if (state != SyncServiceState.ERROR && state != SyncServiceState.TERMINATED) return
         if (isPaused || isRestartingSync) return
@@ -490,6 +607,14 @@ class RoomListStore(
         sendQueueHandle = null
         sendQueueErrorHandle?.cancel()
         sendQueueErrorHandle = null
+        sendQueueRestart?.cancel()
+        sendQueueRestart = null
+        sendQueueRecovery.reset()
+        recovery?.cancel()
+        recovery = null
+        recoveryAttempts = 0
+        networkHandle?.close()
+        networkHandle = null
 
         // До остановки сервиса, не после: остановка переведёт его в состояние, за которым следит
         // наблюдатель, и ещё слушающий наблюдатель принял бы нарочную остановку за сбой и поднял всё снова.

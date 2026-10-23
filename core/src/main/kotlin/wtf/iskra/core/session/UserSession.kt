@@ -60,7 +60,7 @@ class UserSession internal constructor(
     val localNames: wtf.iskra.core.rooms.LocalNames.Account? = authentication.localNamesOf(sessionId)
 
     /** Список чатов и цикл синхронизации под ним. Запускает его тот, кто показывает список. */
-    val rooms = RoomListStore(client, strings, scope, localNames)
+    val rooms = RoomListStore(client, strings, scope, localNames, authentication.networkWatch)
 
     private val strings = strings
 

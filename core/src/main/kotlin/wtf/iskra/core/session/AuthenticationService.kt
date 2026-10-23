@@ -65,6 +65,8 @@ class AuthenticationService(
     private val pushTargets: PushTargets? = null,
     /** Прозвища личных чатов: у каждого аккаунта свои, и выход их забывает. */
     private val localNames: LocalNames? = null,
+    /** Сеть устройства: возврат её будит синхронизацию без паузы. Null — не следим (тесты). */
+    internal val networkWatch: wtf.iskra.core.support.NetworkWatch? = null,
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
     internal fun localNamesOf(sessionId: String): LocalNames.Account? = localNames?.of(sessionId)
