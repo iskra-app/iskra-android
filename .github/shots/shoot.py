@@ -81,7 +81,10 @@ def main():
     apk = sys.argv[1]
     adb("install", "-r", "-g", apk)
     adb("shell", "cmd", "locale", "set-app-locales", PKG, "--locales", "ru-RU", check=False)
-    for font in ["googleSans", "inter", "system"]:
+    # Первый запуск демо долгий (стор SDK с нуля): прогреть, чтобы не съел ожидание первого снимка.
+    launch("googleSans", False)
+    wait("Семья", 300)
+    for font in ["googleSans"]:
         for dark in [False, True]:
             suffix = f"{font}-{'dark' if dark else 'light'}"
             launch(font, dark)
