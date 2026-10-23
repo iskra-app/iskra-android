@@ -95,7 +95,9 @@ import kotlinx.coroutines.Dispatchers
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import wtf.iskra.design.AccentTheme
+import wtf.iskra.design.AppFont
 import wtf.iskra.design.AppearanceMode
+import wtf.iskra.design.iskraTypography
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.Theme
 import wtf.iskra.design.resolveHere
@@ -328,7 +330,7 @@ internal fun SectionTitle(title: Int) {
     )
 }
 
-/** Тема и цвет приложения (`AppearanceView`). Обои, режим лиц и иконка — следующими пунктами. */
+/** Тема, цвет и шрифт приложения (`AppearanceView`; шрифт — только Android). Обои, режим лиц и иконка — следующими пунктами. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Appearance(settings: AppSettings) {
@@ -387,6 +389,38 @@ private fun Appearance(settings: AppSettings) {
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
+    )
+
+    val fontName by settings.font.collectAsStateWithLifecycle()
+    val font = AppFont.fromStorage(fontName)
+    SectionTitle(R.string.appearance_font)
+    Group(
+        *AppFont.entries.map<AppFont, @Composable () -> Unit> { option ->
+            { FontChoice(option, option == font) { settings.setFont(option.storageName) } }
+        }.toTypedArray(),
+    )
+}
+
+/** Вариант шрифта — его же начертанием: выбирают глазами, а не по названию. */
+@Composable
+private fun FontChoice(font: AppFont, selected: Boolean, onSelect: () -> Unit) {
+    val style = iskraTypography(font).bodyLarge
+    ListItem(
+        headlineContent = {
+            Text(
+                stringResource(
+                    when (font) {
+                        AppFont.GOOGLE_SANS -> R.string.appearance_font_google_sans
+                        AppFont.INTER -> R.string.appearance_font_inter
+                        AppFont.SYSTEM -> R.string.appearance_font_system
+                    },
+                ),
+                style = style,
+            )
+        },
+        trailingContent = { RadioButton(selected = selected, onClick = null) },
+        modifier = Modifier.selectable(selected = selected, role = Role.RadioButton, onClick = onSelect),
+        colors = rowColors(),
     )
 }
 
@@ -568,7 +602,7 @@ internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) 
 
 /**
  * О приложении (`AboutView`): версия и лицензии того, что внутри. Нотис blobatar обязателен (MIT), и
- * Inter (SIL OFL) — с ним. Проверка обновлений — [UpdateChecks] под ним.
+ * Google Sans и Inter (SIL OFL) — с ним. Проверка обновлений — [UpdateChecks] под ним.
  */
 @Composable
 private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {}) {
@@ -584,6 +618,7 @@ private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {
     beforeLicences()
     SectionTitle(R.string.about_licences)
     Licence(R.raw.licence_blobatar)
+    Licence(R.raw.licence_google_sans)
     Licence(R.raw.licence_inter)
 }
 

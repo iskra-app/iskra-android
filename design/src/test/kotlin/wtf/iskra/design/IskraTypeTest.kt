@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Межбуквенное — по динамическим метрикам Inter, а не разрядка Material (см. `IskraTypography`). */
+/** Межбуквенное — по динамическим метрикам Inter, а не разрядка Material (см. `InterTypography`). */
 class IskraTypeTest {
     @Test
     fun trackingFollowsIntersCurve() {
@@ -21,7 +21,15 @@ class IskraTypeTest {
 
     @Test
     fun noStyleKeepsMaterialsWideSpacing() {
-        val body = IskraTypography.bodyLarge.letterSpacing
+        val body = InterTypography.bodyLarge.letterSpacing
         assertTrue(body.isEm && body.value < 0f)
+        assertEquals(0f, GoogleSansTypography.bodyLarge.letterSpacing.value)
+    }
+
+    @Test
+    fun googleSansIsTheDefault() {
+        assertEquals(AppFont.GOOGLE_SANS, AppFont.fromStorage(null))
+        assertEquals(AppFont.INTER, AppFont.fromStorage("inter"))
+        assertEquals(GoogleSansTypography, iskraTypography(AppFont.Default))
     }
 }

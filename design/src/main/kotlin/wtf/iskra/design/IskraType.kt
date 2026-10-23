@@ -12,11 +12,12 @@ import androidx.compose.ui.unit.em
 import kotlin.math.exp
 
 /**
- * Шрифт приложения — Inter (SIL OFL 1.1, `Licenses/inter.txt`). Весь текст: типографика Material ниже
- * целиком переведена на него, и поля ввода, меню и диалоги берут его оттуда же.
+ * Шрифты приложения — Google Sans (по умолчанию) и Inter, оба SIL OFL 1.1 (`Licenses/google-sans.txt`,
+ * `Licenses/inter.txt`); какой — выбирает человек ([AppFont]). Весь текст: типографика Material ниже
+ * целиком переводится на выбранный, и поля ввода, меню и диалоги берут его оттуда же.
  *
- * Вариативный файл, а не девять: один `inter.ttf` (и курсив) с осью веса, и каждый вес — та же
- * гарнитура, нарисованная настоящей, а не синтезированной жирностью. Лежит в APK, а не скачивается:
+ * Вариативные файлы, а не по файлу на вес: один `.ttf` (и курсив) с осью веса, и каждый вес — та же
+ * гарнитура, нарисованная настоящей, а не синтезированной жирностью. Лежат в APK, а не скачиваются:
  * загружаемые шрифты идут через сервисы Google, которых во `foss` нет.
  */
 @OptIn(ExperimentalTextApi::class)
@@ -29,11 +30,37 @@ val Inter: FontFamily = FontFamily(
     },
 )
 
+/**
+ * Google Sans из google/fonts, урезанный до латиницы, кириллицы, греческого, вьетнамского и знаков
+ * (`fontTools.subset`, оси и фичи целы): полный файл — 5 МБ на начертание из-за индийских и прочих
+ * письменностей, которых нет среди языков приложения; их символы в сообщениях рисует системный шрифт.
+ *
+ * Ось веса у него 400–700: тоньше обычного нет, жирнее Bold — тоже. Более тонкие веса Compose сводит к
+ * обычному, более жирные — к Bold, как CSS.
+ */
+@OptIn(ExperimentalTextApi::class)
+val GoogleSans: FontFamily = FontFamily(
+    WEIGHTS.filter { it.weight in FontWeight.Normal.weight..FontWeight.Bold.weight }.flatMap { weight ->
+        listOf(
+            Font(R.font.google_sans, weight = weight, style = FontStyle.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight))),
+            Font(R.font.google_sans_italic, weight = weight, style = FontStyle.Italic, variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight))),
+        )
+    },
+)
+
 private val WEIGHTS: List<FontWeight>
     get() = listOf(
         FontWeight.Thin, FontWeight.ExtraLight, FontWeight.Light, FontWeight.Normal, FontWeight.Medium,
         FontWeight.SemiBold, FontWeight.Bold, FontWeight.ExtraBold, FontWeight.Black,
     )
+
+/** Типографика Material 3 под выбранный шрифт: размеры — Material везде, гарнитура и межбуквенное — свои. */
+fun iskraTypography(font: AppFont): Typography = when (font) {
+    AppFont.GOOGLE_SANS -> GoogleSansTypography
+    AppFont.INTER -> InterTypography
+    // Системный — это шрифт телефона и разрядка Material, рассчитанная как раз на него.
+    AppFont.SYSTEM -> Typography()
+}
 
 /**
  * Типографика Material 3, где каждый стиль — Inter; размеры — Material, межбуквенное — своё.
@@ -43,30 +70,40 @@ private val WEIGHTS: List<FontWeight>
  * трекинг в em = a + b·e^(c·кегль). Мелкое почти без разрядки, крупное — плотнее: 16 sp — −0.011 em,
  * 22 sp — −0.018 em, заголовки — к −0.022 em. Как SF набирает текст по размеру на iOS.
  */
-internal val IskraTypography: Typography = Typography().let { base ->
-    fun TextStyle.inter() = copy(
+internal val InterTypography: Typography = Typography().map { style ->
+    style.copy(
         fontFamily = Inter,
-        letterSpacing = interTracking(fontSize.value).em,
+        letterSpacing = interTracking(style.fontSize.value).em,
         fontFeatureSettings = INTER_FEATURES,
     )
-    Typography(
-        displayLarge = base.displayLarge.inter(),
-        displayMedium = base.displayMedium.inter(),
-        displaySmall = base.displaySmall.inter(),
-        headlineLarge = base.headlineLarge.inter(),
-        headlineMedium = base.headlineMedium.inter(),
-        headlineSmall = base.headlineSmall.inter(),
-        titleLarge = base.titleLarge.inter(),
-        titleMedium = base.titleMedium.inter(),
-        titleSmall = base.titleSmall.inter(),
-        bodyLarge = base.bodyLarge.inter(),
-        bodyMedium = base.bodyMedium.inter(),
-        bodySmall = base.bodySmall.inter(),
-        labelLarge = base.labelLarge.inter(),
-        labelMedium = base.labelMedium.inter(),
-        labelSmall = base.labelSmall.inter(),
-    )
 }
+
+/**
+ * Типографика Material 3 на Google Sans. Разрядка Material (+0.1…+0.5 sp) рассчитана на Roboto, а у
+ * Google Sans свои просторные метрики, и с ней текст расползается; как в приложениях Google на этом
+ * шрифте, межбуквенное — ноль.
+ */
+internal val GoogleSansTypography: Typography = Typography().map { style ->
+    style.copy(fontFamily = GoogleSans, letterSpacing = 0.em)
+}
+
+private fun Typography.map(transform: (TextStyle) -> TextStyle) = Typography(
+    displayLarge = transform(displayLarge),
+    displayMedium = transform(displayMedium),
+    displaySmall = transform(displaySmall),
+    headlineLarge = transform(headlineLarge),
+    headlineMedium = transform(headlineMedium),
+    headlineSmall = transform(headlineSmall),
+    titleLarge = transform(titleLarge),
+    titleMedium = transform(titleMedium),
+    titleSmall = transform(titleSmall),
+    bodyLarge = transform(bodyLarge),
+    bodyMedium = transform(bodyMedium),
+    bodySmall = transform(bodySmall),
+    labelLarge = transform(labelLarge),
+    labelMedium = transform(labelMedium),
+    labelSmall = transform(labelSmall),
+)
 
 /** Трекинг Inter для кегля в sp, в em. Коэффициенты — из «Dynamic Metrics» Inter. */
 internal fun interTracking(size: Float): Float = TRACKING_A + TRACKING_B * exp(TRACKING_C * size)
