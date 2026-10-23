@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Core/Sources/IskraCore/Resources/de.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Core/Sources/IskraCore/Resources/de.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="device_generic">Iskra</string>
@@ -26,11 +26,11 @@
     <string name="stickers_add_failed">Der Sticker konnte nicht hinzugefügt werden. Versuchen Sie es noch einmal.</string>
     <string name="stickers_remove_failed">Der Sticker konnte nicht entfernt werden. Versuchen Sie es noch einmal.</string>
     <string name="timeline_reaction_failed">Die Reaktion ist nicht rausgegangen. Versuchen Sie es noch einmal.</string>
-    <string name="timeline_delete_failed">Die Nachricht wurde nicht gelöscht – sie ist noch im Chat. Versuchen Sie es noch einmal.</string>
+    <string name="timeline_delete_failed">Die Nachricht wurde nicht gelöscht, sie ist noch im Chat. Versuchen Sie es noch einmal.</string>
     <string name="send_failure_insecure_devices">Jemand, den Sie verifiziert haben, ist auf einem Gerät angemeldet, das er selbst noch nicht bestätigt hat. Wenn Sie diesem Gerät vertrauen, senden Sie trotzdem.</string>
     <string name="send_failure_identity_changed">Die Verschlüsselungsschlüssel einer Person, die Sie verifiziert haben, haben sich geändert. Wenn Sie sicher sind, dass es noch dieselbe Person ist, senden Sie trotzdem.</string>
     <string name="send_failure_verification_required">Bestätigen Sie dieses Gerät, um in einen geschützten Chat zu schreiben. Das geht in den Einstellungen.</string>
-    <string name="send_failure_missing_media">Die Datei ist nicht mehr auf diesem Gerät – es gibt nichts mehr zu senden.</string>
+    <string name="send_failure_missing_media">Die Datei ist nicht mehr auf diesem Gerät, es gibt nichts mehr zu senden.</string>
     <string name="send_failure_unsupported_file_type">Solche Dateien können nicht gesendet werden.</string>
     <string name="send_failure_server">Ihr Server hat diese Nachricht nicht angenommen.</string>
     <string name="devices_load_failed">Die Geräteliste konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es noch einmal.</string>
@@ -39,10 +39,10 @@
     <string name="devices_managed_elsewhere">Auf diesem Server werden Sitzungen auf seiner Website beendet.</string>
     <string name="reply_loading">Nachricht wird geladen…</string>
     <string name="reply_unavailable">Nachricht nicht verfügbar</string>
-    <string name="timeline_edit_failed">Die Änderung wurde nicht gespeichert – die Nachricht ist unverändert. Versuchen Sie es noch einmal.</string>
+    <string name="timeline_edit_failed">Die Änderung wurde nicht gespeichert, die Nachricht ist unverändert. Versuchen Sie es noch einmal.</string>
     <string name="timeline_pin_failed">Die angehefteten Nachrichten konnten nicht geändert werden. Vielleicht haben Sie dazu keine Berechtigung.</string>
     <string name="timeline_report_failed">Die Meldung ist nicht rausgegangen. Versuchen Sie es noch einmal.</string>
-    <string name="timeline_poll_failed">Das hat nicht geklappt – die Umfrage ist unverändert. Versuchen Sie es noch einmal.</string>
+    <string name="timeline_poll_failed">Das hat nicht geklappt, die Umfrage ist unverändert. Versuchen Sie es noch einmal.</string>
     <string name="timeline_poll_ended_body">Die Umfrage ist beendet</string>
     <string name="room_event_joined">%s ist jetzt im Chat</string>
     <string name="room_event_left">%s ist nicht mehr im Chat</string>
@@ -61,23 +61,23 @@
     <string name="room_action_topic_failed">Die Beschreibung hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.</string>
     <string name="room_action_picture_failed">Das Bild hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.</string>
     <string name="room_action_visibility_failed">Es konnte nicht geändert werden, wer dem Chat beitreten kann.</string>
-    <string name="room_action_invite_failed">Die Einladung ist nicht rausgegangen. Prüfen Sie die Adresse – sie sieht aus wie @name:server.</string>
+    <string name="room_action_invite_failed">Die Einladung ist nicht rausgegangen. Prüfen Sie die Adresse, sie sieht aus wie @name:server.</string>
     <string name="room_action_remove_failed">Die Person konnte nicht entfernt werden. Sie ist noch im Chat.</string>
     <string name="room_action_ban_failed">Die Person konnte nicht blockiert werden. Sie ist noch im Chat.</string>
     <string name="room_action_role_failed">Die Rolle hat sich nicht geändert. Vielleicht haben Sie dazu keine Berechtigung.</string>
     <string name="room_action_rules_failed">Die Berechtigung hat sich nicht geändert. Vielleicht fehlen Ihnen die Rechte dafür.</string>
     <string name="room_action_leave_failed">Sie konnten den Chat nicht verlassen. Versuchen Sie es noch einmal.</string>
-    <string name="room_action_create_failed">Der Chat wurde nicht erstellt. Vielleicht hat der Server nicht geantwortet – versuchen Sie es noch einmal.</string>
+    <string name="room_action_create_failed">Der Chat wurde nicht erstellt. Vielleicht hat der Server nicht geantwortet, versuchen Sie es noch einmal.</string>
     <string name="room_action_join_address_invalid">Eine Raumadresse sieht so aus: #name:server oder !id:server.</string>
     <string name="room_action_join_failed">Dem Raum konnte nicht beigetreten werden. Vielleicht gibt es ihn nicht, er ist geschlossen oder der Server hat nicht geantwortet.</string>
     <string name="room_action_alerts_failed">Die Mitteilungen dieses Chats haben sich nicht geändert. Versuchen Sie es noch einmal.</string>
     <string name="account_name_failed">Ihr Name hat sich nicht geändert. Versuchen Sie es noch einmal.</string>
     <string name="account_picture_failed">Ihr Bild hat sich nicht geändert. Versuchen Sie es noch einmal.</string>
-    <string name="account_protect_failed">Ihre Nachrichten konnten nicht geschützt werden. Versuchen Sie es noch einmal – die Schlüssel zu Ihren alten Nachrichten sind noch da, wo sie waren.</string>
+    <string name="account_protect_failed">Ihre Nachrichten konnten nicht geschützt werden. Versuchen Sie es noch einmal: Die Schlüssel zu Ihren alten Nachrichten sind noch da, wo sie waren.</string>
     <string name="account_new_key_failed">Der neue Code wurde nicht erstellt. Der alte funktioniert weiterhin.</string>
     <string name="account_restore_failed">Der Code hat nicht gepasst. Prüfen Sie, ob Sie ihn vollständig kopiert haben, samt Leerzeichen.</string>
-    <string name="account_stale_code_failed">Der Code ist richtig aufgebaut – und passt trotzdem nicht zu diesem Konto. Das passiert, wenn ein Wiederherstellungscode neu erstellt wurde: Der vorherige funktioniert dann nie wieder.</string>
-    <string name="account_start_over_failed">Neustart hat nicht geklappt. Versuchen Sie es noch einmal – vorerst ist alles wie vorher.</string>
+    <string name="account_stale_code_failed">Der Code ist richtig aufgebaut und passt trotzdem nicht zu diesem Konto. Das passiert, wenn ein Wiederherstellungscode neu erstellt wurde: Der vorherige funktioniert dann nie wieder.</string>
+    <string name="account_start_over_failed">Neustart hat nicht geklappt. Versuchen Sie es noch einmal, vorerst ist alles wie vorher.</string>
     <string name="account_block_failed">Blockieren hat nicht geklappt. Versuchen Sie es noch einmal.</string>
     <string name="account_unblock_failed">Entsperren hat nicht geklappt. Versuchen Sie es noch einmal.</string>
     <string name="push_invite">%s lädt Sie in den Chat ein</string>
@@ -87,8 +87,8 @@
     <string name="push_reaction">Reaktion auf Ihre Nachricht</string>
     <string name="share_title">Senden an …</string>
     <string name="share_cancel">Abbrechen</string>
-    <string name="share_empty">Öffnen Sie zuerst Iskra und melden Sie sich an – dann erscheinen hier Ihre Chats.</string>
-    <string name="share_will_send_on_open">Geht sofort raus – Iskra öffnet sich zum Senden.</string>
+    <string name="share_empty">Öffnen Sie zuerst Iskra und melden Sie sich an, dann erscheinen hier Ihre Chats.</string>
+    <string name="share_will_send_on_open">Geht sofort raus: Iskra öffnet sich zum Senden.</string>
     <string name="share_comment">Kommentar hinzufügen…</string>
     <string name="share_send">Senden</string>
     <string name="share_locked">Iskra ist gesperrt</string>
@@ -96,14 +96,14 @@
     <string name="share_unlock">Entsperren</string>
     <string name="share_unlock_reason">Um das an Iskra zu senden</string>
     <string name="room_action_accept_invite_failed">Sie konnten dem Chat nicht beitreten. Vielleicht wurde die Einladung zurückgezogen.</string>
-    <string name="room_action_decline_invite_failed">Die Einladung wurde nicht abgelehnt. Sie ist noch da – versuchen Sie es noch einmal.</string>
-    <string name="room_action_pin_failed">Der Chat wurde nicht angeheftet. Er ist zurückgerutscht – versuchen Sie es noch einmal.</string>
-    <string name="room_action_archive_failed">Der Chat wurde nicht archiviert. Er ist noch in der Liste – versuchen Sie es noch einmal.</string>
+    <string name="room_action_decline_invite_failed">Die Einladung wurde nicht abgelehnt. Sie ist noch da. Versuchen Sie es noch einmal.</string>
+    <string name="room_action_pin_failed">Der Chat wurde nicht angeheftet. Er ist zurückgerutscht. Versuchen Sie es noch einmal.</string>
+    <string name="room_action_archive_failed">Der Chat wurde nicht archiviert. Er ist noch in der Liste. Versuchen Sie es noch einmal.</string>
     <string name="room_action_read_failed">Der Lesestatus konnte nicht geändert werden.</string>
     <string name="room_action_report_failed">Die Meldung ist nicht rausgegangen. Versuchen Sie es noch einmal.</string>
     <string name="room_action_load_failed">Dieser Chat ließ sich nicht öffnen. Versuchen Sie es noch einmal.</string>
-    <string name="notification_rules_direct_failed">Die Mitteilungen für private Chats haben sich nicht geändert. Der Schalter ist zurückgesprungen – versuchen Sie es noch einmal.</string>
-    <string name="notification_rules_group_failed">Die Mitteilungen für Gruppen haben sich nicht geändert. Der Schalter ist zurückgesprungen – versuchen Sie es noch einmal.</string>
+    <string name="notification_rules_direct_failed">Die Mitteilungen für private Chats haben sich nicht geändert. Der Schalter ist zurückgesprungen. Versuchen Sie es noch einmal.</string>
+    <string name="notification_rules_group_failed">Die Mitteilungen für Gruppen haben sich nicht geändert. Der Schalter ist zurückgesprungen. Versuchen Sie es noch einmal.</string>
     <string name="notification_rules_mention_failed">Die Mitteilungen für Erwähnungen haben sich nicht geändert. Versuchen Sie es noch einmal.</string>
     <string name="notification_rules_room_mention_failed">Die Mitteilungen für @room haben sich nicht geändert. Versuchen Sie es noch einmal.</string>
     <string name="notification_rules_invitation_failed">Die Mitteilungen für Einladungen haben sich nicht geändert. Versuchen Sie es noch einmal.</string>
@@ -119,23 +119,23 @@
     <string name="folders_save_failed">Die Ordner ließen sich nicht speichern. Versuchen Sie es noch einmal.</string>
     <string name="live_location_start_failed">Der Live-Standort ließ sich nicht starten. Versuchen Sie es noch einmal.</string>
     <string name="live_location_denied">Iskra darf Ihren Standort nicht verwenden. Das lässt sich in den Einstellungen erlauben.</string>
-    <string name="live_location_stop_failed">Es werden keine Punkte mehr gesendet, aber der Server hat das Ende nicht mitbekommen – andere sehen es womöglich bis zum Ablauf als live.</string>
+    <string name="live_location_stop_failed">Es werden keine Punkte mehr gesendet, aber der Server hat das Ende nicht mitbekommen, andere sehen es womöglich bis zum Ablauf als live.</string>
     <string name="widget_favourites_name">Favorisierte Chats</string>
     <string name="widget_favourites_description">Die Menschen, denen Sie am häufigsten schreiben. Tippen Sie auf ein Gesicht, um den Chat zu öffnen.</string>
     <string name="widget_locked">Iskra ist gesperrt</string>
-    <string name="widget_empty">Öffnen Sie Iskra und melden Sie sich an – dann erscheinen hier Ihre Chats.</string>
+    <string name="widget_empty">Öffnen Sie Iskra und melden Sie sich an, dann erscheinen hier Ihre Chats.</string>
     <string name="live_activity_location_sharing">Sie teilen Ihren Standort</string>
     <string name="live_activity_location_finding">Standort wird gesucht …</string>
     <string name="live_activity_location_stop">Beenden</string>
     <string name="live_activity_location_ended">Teilen beendet</string>
-    <string name="live_activity_location_stop_failed">Der Server hat das Ende nicht mitbekommen – andere sehen es womöglich bis zum Ablauf als live.</string>
+    <string name="live_activity_location_stop_failed">Der Server hat das Ende nicht mitbekommen, andere sehen es womöglich bis zum Ablauf als live.</string>
     <string name="live_activity_media_sending_video">Video wird gesendet</string>
     <string name="live_activity_media_sending_photo">Foto wird gesendet</string>
     <string name="live_activity_media_sending_album">Album wird gesendet</string>
     <string name="live_activity_media_sending_file">Datei wird gesendet</string>
     <string name="live_activity_media_preparing">Wird vorbereitet …</string>
     <string name="live_activity_media_sent">Gesendet</string>
-    <string name="live_activity_media_failed">Nicht gesendet – tippen Sie, um den Chat zu öffnen</string>
+    <string name="live_activity_media_failed">Nicht gesendet. Tippen Sie, um den Chat zu öffnen</string>
     <string name="live_activity_media_waiting">Geht weiter, sobald Sie Iskra öffnen</string>
     <plurals name="room_event_others">
         <item quantity="one">%1$s und %2$d weitere Person</item>

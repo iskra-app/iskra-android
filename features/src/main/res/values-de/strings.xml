@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/de.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Sources/IskraFeatures/Resources/de.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Einstellungen</string>
@@ -74,9 +74,9 @@
     <string name="beta_title">Beta-Funktionen</string>
     <string name="beta_intro">Hier ist alles, was noch nicht fertig ist. Schalten Sie es aus, wenn es stört, und wieder ein, wenn Sie es sich anders überlegen: Nichts geht kaputt und nichts verloren.</string>
     <string name="beta_native_sidebar">Native Seitenleiste</string>
-    <string name="beta_native_sidebar_help">Die Chatliste wird zu einer gewöhnlichen macOS-Seitenleiste: Chats in Abschnitten, Suche oben, Zeilen dichter beieinander. Wie Mail und Notizen – und weniger wie ein Telefon.</string>
+    <string name="beta_native_sidebar_help">Die Chatliste wird zu einer gewöhnlichen macOS-Seitenleiste: Chats in Abschnitten, Suche oben, Zeilen dichter beieinander. Sieht aus wie Mail und Notizen, nicht wie ein Telefon.</string>
     <string name="beta_blobatar">Wesen statt Initialen</string>
-    <string name="beta_blobatar_help">Wer kein eigenes Bild hat, bekommt stattdessen ein kleines Wesen – sein eigenes, und jedes Mal dasselbe. Es wird hier auf dem Gerät gezeichnet; nichts wird irgendwohin gesendet. Gruppen bekommen statt eines Buchstabens eine Runde aus ihren Mitgliedern.</string>
+    <string name="beta_blobatar_help">Wer kein eigenes Bild hat, bekommt stattdessen ein kleines Wesen, sein eigenes und jedes Mal dasselbe. Es wird hier auf dem Gerät gezeichnet; nichts wird irgendwohin gesendet. Gruppen bekommen statt eines Buchstabens eine Runde aus ihren Mitgliedern.</string>
     <string name="beta_blobatar_force">Sogar statt Bildern</string>
     <string name="beta_blobatar_force_help">Alle bekommen ein Wesen, auch wer ein Bild gesetzt hat. Deren Fotos werden dann gar nicht geladen.</string>
     <string name="beta_mock_backend">Demo-Server</string>
@@ -103,24 +103,24 @@
     <string name="connection_apply_now">Jetzt neu verbinden</string>
     <string name="connection_address">Bridge-Adresse</string>
     <string name="connection_address_prompt">npub1… oder 64 Hex-Zeichen</string>
-    <string name="connection_address_footer">Eine Bridge gibt ihre Adresse beim Start aus – die Zeile „bridge address for Iskra: npub1…“.</string>
+    <string name="connection_address_footer">Eine Bridge gibt ihre Adresse beim Start aus, in der Zeile „bridge address for Iskra: npub1…“.</string>
     <string name="connection_address_bad">Das sieht nicht nach einem Bridge-Schlüssel aus</string>
-    <string name="connection_address_secret">Das ist ein geheimer Schlüssel. Hier wird der öffentliche gebraucht – der, der mit npub beginnt.</string>
+    <string name="connection_address_secret">Das ist ein geheimer Schlüssel. Hier wird der öffentliche gebraucht, der mit npub beginnt.</string>
     <string name="connection_default_bridge">Zurück zur Iskra-Bridge</string>
     <string name="connection_relays">Relays</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
-    <string name="connection_relays_footer">Hier finden sich die App und die Bridge. Mehrere sind kein Ersatzrad: Eine Anfrage geht an alle gleichzeitig, und die Antwort kommt von dem, der am schnellsten war. Leer lassen für die drei Standard-Relays.</string>
+    <string name="connection_relays_footer">Hier finden sich die App und die Bridge. Eine Anfrage geht an alle gleichzeitig, und die Antwort kommt von dem, der am schnellsten war, deshalb ist ein einziges Relay zu wenig. Leer lassen für die drei Standard-Relays.</string>
     <string name="connection_my_key">Schlüssel dieses Geräts</string>
     <string name="connection_my_key_footer">Wenn die Bridge geschlossen ist, tragen Sie diesen Schlüssel in ihre ALLOWED_PUBKEYS ein – sonst hört sie Sie gar nicht.</string>
     <string name="connection_copy">Kopieren</string>
     <string name="connection_copied">Kopiert</string>
     <string name="connection_check">Bridge prüfen</string>
     <string name="connection_checking">Wird geprüft…</string>
-    <string name="connection_check_ok">Die Bridge hat geantwortet, der Server ist da – %d ms</string>
+    <string name="connection_check_ok">Die Bridge hat geantwortet, der Server ist da: %d ms</string>
     <string name="connection_check_no_relay">Kein Relay antwortet</string>
     <string name="connection_check_silent">Die Bridge schweigt. Läuft sie, und ist das der richtige Schlüssel?</string>
     <string name="connection_check_failed">Hat nicht geklappt: %s</string>
-    <string name="bridge_refusal_not_allowed">Die Bridge lässt Sie nicht zu diesem Server – er steht nicht auf ihrer Liste</string>
+    <string name="bridge_refusal_not_allowed">Die Bridge lässt Sie nicht zu diesem Server: Er steht nicht auf ihrer Liste</string>
     <string name="bridge_refusal_not_matrix">Die Bridge erkennt diesen Server nicht als Matrix-Server</string>
     <string name="bridge_refusal_bad_port">Die Bridge geht nur auf Port 443, und dieser Server liegt auf einem anderen</string>
     <string name="bridge_refusal_not_public">Der Server steht in einem privaten Netz, und eine offene Bridge geht dort nicht hin</string>
@@ -130,9 +130,9 @@
     <string name="bridge_refusal_disagreement">App und Bridge haben sich nicht verstanden. Aktualisieren Sie die App oder die Bridge</string>
     <string name="bridge_refusal_broke">Die Bridge hat die Verbindung abgebrochen: %s</string>
     <string name="connection_unfinished">Was Sie erwartet</string>
-    <string name="connection_unfinished_body">Jede Anfrage nimmt den Umweg über ein Relay und kostet 200–350 ms, deshalb sind die Anmeldung und das erste Öffnen von Chats spürbar langsamer als direkt – eine Sekunde, wo es sonst sofort ging. Neue Nachrichten kommen dagegen fast so schnell an wie direkt. Große Anhänge kommen auch durch, gehören aber besser nicht über öffentliche Relays: Geben Sie der Bridge für Medien ein eigenes Relay.</string>
+    <string name="connection_unfinished_body">Jede Anfrage nimmt den Umweg über ein Relay und kostet 200–350 ms, deshalb sind die Anmeldung und das erste Öffnen von Chats spürbar langsamer als direkt: eine Sekunde, wo es sonst sofort ging. Neue Nachrichten kommen dagegen fast so schnell an wie direkt. Große Anhänge kommen auch durch, gehören aber besser nicht über öffentliche Relays: Geben Sie der Bridge für Medien ein eigenes Relay.</string>
     <string name="connection_sees">Was die Bridge sieht</string>
-    <string name="connection_sees_body">Nur, mit welchem Server Sie sich verbinden, wann und wie viele Bytes. Die Verbindung zum Server verschlüsselt die App selbst, darum sind Ihr Token, Ihre Räume und Ihre Nachrichten – auch in unverschlüsselten Chats – für die Bridge unsichtbar. Ihre IP-Adresse sehen die Relays, nicht die Bridge.</string>
+    <string name="connection_sees_body">Nur, mit welchem Server Sie sich verbinden, wann und wie viele Bytes. Die Verbindung zum Server verschlüsselt die App selbst, darum sind Ihr Token, Ihre Räume und Ihre Nachrichten für die Bridge unsichtbar, auch in unverschlüsselten Chats. Ihre IP-Adresse sehen die Relays, nicht die Bridge.</string>
     <string name="settings_lock">App-Sperre</string>
     <string name="settings_lock_enable">Face ID oder Code verlangen</string>
     <string name="settings_lock_timeout">Verlangen</string>
@@ -166,7 +166,7 @@
     <string name="storage_failed">Der Cache konnte nicht geleert werden. Versuchen Sie es noch einmal.</string>
     <string name="storage_search_clear">Suchindex leeren</string>
     <string name="storage_search_confirm_title">Suchindex leeren?</string>
-    <string name="storage_search_confirm_body">Die App lädt neu. Die Suche findet eine Weile nicht alles – der Index füllt sich wieder, während Sie lesen. Ihre Nachrichten und Fotos bleiben, wo sie sind.</string>
+    <string name="storage_search_confirm_body">Die App lädt neu. Die Suche findet eine Weile nicht alles, denn der Index füllt sich wieder, während Sie lesen. Ihre Nachrichten und Fotos bleiben, wo sie sind.</string>
     <string name="storage_search_failed">Der Index konnte nicht geleert werden. Versuchen Sie es noch einmal.</string>
     <string name="settings_about">Über Iskra</string>
     <string name="settings_language">Sprache</string>
@@ -207,7 +207,7 @@
     <string name="sign_in_try_through_bridge">Bridge einschalten und erneut versuchen</string>
     <string name="sign_in_problem_unsupported_method">Dieser Dienst nutzt eine Anmeldeart, die Iskra noch nicht unterstützt.</string>
     <string name="session_offline_title">Keine Verbindung</string>
-    <string name="session_offline_message">Ihre Unterhaltungen sind da, auf diesem Gerät. Wir erreichen nur gerade den Server nicht – prüfen Sie Ihr Netz.</string>
+    <string name="session_offline_message">Ihre Unterhaltungen sind auf diesem Gerät. Gerade ist der Server nicht erreichbar, prüfen Sie Ihr Netz.</string>
     <string name="session_try_again">Erneut versuchen</string>
     <string name="connection_offline">Kein Netz</string>
     <string name="sign_in_ready_help">Wir öffnen Ihren Browser, damit Sie sich wie gewohnt anmelden können.</string>
@@ -234,9 +234,9 @@
     <string name="video_note_no_camera">Dieses Gerät hat keine Kamera.</string>
     <string name="video_note_record">Videonachricht aufnehmen</string>
     <string name="room_empty_title">Hier ist noch nichts</string>
-    <string name="room_empty_message">Schreiben Sie die erste Nachricht – so fängt alles an.</string>
+    <string name="room_empty_message">Schreiben Sie die erste Nachricht, so fängt alles an.</string>
     <string name="room_load_failed_title">Chat ließ sich nicht öffnen</string>
-    <string name="room_load_failed_message">Die Nachrichten sind nicht verschwunden – wir konnten sie nur nicht laden. Prüfen Sie Ihre Verbindung.</string>
+    <string name="room_load_failed_message">Die Nachrichten sind noch da, konnten aber nicht geladen werden. Prüfen Sie Ihre Verbindung.</string>
     <string name="room_try_again">Erneut versuchen</string>
     <string name="room_open_details">Chatinfo öffnen</string>
     <string name="room_details_title">Über diesen Chat</string>
@@ -286,7 +286,7 @@
     <string name="appearance_wallpaper_sand">Sand</string>
     <string name="appearance_wallpaper_night">Nacht</string>
     <string name="appearance_wallpaper_photo">Eigenes Foto</string>
-    <string name="room_attachment_unreadable">Dieses Foto ließ sich nicht lesen. Das passiert, wenn es noch in iCloud liegt – öffnen Sie es in Fotos und versuchen Sie es noch einmal.</string>
+    <string name="room_attachment_unreadable">Dieses Foto ließ sich nicht lesen. Das passiert, wenn es noch in iCloud liegt. Öffnen Sie es in Fotos und versuchen Sie es noch einmal.</string>
     <string name="message_link_open">Öffnen</string>
     <string name="message_link_cancel">Abbrechen</string>
     <string name="message_menu_report">Melden</string>
@@ -300,7 +300,7 @@
     <string name="message_menu_block_confirm">%s blockieren?</string>
     <string name="message_menu_block_confirm_message">Sie bekommen keine Nachrichten mehr von dieser Person. Entsperren können Sie sie in den Einstellungen.</string>
     <string name="message_report_title">Nachricht melden</string>
-    <string name="message_report_explanation">Die Meldung geht an die Moderatoren des Servers. Sie können kurz sagen, was nicht stimmt – oder sie ohne Begründung senden.</string>
+    <string name="message_report_explanation">Die Meldung geht an die Moderatoren des Servers. Sie können kurz sagen, was nicht stimmt, oder sie ohne Begründung senden.</string>
     <string name="message_report_reason_prompt">Was ist los? (optional)</string>
     <string name="message_report_submit">Senden</string>
     <string name="message_report_cancel">Abbrechen</string>
@@ -455,18 +455,18 @@
     <string name="room_list_swipe_unarchive">Zurückholen</string>
     <string name="room_list_swipe_delete">Löschen</string>
     <string name="room_list_swipe_leave_confirm_title">Diesen Chat verlassen?</string>
-    <string name="room_list_swipe_leave_confirm_message">Sie verlassen den Raum und bekommen keine Nachrichten mehr daraus. In Matrix lässt sich ein gemeinsamer Chat nicht löschen – man kann ihn nur selbst verlassen.</string>
+    <string name="room_list_swipe_leave_confirm_message">Sie verlassen den Raum und bekommen keine Nachrichten mehr daraus. In Matrix lässt sich ein gemeinsamer Chat nicht löschen, man kann ihn nur selbst verlassen.</string>
     <string name="room_list_swipe_leave_confirm">Verlassen</string>
     <string name="room_list_swipe_cancel">Abbrechen</string>
     <string name="room_list_peek_peek">Reinschauen</string>
     <string name="room_list_peek_open">Chat öffnen</string>
     <string name="room_list_peek_mark_read">Als gelesen markieren</string>
     <string name="room_list_peek_mark_unread">Als ungelesen markieren</string>
-    <string name="room_list_peek_stays_unread">Nur ein Blick – nichts wird als gelesen markiert</string>
+    <string name="room_list_peek_stays_unread">Nur ein Blick, nichts wird als gelesen markiert</string>
     <string name="room_list_peek_close">Vorschau schließen</string>
     <string name="room_list_archive_title">Archiv</string>
     <string name="room_list_archive_empty_title">Nichts archiviert</string>
-    <string name="room_list_archive_empty_message">Wischen Sie einen Chat nach links und archivieren Sie ihn – er stört dann nicht mehr in der Liste, ist aber nicht weg.</string>
+    <string name="room_list_archive_empty_message">Wischen Sie einen Chat nach links, um ihn zu archivieren. Er stört dann nicht mehr in der Liste, ist aber nicht weg.</string>
     <string name="room_manage_alerts">Mitteilungen</string>
     <string name="room_manage_alerts_all">Jede Nachricht</string>
     <string name="room_manage_alerts_mentions">Nur Erwähnungen</string>
@@ -475,10 +475,10 @@
     <string name="account_edit">Bearbeiten</string>
     <string name="account_edit_title">Ihr Profil</string>
     <string name="account_name_header">Name</string>
-    <string name="account_edit_offline">Ohne Netz lässt sich Ihr Profil nicht ändern – die App erreicht den Server nicht.</string>
-    <string name="account_name_change_notice">Wenn Sie Ihren Namen ändern, erfahren es alle, mit denen Sie schreiben – in jedem gemeinsamen Chat erscheint ein Hinweis.</string>
+    <string name="account_edit_offline">Ohne Netz lässt sich Ihr Profil nicht ändern, denn die App erreicht den Server nicht.</string>
+    <string name="account_name_change_notice">Wenn Sie Ihren Namen ändern, erfahren es alle, mit denen Sie schreiben: In jedem gemeinsamen Chat erscheint ein Hinweis.</string>
     <string name="account_username_header">Benutzername</string>
-    <string name="account_username_fixed">Der Benutzername wird einmal gewählt, bei der Registrierung. Er lässt sich nicht ändern – weder hier noch sonst wo.</string>
+    <string name="account_username_fixed">Der Benutzername wird einmal gewählt, bei der Registrierung. Er lässt sich nicht ändern, weder hier noch sonst wo.</string>
     <string name="picture_edit">Bild ändern</string>
     <string name="picture_change">Ändern</string>
     <string name="picture_remove">Entfernen</string>
@@ -488,7 +488,7 @@
     <string name="room_manage_name_header">Name</string>
     <string name="room_manage_delete_chat">Chat löschen</string>
     <string name="room_manage_delete_chat_question">Diesen Chat löschen?</string>
-    <string name="room_manage_delete_chat_help">Die Unterhaltung verschwindet von diesem Gerät. Die andere Person erfährt davon nichts, und wenn sie wieder schreibt, kommt der Chat zurück – leer.</string>
+    <string name="room_manage_delete_chat_help">Die Unterhaltung verschwindet von diesem Gerät. Die andere Person erfährt davon nichts, und wenn sie wieder schreibt, kommt der Chat zurück, aber leer.</string>
     <string name="room_tabs_members">Personen</string>
     <string name="room_tabs_media">Fotos</string>
     <string name="room_tabs_voice">Sprache</string>
@@ -503,7 +503,7 @@
     <string name="encryption_on">Ihre Nachrichten sind geschützt</string>
     <string name="encryption_on_help">Ihre Unterhaltungen liegen verschlüsselt in einem Backup auf dem Server. Mit Ihrem Wiederherstellungscode können Sie sie auf jedem neuen Gerät lesen.</string>
     <string name="encryption_off">Ihre Nachrichten sind nicht geschützt</string>
-    <string name="encryption_off_help">Wenn dieses Gerät verloren geht, kann niemand Ihre alten Nachrichten lesen – auch Sie nicht. Schützen Sie sie, und wir geben Ihnen den Code, der sie zurückbringt.</string>
+    <string name="encryption_off_help">Wenn dieses Gerät verloren geht, kann niemand Ihre alten Nachrichten lesen, auch Sie nicht. Schützen Sie sie, und wir geben Ihnen den Code, der sie zurückbringt.</string>
     <string name="encryption_protect">Meine Nachrichten schützen</string>
     <string name="encryption_key_needed">Ihr Wiederherstellungscode wird gebraucht</string>
     <string name="encryption_key_needed_help">Ihre alten Nachrichten sind verschlüsselt, und dieses Gerät kann sie noch nicht öffnen. Geben Sie den Code ein, den Sie beim Einschalten des Backups gespeichert haben.</string>
@@ -512,7 +512,7 @@
     <string name="encryption_new_key">Neuen Wiederherstellungscode erstellen</string>
     <string name="encryption_new_key_help">Der alte Code funktioniert dann nicht mehr. Sinnvoll, wenn er in falsche Hände geraten ist.</string>
     <string name="encryption_save_key">Speichern Sie Ihren Code</string>
-    <string name="encryption_save_key_help">Wir zeigen ihn einmal und nie wieder. Schreiben Sie ihn auf oder legen Sie ihn in einen Passwortmanager: Ohne ihn kommen Ihre alten Nachrichten nicht zurück.</string>
+    <string name="encryption_save_key_help">Wir zeigen ihn nur einmal. Schreiben Sie ihn auf oder legen Sie ihn in einen Passwortmanager: Ohne ihn kommen Ihre alten Nachrichten nicht zurück.</string>
     <string name="encryption_copy_key">Code kopieren</string>
     <string name="encryption_key_copied">Kopiert</string>
     <string name="encryption_saved">Ich habe den Code gespeichert</string>
@@ -533,23 +533,23 @@
     <string name="appearance_preview_sender">Anna</string>
     <string name="appearance_preview_label">So sehen Ihre Nachrichten aus</string>
     <string name="session_ended_title">Sie sind nicht mehr angemeldet</string>
-    <string name="session_ended_message">Ihr Server nimmt diese Sitzung nicht mehr an. Wahrscheinlich haben Sie sie auf einem anderen Gerät beendet. Melden Sie sich wieder an – keine Ihrer Unterhaltungen ist verloren.</string>
+    <string name="session_ended_message">Ihr Server nimmt diese Sitzung nicht mehr an. Wahrscheinlich haben Sie sie auf einem anderen Gerät beendet. Melden Sie sich wieder an. Keine Ihrer Unterhaltungen ist verloren.</string>
     <string name="message_media_photo">Foto</string>
     <string name="message_media_video">Video</string>
     <string name="message_media_video_note">Videonachricht</string>
     <string name="message_media_open_full_screen">Öffnen</string>
     <string name="verification_verify">Dieses Gerät bestätigen</string>
     <string name="verification_title">Bestätigung</string>
-    <string name="verification_why">Solange dieses Gerät nicht bestätigt ist, kann Ihr Konto nicht wissen, dass wirklich Sie es sind – und Ihre älteren Unterhaltungen kommen hier nicht an. Bestätigen können Sie es von einem Telefon oder Computer, auf dem Sie schon angemeldet sind.</string>
+    <string name="verification_why">Solange dieses Gerät nicht bestätigt ist, kann Ihr Konto nicht wissen, dass wirklich Sie es sind, und Ihre älteren Unterhaltungen kommen hier nicht an. Bestätigen können Sie es von einem Telefon oder Computer, auf dem Sie schon angemeldet sind.</string>
     <string name="verification_waiting_title">Schauen Sie auf Ihr anderes Gerät</string>
     <string name="verification_waiting_message">Die App auf Ihrem anderen Gerät muss gerade geöffnet sein, sonst erreicht die Anfrage es nicht.</string>
-    <string name="verification_asked_message">Dieses Gerät hat sich gerade bei Ihrem Konto angemeldet und bittet um Bestätigung. Wenn Sie das waren, stimmen Sie zu – dann vergleichen Sie die Emoji. Wenn nicht, lehnen Sie ab: Dann kennt jemand anderes Ihr Passwort.</string>
+    <string name="verification_asked_message">Dieses Gerät hat sich gerade bei Ihrem Konto angemeldet und bittet um Bestätigung. Wenn Sie das waren, stimmen Sie zu und vergleichen Sie dann die Emoji. Wenn nicht, lehnen Sie ab: Dann kennt jemand anderes Ihr Passwort.</string>
     <string name="verification_unnamed_device">Ein Gerät ohne Namen</string>
     <string name="verification_mine">Das bin ich</string>
     <string name="verification_not_mine">Das bin ich nicht</string>
     <string name="verification_negotiating_title">Einen Moment</string>
     <string name="verification_negotiating_message">Die beiden Geräte stimmen sich gerade ab. Gleich erscheinen auf beiden Bildschirmen die Emoji.</string>
-    <string name="verification_compare">Ihr anderes Gerät zeigt dieselben sieben Emoji. Prüfen Sie, ob sie übereinstimmen – und in derselben Reihenfolge stehen.</string>
+    <string name="verification_compare">Ihr anderes Gerät zeigt dieselben sieben Emoji. Prüfen Sie, ob sie übereinstimmen und in derselben Reihenfolge stehen.</string>
     <string name="verification_match">Sie stimmen überein</string>
     <string name="verification_no_match">Sie stimmen nicht überein</string>
     <string name="verification_done_title">Dieses Gerät ist bestätigt</string>
@@ -557,7 +557,7 @@
     <string name="verification_declined_title">Bestätigung abgebrochen</string>
     <string name="verification_declined_message">Wenn die Emoji wirklich nicht übereinstimmten, vertrauen Sie dieser Verbindung nicht und versuchen Sie es noch einmal. Vielleicht haben Sie die Bestätigung auch einfach zweimal gestartet.</string>
     <string name="verification_refused_title">Sie haben abgelehnt</string>
-    <string name="verification_refused_message">Dieses Gerät hat keinen Zugriff auf Ihre Unterhaltungen bekommen. Aber wenn die Anmeldung nicht von Ihnen war, kennt jemand anderes Ihr Passwort – und es muss sofort geändert werden.</string>
+    <string name="verification_refused_message">Dieses Gerät hat keinen Zugriff auf Ihre Unterhaltungen bekommen. Aber wenn die Anmeldung nicht von Ihnen war, kennt jemand anderes Ihr Passwort, und es muss sofort geändert werden.</string>
     <string name="verification_refused_end_session">Diese Sitzung beenden</string>
     <string name="verification_failed_title">Hat nicht geklappt</string>
     <string name="verification_failed_message">Die Bestätigung wurde nicht abgeschlossen. Versuchen Sie es noch einmal.</string>
@@ -571,11 +571,11 @@
     <string name="recovery_new_confirm">Neuen Code erstellen</string>
     <string name="recovery_new_keep_old">Später – ich suche den alten</string>
     <string name="recovery_approve_title">Haben Sie es bestätigt?</string>
-    <string name="recovery_approve_message">Das Zurücksetzen muss auf der Seite Ihres Servers bestätigt werden. Wenn Sie das getan haben, machen Sie weiter – dann sind Ihre alten Nachrichten für immer weg. Wenn Sie es sich anders überlegt haben, passiert nichts.</string>
+    <string name="recovery_approve_message">Das Zurücksetzen muss auf der Seite Ihres Servers bestätigt werden. Wenn Sie das getan haben, machen Sie weiter: Dann sind Ihre alten Nachrichten für immer weg. Wenn Sie es sich anders überlegt haben, passiert nichts.</string>
     <string name="recovery_approve_confirm">Alte Nachrichten endgültig löschen</string>
     <string name="recovery_approve_cancel">Ich habe es mir anders überlegt</string>
     <string name="recovery_choose_title">Entsperren Sie Ihre Nachrichten</string>
-    <string name="recovery_choose_message">Ihre früheren Nachrichten sind verschlüsselt, und dieses Gerät kann sie noch nicht öffnen. Es gibt zwei Wege – beide funktionieren.</string>
+    <string name="recovery_choose_message">Ihre früheren Nachrichten sind verschlüsselt, und dieses Gerät kann sie noch nicht öffnen. Es gibt zwei Wege, beide funktionieren.</string>
     <string name="recovery_choose_have_code">Ich habe meinen Wiederherstellungscode</string>
     <string name="recovery_choose_other_device">Von einem anderen Gerät bestätigen</string>
     <string name="recovery_choose_neither">Ich habe keins von beidem</string>
@@ -586,7 +586,7 @@
     <string name="recovery_lost_title">Nicht gefunden?</string>
     <string name="recovery_lost_has_devices">Kein Problem. Bestätigen Sie dieses Gerät von einem Telefon oder Computer, auf dem Sie schon angemeldet sind, und wir geben Ihnen gleich einen neuen Code anstelle des verlorenen.</string>
     <string name="recovery_lost_alone_title">Fangen wir neu an</string>
-    <string name="recovery_lost_alone_message">Ohne den Code und ohne ein anderes Gerät kommen Ihre alten Nachrichten nicht zurück – sie bleiben für immer verschlüsselt. Neue Nachrichten kommen wie gewohnt an, und wir geben Ihnen einen neuen Wiederherstellungscode.</string>
+    <string name="recovery_lost_alone_message">Ohne den Code und ohne ein anderes Gerät kommen Ihre alten Nachrichten nicht zurück, sie bleiben für immer verschlüsselt. Neue Nachrichten kommen wie gewohnt an, und wir geben Ihnen einen neuen Wiederherstellungscode.</string>
     <string name="recovery_lost_alone_not_password">Ihr Kontopasswort hat damit nichts zu tun: Es öffnet Ihr Konto, nicht Ihre alten Nachrichten.</string>
     <string name="recovery_lost_alone_start">Neu anfangen</string>
     <string name="recovery_password_title">Geben Sie Ihr Passwort ein</string>
@@ -594,7 +594,7 @@
     <string name="recovery_password_placeholder">Passwort</string>
     <string name="recovery_password_confirm">Bestätigen</string>
     <string name="recovery_banner_locked">Ihre alten Nachrichten sind gesperrt</string>
-    <string name="recovery_save_warning">Wenn dieser Code verloren geht und Sie kein anderes Gerät haben, kann niemand Ihre alten Nachrichten zurückholen – weder wir noch der Server. Sie bleiben für immer verschlüsselt.</string>
+    <string name="recovery_save_warning">Wenn dieser Code verloren geht und Sie kein anderes Gerät haben, kann niemand Ihre alten Nachrichten zurückholen, weder wir noch der Server. Sie bleiben für immer verschlüsselt.</string>
     <string name="recovery_save_confirm">Ich habe den Code an einem sicheren Ort notiert</string>
     <string name="recovery_lost_no_access">Ich komme an dieses Gerät nicht heran</string>
     <string name="recovery_banner_hint">Öffnet die Einrichtung der Wiederherstellung</string>
@@ -625,10 +625,10 @@
     <string name="devices_end_others_footer">Melden Sie sich auf allen Geräten außer diesem von Ihrem Konto ab.</string>
     <string name="devices_end_others_confirm">Alle anderen Sitzungen beenden?</string>
     <string name="devices_others">Aktive Sitzungen</string>
-    <string name="devices_no_others">Keine anderen Sitzungen – Sie sind nur hier angemeldet.</string>
+    <string name="devices_no_others">Keine anderen Sitzungen: Sie sind nur hier angemeldet.</string>
     <string name="devices_end">Beenden</string>
     <string name="devices_end_confirm">Diese Sitzung beenden?</string>
-    <string name="devices_managed_footer">Die Sitzungen dieses Kontos werden auf der Website Ihres Servers beendet – „Beenden“ öffnet sie.</string>
+    <string name="devices_managed_footer">Die Sitzungen dieses Kontos werden auf der Website Ihres Servers beendet, „Beenden“ öffnet sie.</string>
     <string name="devices_password_title">Passwort nötig</string>
     <string name="devices_password_message">Ihr Server möchte Ihr Kontopasswort, um die Sitzung zu beenden.</string>
     <string name="devices_password_field">Passwort</string>
@@ -652,7 +652,7 @@
     <string name="notifications_system_unknown">Die Berechtigung wurde noch nicht erfragt</string>
     <string name="notifications_open_system">Einstellungen öffnen</string>
     <string name="notifications_system_footer">Solange das System Mitteilungen blockiert, greift keine der Regeln unten.</string>
-    <string name="notifications_failed">Die Mitteilungseinstellungen ließen sich nicht lesen. Der Server antwortet nicht – versuchen Sie es später noch einmal.</string>
+    <string name="notifications_failed">Die Mitteilungseinstellungen ließen sich nicht lesen. Der Server antwortet nicht, versuchen Sie es später noch einmal.</string>
     <string name="onboarding_slide_iskra_title">Iskra</string>
     <string name="onboarding_slide_iskra_body">Unterhaltungen, die Ihnen gehören und niemandem sonst</string>
     <string name="onboarding_slide_encryption_title">Standardmäßig Ende-zu-Ende-verschlüsselt</string>
@@ -660,7 +660,7 @@
     <string name="onboarding_slide_decentralised_title">Dezentral</string>
     <string name="onboarding_slide_decentralised_body">Iskra läuft auf Matrix, einem offenen Protokoll, das die Community entwickelt</string>
     <string name="onboarding_slide_apple_way_title">Apple way</string>
-    <string name="onboarding_slide_apple_way_body">Eine native Swift-App für alle Plattformen zugleich – sie fliegt und schont Ihren Akku</string>
+    <string name="onboarding_slide_apple_way_body">Eine native Swift-App für alle Plattformen zugleich: Sie fliegt und schont Ihren Akku</string>
     <string name="onboarding_slide_freedom_title">Ihre Wahl</string>
     <string name="onboarding_slide_freedom_body">Nehmen Sie einen Server, den es schon gibt, oder betreiben Sie Ihren eigenen. Niemand sperrt Sie in ein Ökosystem ein</string>
     <string name="onboarding_slide_anonymous_title">Anonym</string>
@@ -701,8 +701,8 @@
     <string name="accounts_current">Gerade geöffnet</string>
     <string name="accounts_unread">Ungelesen: %d</string>
     <string name="accounts_sign_out_of">Von %s abmelden</string>
-    <string name="session_ended_other_message">Der Server nimmt die Sitzung von %s nicht mehr an – wahrscheinlich wurde sie auf einem anderen Gerät beendet. Ihre anderen Konten sind noch da, und dieses können Sie erneut hinzufügen.</string>
-    <string name="sign_in_problem_already_signed_in">Dieses Konto ist schon auf diesem Gerät – Sie können in den Einstellungen dazu wechseln.</string>
+    <string name="session_ended_other_message">Der Server nimmt die Sitzung von %s nicht mehr an. Wahrscheinlich wurde sie auf einem anderen Gerät beendet. Ihre anderen Konten sind noch da, und dieses können Sie erneut hinzufügen.</string>
+    <string name="sign_in_problem_already_signed_in">Dieses Konto ist schon auf diesem Gerät. Sie können in den Einstellungen dazu wechseln.</string>
     <string name="settings_chats">Chats</string>
     <string name="chats_title">Chats</string>
     <string name="chats_service_section">Systemmeldungen</string>
@@ -722,7 +722,7 @@
     <string name="chats_widget_help">Wessen Chats das Widget zeigt, wenn darin keine ausgewählt sind. „Aktives“ ist das, das gerade in Iskra geöffnet ist.</string>
     <string name="privacy_title">Datenschutz</string>
     <string name="privacy_hide_presence">„Zuletzt online“ verbergen</string>
-    <string name="privacy_hide_presence_help">Andere sehen nicht, wann Sie zuletzt online waren – und Sie sehen es bei ihnen auch nicht.</string>
+    <string name="privacy_hide_presence_help">Andere sehen nicht, wann Sie zuletzt online waren, und Sie sehen es bei ihnen auch nicht.</string>
     <string name="privacy_hide_typing">„schreibt…“ verbergen</string>
     <string name="privacy_hide_typing_help">Andere sehen nicht, wenn Sie gerade schreiben.</string>
     <string name="media_download">Laden</string>
@@ -755,7 +755,7 @@
     <string name="sign_in_sign_in_to">Bei %s anmelden</string>
     <string name="sign_in_back">Zurück</string>
     <string name="sign_in_continue_in_browser">Im Browser fortfahren</string>
-    <string name="sign_in_browser_help">Die Anmeldeseite Ihres Servers öffnet sich – dort funktioniert alles wie gewohnt.</string>
+    <string name="sign_in_browser_help">Die Anmeldeseite Ihres Servers öffnet sich, dort funktioniert alles wie gewohnt.</string>
     <string name="sign_in_password_help">Benutzername und Passwort Ihres Kontos.</string>
     <string name="sign_in_problem_no_registration">Auf diesem Server kann man in der App kein Konto erstellen. Wählen Sie einen anderen Server oder registrieren Sie sich auf seiner Website.</string>
     <string name="profile_search">Suchen</string>
@@ -792,7 +792,7 @@
     <string name="qr_scan_hint">Richten Sie die Kamera auf den QR-Code einer Person oder eines Raums</string>
     <string name="qr_not_matrix">Das ist kein Matrix-Link</string>
     <string name="qr_choose_picture">Bild auswählen</string>
-    <string name="qr_no_camera">Kein Zugriff auf die Kamera. Erlauben Sie ihn in den Einstellungen – oder wählen Sie ein Bild mit dem Code.</string>
+    <string name="qr_no_camera">Kein Zugriff auf die Kamera. Erlauben Sie ihn in den Einstellungen oder wählen Sie ein Bild mit dem Code.</string>
     <string name="qr_nothing_found">Auf dem Bild ist kein QR-Code</string>
     <string name="qr_join_room">Raum betreten</string>
     <string name="qr_open_room">Öffnen</string>
@@ -810,7 +810,7 @@
     <string name="about_matrix_private_title">Ihre Unterhaltungen bleiben Ihre</string>
     <string name="about_matrix_private_body">Nachrichten werden direkt auf Ihrem Gerät verschlüsselt, und entschlüsseln kann sie nur Ihr Gegenüber. Der Server speichert sie und leitet sie weiter, lesen kann er sie aber nicht.</string>
     <string name="servers_title">Server wählen</string>
-    <string name="servers_intro">Ihr Konto liegt auf einem Server, schreiben können Sie aber Menschen auf jedem anderen – wie bei E-Mail. Auf allen Servern unten können Sie direkt in Iskra ein Konto anlegen.</string>
+    <string name="servers_intro">Ihr Konto liegt auf einem Server, schreiben können Sie aber Menschen auf jedem anderen, wie bei E-Mail. Auf allen Servern unten können Sie direkt in Iskra ein Konto anlegen.</string>
     <string name="servers_matrix_org">Der größte Matrix-Server, betrieben von der Stiftung, die Matrix selbst entwickelt.</string>
     <string name="servers_matrix_org_where">Vereinigtes Königreich</string>
     <string name="servers_matrix_org_blocked">Aus Russland möglicherweise nicht erreichbar</string>
@@ -821,7 +821,7 @@
     <string name="servers_nope_chat">Betrieben vom Team von adminForge, das auch andere freie Dienste anbietet. Mit Brücken zu anderen Messengern.</string>
     <string name="servers_nope_chat_where">Deutschland</string>
     <string name="servers_own_title">Eigener Server</string>
-    <string name="servers_own_about">Sie können einen eigenen Server betreiben – dann liegen Ihre Unterhaltungen ganz in Ihren Händen. Sie brauchen dafür eine Domain und etwas Zeit.</string>
+    <string name="servers_own_about">Sie können einen eigenen Server betreiben, dann liegen Ihre Unterhaltungen ganz in Ihren Händen. Sie brauchen dafür eine Domain und etwas Zeit.</string>
     <string name="room_list_new_will_be_encrypted">Der Raum wird verschlüsselt</string>
     <string name="room_list_new_will_not_be_encrypted">Der Raum wird nicht verschlüsselt</string>
     <string name="room_access_history_header">Verlauf für neue Mitglieder</string>
@@ -848,7 +848,7 @@
     <string name="message_selection_copied">Kopiert</string>
     <string name="folders_all">Alle</string>
     <string name="folders_title">Ordner</string>
-    <string name="folders_explanation">Ordner sammeln Chats nach Regeln – privat, Gruppen, ungelesen – und stehen als Tabs über der Liste. Sie sind auf allen Ihren Geräten gleich.</string>
+    <string name="folders_explanation">Ordner sammeln Chats nach Regeln (privat, Gruppen, ungelesen) und stehen als Tabs über der Liste. Sie sind auf allen Ihren Geräten gleich.</string>
     <string name="folders_new">Neuer Ordner</string>
     <string name="folders_suggested">Damit könnten Sie anfangen</string>
     <string name="folders_add">Hinzufügen</string>
@@ -873,7 +873,7 @@
     <string name="folders_cancel">Abbrechen</string>
     <string name="folders_delete">Ordner löschen</string>
     <string name="folders_delete_question">Ordner „%s“ löschen?</string>
-    <string name="folders_delete_help">Die Chats bleiben, wo sie sind – nur der Tab verschwindet.</string>
+    <string name="folders_delete_help">Die Chats bleiben, wo sie sind, nur der Tab verschwindet.</string>
     <string name="folders_add_to_folder">In Ordner</string>
     <string name="folders_membership_title">Ordner</string>
     <string name="folders_membership_footer">Mit Häkchen ist der Chat im Ordner, auch wenn er nicht zu den Regeln passt. Ohne Häkchen nie.</string>
@@ -885,11 +885,11 @@
     <string name="stickers_settings_mine">Meine Sticker</string>
     <string name="beta_developers">Für Entwickler</string>
     <string name="beta_shows_source">Nachrichten-JSON im Menü</string>
-    <string name="beta_shows_source_help">Im Menü einer Nachricht erscheint „JSON ansehen“ – das Ereignis, wie der Server es geschickt hat. Hilfreich, wenn eine Nachricht falsch angezeigt wird.</string>
+    <string name="beta_shows_source_help">Im Menü einer Nachricht erscheint „JSON ansehen“: das Ereignis, wie der Server es geschickt hat. Hilfreich, wenn eine Nachricht falsch angezeigt wird.</string>
     <string name="beta_homeserver">Server</string>
-    <string name="beta_homeserver_help">Die Adresse, mit der die App wirklich spricht – aus dem Namen des Kontos ermittelt, nicht unbedingt die bei der Anmeldung eingegebene. Eine Brücke ändert sie nicht, sie trägt nur die Verbindung.</string>
+    <string name="beta_homeserver_help">Die Adresse, mit der die App wirklich spricht, aus dem Namen des Kontos ermittelt. Das ist nicht unbedingt die bei der Anmeldung eingegebene. Eine Brücke ändert sie nicht, sie trägt nur die Verbindung.</string>
     <string name="beta_shows_all_events">Alle Ereignisse im Chat</string>
-    <string name="beta_shows_all_events_help">Im Chat erscheinen auch die Ereignisse, die die App sonst weglässt – Berechtigungen, Beitrittsregeln, Anrufe, neue Profilbilder, alles, was sich nicht lesen ließ – als graue Zeile mit Typ und Absender.</string>
+    <string name="beta_shows_all_events_help">Im Chat erscheinen auch die Ereignisse, die die App sonst weglässt (Berechtigungen, Beitrittsregeln, Anrufe, neue Profilbilder, alles, was sich nicht lesen ließ), als graue Zeile mit Typ und Absender.</string>
     <string name="beta_view_source">JSON ansehen</string>
     <string name="beta_no_source">Diese Nachricht hat noch kein Ereignis auf dem Server.</string>
     <string name="beta_demo_sign_in">Demo-Anmeldung</string>
@@ -908,7 +908,7 @@
     <string name="message_transcript_show">Transkribieren</string>
     <string name="message_transcript_hide">Text ausblenden</string>
     <string name="message_transcript_not_allowed">Die Spracherkennung ist nicht erlaubt. Das lässt sich in den Einstellungen ändern.</string>
-    <string name="message_transcript_unavailable">Dieses Gerät erkennt Ihre Sprache nicht offline – und Iskra schickt die Stimme an keinen Server.</string>
+    <string name="message_transcript_unavailable">Dieses Gerät erkennt Ihre Sprache nicht offline, und Iskra schickt die Stimme an keinen Server.</string>
     <string name="message_transcript_nothing_heard">Keine Worte zu verstehen.</string>
     <string name="message_transcript_failed">Das Transkribieren hat nicht geklappt. Versuchen Sie es noch einmal.</string>
     <string name="chats_threads">Threads anzeigen</string>

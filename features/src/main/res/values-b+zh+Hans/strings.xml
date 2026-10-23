@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">设置</string>
@@ -74,7 +74,7 @@
     <string name="beta_title">测试版功能</string>
     <string name="beta_intro">这里是还没做完的功能。碍事就关掉，改主意了再打开：什么都不会坏，也不会丢。</string>
     <string name="beta_native_sidebar">原生侧边栏</string>
-    <string name="beta_native_sidebar_help">聊天列表变成普通的 macOS 侧边栏：聊天按分区归类，搜索在顶部，行距更紧凑。像“邮件”和“备忘录”，不那么像手机。</string>
+    <string name="beta_native_sidebar_help">聊天列表变成普通的 macOS 侧边栏：聊天按分区归类，搜索在顶部，行距更紧凑。看起来像“邮件”和“备忘录”，不像手机。</string>
     <string name="beta_blobatar">用小怪物代替首字母</string>
     <string name="beta_blobatar_help">没有头像的人会得到一个小怪物：独属于他，每次都一样。它就在设备上绘制，不会发送到任何地方。群组则用成员们凑成的一圈来代替字母。</string>
     <string name="beta_blobatar_force">连头像也替换</string>
@@ -103,20 +103,20 @@
     <string name="connection_apply_now">立即重新连接</string>
     <string name="connection_address">网桥地址</string>
     <string name="connection_address_prompt">npub1… 或 64 位十六进制字符</string>
-    <string name="connection_address_footer">网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。</string>
+    <string name="connection_address_footer">网桥启动时会打印它的地址，即“bridge address for Iskra: npub1…”这一行。</string>
     <string name="connection_address_bad">这看起来不像网桥密钥</string>
     <string name="connection_address_secret">这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。</string>
     <string name="connection_default_bridge">恢复为 Iskra 网桥</string>
     <string name="connection_relays">中继</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
-    <string name="connection_relays_footer">应用和网桥通过它们找到彼此。多个并不是备胎：请求会同时发往所有中继，回答来自最快的那个。留空则使用默认的三个。</string>
+    <string name="connection_relays_footer">应用和网桥通过它们找到彼此。请求会同时发往所有中继，回答来自最快的那个，所以只填一个不够。留空则使用默认的三个。</string>
     <string name="connection_my_key">本设备的密钥</string>
     <string name="connection_my_key_footer">如果网桥是封闭的，请把这个密钥加入它的 ALLOWED_PUBKEYS，否则它根本听不到您。</string>
     <string name="connection_copy">拷贝</string>
     <string name="connection_copied">已拷贝</string>
     <string name="connection_check">检查网桥</string>
     <string name="connection_checking">正在检查…</string>
-    <string name="connection_check_ok">网桥已响应，服务器正常 — %d 毫秒</string>
+    <string name="connection_check_ok">网桥已响应，服务器正常：%d 毫秒</string>
     <string name="connection_check_no_relay">没有中继响应</string>
     <string name="connection_check_silent">网桥没有回应。它在运行吗？密钥对吗？</string>
     <string name="connection_check_failed">没成功：%s</string>
@@ -130,9 +130,9 @@
     <string name="bridge_refusal_disagreement">应用和网桥没能互相理解。请更新应用或网桥</string>
     <string name="bridge_refusal_broke">网桥断开了连接：%s</string>
     <string name="connection_unfinished">预期表现</string>
-    <string name="connection_unfinished_body">每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢——原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。</string>
+    <string name="connection_unfinished_body">每个请求都要绕道中继，耗时 200–350 毫秒，因此登录和首次打开聊天会明显比直连慢，原本瞬间完成的地方要等上一秒。不过新消息几乎和直连一样快。大附件也能传过去，但最好不要经过公共中继：媒体请给网桥配一个专用中继。</string>
     <string name="connection_sees">网桥能看到什么</string>
-    <string name="connection_sees_body">只有您连接到哪个服务器、何时以及多少字节。与服务器的连接由应用自己加密，因此您的令牌、房间和消息——即使在未加密的聊天中——网桥都看不到。您的 IP 地址由中继看到，而不是网桥。</string>
+    <string name="connection_sees_body">只有您连接到哪个服务器、何时以及多少字节。与服务器的连接由应用自己加密，因此您的令牌、房间和消息，即使在未加密的聊天中，网桥都看不到。您的 IP 地址由中继看到，而不是网桥。</string>
     <string name="settings_lock">应用锁</string>
     <string name="settings_lock_enable">要求 Face ID 或密码</string>
     <string name="settings_lock_timeout">何时要求</string>
@@ -166,7 +166,7 @@
     <string name="storage_failed">没能清除缓存。请再试一次。</string>
     <string name="storage_search_clear">清除搜索索引</string>
     <string name="storage_search_confirm_title">清除搜索索引？</string>
-    <string name="storage_search_confirm_body">应用会重新加载。一段时间内搜索可能找不全——索引会在您阅读时重新建立。您的消息和照片原封不动。</string>
+    <string name="storage_search_confirm_body">应用会重新加载。一段时间内搜索可能找不全，索引会在您阅读时重新建立。您的消息和照片原封不动。</string>
     <string name="storage_search_failed">没能清除索引。请再试一次。</string>
     <string name="settings_about">关于 Iskra</string>
     <string name="settings_language">语言</string>
@@ -207,7 +207,7 @@
     <string name="sign_in_try_through_bridge">开启网桥并重试</string>
     <string name="sign_in_problem_unsupported_method">该服务使用的登录方式 Iskra 暂不支持。</string>
     <string name="session_offline_title">无连接</string>
-    <string name="session_offline_message">您的对话都在，就在这台设备上。我们只是暂时连不上服务器——请检查网络。</string>
+    <string name="session_offline_message">您的对话在这台设备上。暂时连不上服务器，请检查网络。</string>
     <string name="session_try_again">重试</string>
     <string name="connection_offline">无网络</string>
     <string name="sign_in_ready_help">我们会打开浏览器，让您照常登录。</string>
@@ -234,9 +234,9 @@
     <string name="video_note_no_camera">这台设备没有摄像头。</string>
     <string name="video_note_record">录制视频消息</string>
     <string name="room_empty_title">这里还什么都没有</string>
-    <string name="room_empty_message">发出第一条消息吧——一切从这里开始。</string>
+    <string name="room_empty_message">发出第一条消息吧，一切从这里开始。</string>
     <string name="room_load_failed_title">没能打开聊天</string>
-    <string name="room_load_failed_message">消息没有丢——只是没能加载出来。请检查网络。</string>
+    <string name="room_load_failed_message">消息还在，只是没能加载出来。请检查网络。</string>
     <string name="room_try_again">重试</string>
     <string name="room_open_details">打开聊天信息</string>
     <string name="room_details_title">关于此聊天</string>
@@ -286,7 +286,7 @@
     <string name="appearance_wallpaper_sand">沙滩</string>
     <string name="appearance_wallpaper_night">夜晚</string>
     <string name="appearance_wallpaper_photo">自己的照片</string>
-    <string name="room_attachment_unreadable">无法读取这张照片。照片还在 iCloud 中时会出现这种情况——请在“照片”中打开它后再试一次。</string>
+    <string name="room_attachment_unreadable">无法读取这张照片。照片还在 iCloud 中时会出现这种情况，请在“照片”中打开它后再试一次。</string>
     <string name="message_link_open">打开</string>
     <string name="message_link_cancel">取消</string>
     <string name="message_menu_report">举报</string>
@@ -455,18 +455,18 @@
     <string name="room_list_swipe_unarchive">取消归档</string>
     <string name="room_list_swipe_delete">删除</string>
     <string name="room_list_swipe_leave_confirm_title">退出这个聊天？</string>
-    <string name="room_list_swipe_leave_confirm_message">您会离开房间，不再收到它的消息。Matrix 无法删除共享的聊天——只能自己退出。</string>
+    <string name="room_list_swipe_leave_confirm_message">您会离开房间，不再收到它的消息。Matrix 无法删除共享的聊天，只能自己退出。</string>
     <string name="room_list_swipe_leave_confirm">退出</string>
     <string name="room_list_swipe_cancel">取消</string>
     <string name="room_list_peek_peek">偷看一眼</string>
     <string name="room_list_peek_open">打开聊天</string>
     <string name="room_list_peek_mark_read">标为已读</string>
     <string name="room_list_peek_mark_unread">标为未读</string>
-    <string name="room_list_peek_stays_unread">只是偷看一眼——不会标为已读</string>
+    <string name="room_list_peek_stays_unread">只是偷看一眼，不会标为已读</string>
     <string name="room_list_peek_close">关闭预览</string>
     <string name="room_list_archive_title">归档</string>
     <string name="room_list_archive_empty_title">归档是空的</string>
-    <string name="room_list_archive_empty_message">把聊天向左滑并归档——它不会再占用主列表，但也不会消失。</string>
+    <string name="room_list_archive_empty_message">把聊天向左滑并归档，它不会再占用主列表，但也不会消失。</string>
     <string name="room_manage_alerts">通知</string>
     <string name="room_manage_alerts_all">所有消息</string>
     <string name="room_manage_alerts_mentions">仅提及</string>
@@ -475,10 +475,10 @@
     <string name="account_edit">编辑</string>
     <string name="account_edit_title">您的个人资料</string>
     <string name="account_name_header">名字</string>
-    <string name="account_edit_offline">没有网络时无法修改个人资料——应用联系不上服务器。</string>
-    <string name="account_name_change_notice">改名后，所有和您聊天的人都会知道——每个共同聊天里都会出现一条提示。</string>
+    <string name="account_edit_offline">没有网络时无法修改个人资料，应用联系不上服务器。</string>
+    <string name="account_name_change_notice">改名后，所有和您聊天的人都会知道，每个共同聊天里都会出现一条提示。</string>
     <string name="account_username_header">用户名</string>
-    <string name="account_username_fixed">用户名只在注册时选择一次，之后无法更改——这里不行，别处也不行。</string>
+    <string name="account_username_fixed">用户名只在注册时选择一次，之后无法更改，这里不行，别处也不行。</string>
     <string name="picture_edit">更换照片</string>
     <string name="picture_change">更换</string>
     <string name="picture_remove">移除</string>
@@ -488,7 +488,7 @@
     <string name="room_manage_name_header">名称</string>
     <string name="room_manage_delete_chat">删除聊天</string>
     <string name="room_manage_delete_chat_question">删除这个聊天？</string>
-    <string name="room_manage_delete_chat_help">对话会从这台设备上消失。对方不会收到通知，如果对方再发消息，聊天会重新出现——但是空的。</string>
+    <string name="room_manage_delete_chat_help">对话会从这台设备上消失。对方不会收到通知，如果对方再发消息，聊天会重新出现，但是空的。</string>
     <string name="room_tabs_members">成员</string>
     <string name="room_tabs_media">照片</string>
     <string name="room_tabs_voice">语音</string>
@@ -503,7 +503,7 @@
     <string name="encryption_on">您的消息受到保护</string>
     <string name="encryption_on_help">您的对话以加密备份的形式保存在服务器上。有了恢复代码，您可以在任何新设备上阅读它们。</string>
     <string name="encryption_off">您的消息未受保护</string>
-    <string name="encryption_off_help">如果这台设备丢了，谁都读不了您的旧消息——包括您自己。保护它们，我们会给您一个能找回消息的代码。</string>
+    <string name="encryption_off_help">如果这台设备丢了，谁都读不了您的旧消息，包括您自己。保护它们，我们会给您一个能找回消息的代码。</string>
     <string name="encryption_protect">保护我的消息</string>
     <string name="encryption_key_needed">需要您的恢复代码</string>
     <string name="encryption_key_needed_help">您的旧消息是加密的，这台设备暂时打不开。请输入开启备份时保存的代码。</string>
@@ -533,14 +533,14 @@
     <string name="appearance_preview_sender">安娜</string>
     <string name="appearance_preview_label">您的消息会是这个样子</string>
     <string name="session_ended_title">您已不再登录</string>
-    <string name="session_ended_message">服务器不再接受这个会话。很可能是您在另一台设备上结束了它。请重新登录——您的对话一条都没少。</string>
+    <string name="session_ended_message">服务器不再接受这个会话。很可能是您在另一台设备上结束了它。请重新登录，您的对话一条都没少。</string>
     <string name="message_media_photo">照片</string>
     <string name="message_media_video">视频</string>
     <string name="message_media_video_note">视频消息</string>
     <string name="message_media_open_full_screen">打开</string>
     <string name="verification_verify">确认这台设备</string>
     <string name="verification_title">确认</string>
-    <string name="verification_why">在这台设备得到确认之前，您的账户无法知道这真的是您——旧的对话也不会同步过来。您可以在已经登录的手机或电脑上确认它。</string>
+    <string name="verification_why">在这台设备得到确认之前，您的账户无法知道这真的是您，旧的对话也不会同步过来。您可以在已经登录的手机或电脑上确认它。</string>
     <string name="verification_waiting_title">看看您的另一台设备</string>
     <string name="verification_waiting_message">另一台设备上的应用现在必须开着，否则请求到不了。</string>
     <string name="verification_asked_message">这台设备刚刚登录了您的账户，正请求确认。如果是您本人，请同意，然后比对表情符号。如果不是，请拒绝：说明别人知道您的密码。</string>
@@ -557,7 +557,7 @@
     <string name="verification_declined_title">确认已中止</string>
     <string name="verification_declined_message">如果表情符号确实不一致，请不要信任这个连接，并再试一次。也可能只是您启动了两次确认。</string>
     <string name="verification_refused_title">您拒绝了</string>
-    <string name="verification_refused_message">那台设备没有获得访问您对话的权限。但如果登录的不是您，说明别人知道您的密码——需要立刻更改。</string>
+    <string name="verification_refused_message">那台设备没有获得访问您对话的权限。但如果登录的不是您，说明别人知道您的密码，需要立刻更改。</string>
     <string name="verification_refused_end_session">结束这个会话</string>
     <string name="verification_failed_title">没成功</string>
     <string name="verification_failed_message">确认没有完成。请再试一次。</string>
@@ -571,11 +571,11 @@
     <string name="recovery_new_confirm">创建新代码</string>
     <string name="recovery_new_keep_old">以后再说——我去找找旧的</string>
     <string name="recovery_approve_title">您批准了吗？</string>
-    <string name="recovery_approve_message">重置需要在服务器页面上批准。如果您已经批准，请继续——旧消息将永久丢失。如果您改主意了，什么都不会发生。</string>
+    <string name="recovery_approve_message">重置需要在服务器页面上批准。如果您已经批准，请继续，旧消息将永久丢失。如果您改主意了，什么都不会发生。</string>
     <string name="recovery_approve_confirm">永久清除旧消息</string>
     <string name="recovery_approve_cancel">我改主意了</string>
     <string name="recovery_choose_title">解锁您的消息</string>
-    <string name="recovery_choose_message">您以前的消息是加密的，这台设备暂时打不开。有两种方法——都管用。</string>
+    <string name="recovery_choose_message">您以前的消息是加密的，这台设备暂时打不开。有两种方法，都管用。</string>
     <string name="recovery_choose_have_code">我有恢复代码</string>
     <string name="recovery_choose_other_device">从另一台设备确认</string>
     <string name="recovery_choose_neither">两样都没有</string>
@@ -586,7 +586,7 @@
     <string name="recovery_lost_title">找不到？</string>
     <string name="recovery_lost_has_devices">没关系。在已经登录的手机或电脑上确认这台设备，我们会马上给您一个新代码来替换丢失的那个。</string>
     <string name="recovery_lost_alone_title">从头开始吧</string>
-    <string name="recovery_lost_alone_message">没有代码，也没有其他设备，旧消息就回不来了——它们会永远保持加密。新消息照常接收，我们也会给您一个新的恢复代码。</string>
+    <string name="recovery_lost_alone_message">没有代码，也没有其他设备，旧消息就回不来了，它们会永远保持加密。新消息照常接收，我们也会给您一个新的恢复代码。</string>
     <string name="recovery_lost_alone_not_password">账户密码跟这个无关：它打开的是账户，不是旧消息。</string>
     <string name="recovery_lost_alone_start">从头开始</string>
     <string name="recovery_password_title">输入您的密码</string>
@@ -594,7 +594,7 @@
     <string name="recovery_password_placeholder">密码</string>
     <string name="recovery_password_confirm">确认</string>
     <string name="recovery_banner_locked">您的旧消息被锁住了</string>
-    <string name="recovery_save_warning">如果这个代码丢了，而您又没有其他设备，就没有人能找回您的旧消息——我们不能，服务器也不能。它们会永远保持加密。</string>
+    <string name="recovery_save_warning">如果这个代码丢了，而您又没有其他设备，就没有人能找回您的旧消息，我们不能，服务器也不能。它们会永远保持加密。</string>
     <string name="recovery_save_confirm">我已把代码记在安全的地方</string>
     <string name="recovery_lost_no_access">我用不了那台设备</string>
     <string name="recovery_banner_hint">打开恢复设置</string>
@@ -625,10 +625,10 @@
     <string name="devices_end_others_footer">在除这台设备以外的所有设备上退出您的账户。</string>
     <string name="devices_end_others_confirm">结束所有其他会话？</string>
     <string name="devices_others">活跃会话</string>
-    <string name="devices_no_others">没有其他会话——您只在这里登录。</string>
+    <string name="devices_no_others">没有其他会话，您只在这里登录。</string>
     <string name="devices_end">结束</string>
     <string name="devices_end_confirm">结束这个会话？</string>
-    <string name="devices_managed_footer">此账户的会话需要在服务器网站上结束——点“结束”会打开它。</string>
+    <string name="devices_managed_footer">此账户的会话需要在服务器网站上结束，点“结束”会打开它。</string>
     <string name="devices_password_title">需要密码</string>
     <string name="devices_password_message">服务器需要您的账户密码来结束会话。</string>
     <string name="devices_password_field">密码</string>
@@ -652,7 +652,7 @@
     <string name="notifications_system_unknown">尚未请求权限</string>
     <string name="notifications_open_system">打开设置</string>
     <string name="notifications_system_footer">系统阻止通知期间，下面的规则都不会生效。</string>
-    <string name="notifications_failed">没能读取通知设置。服务器没有响应——请稍后再试。</string>
+    <string name="notifications_failed">没能读取通知设置。服务器没有响应，请稍后再试。</string>
     <string name="onboarding_slide_iskra_title">Iskra</string>
     <string name="onboarding_slide_iskra_body">只属于您的对话</string>
     <string name="onboarding_slide_encryption_title">默认端到端加密</string>
@@ -660,7 +660,7 @@
     <string name="onboarding_slide_decentralised_title">去中心化</string>
     <string name="onboarding_slide_decentralised_body">Iskra 基于社区共建的开放协议 Matrix</string>
     <string name="onboarding_slide_apple_way_title">Apple way</string>
-    <string name="onboarding_slide_apple_way_body">一款同时面向所有平台的原生 Swift 应用——飞快，而且不费电</string>
+    <string name="onboarding_slide_apple_way_body">一款同时面向所有平台的原生 Swift 应用：飞快，而且不费电</string>
     <string name="onboarding_slide_freedom_title">由您选择</string>
     <string name="onboarding_slide_freedom_body">用现成的服务器，或者自己搭一个。没人把您锁在一个生态里</string>
     <string name="onboarding_slide_anonymous_title">匿名</string>
@@ -701,8 +701,8 @@
     <string name="accounts_current">当前打开</string>
     <string name="accounts_unread">未读：%d</string>
     <string name="accounts_sign_out_of">退出 %s</string>
-    <string name="session_ended_other_message">服务器不再接受 %s 的会话——很可能是在另一台设备上结束的。您的其他账户都还在，这个账户可以重新添加。</string>
-    <string name="sign_in_problem_already_signed_in">这个账户已经在这台设备上了——可以在设置中切换过去。</string>
+    <string name="session_ended_other_message">服务器不再接受 %s 的会话，很可能是在另一台设备上结束的。您的其他账户都还在，这个账户可以重新添加。</string>
+    <string name="sign_in_problem_already_signed_in">这个账户已经在这台设备上了，可以在设置中切换过去。</string>
     <string name="settings_chats">聊天</string>
     <string name="chats_title">聊天</string>
     <string name="chats_service_section">系统消息</string>
@@ -810,7 +810,7 @@
     <string name="about_matrix_private_title">您的对话只属于您</string>
     <string name="about_matrix_private_body">消息直接在您的设备上加密，只有对方才能解密。服务器负责保存和转发，但读不了内容。</string>
     <string name="servers_title">选择服务器</string>
-    <string name="servers_intro">您的账户位于一个服务器上，但可以和任何其他服务器上的人交流——就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。</string>
+    <string name="servers_intro">您的账户位于一个服务器上，但可以和任何其他服务器上的人交流，就像电子邮件一样。下面的服务器都可以直接在 Iskra 中创建账户。</string>
     <string name="servers_matrix_org">最大的 Matrix 服务器，由开发 Matrix 本身的基金会运营。</string>
     <string name="servers_matrix_org_where">英国</string>
     <string name="servers_matrix_org_blocked">从俄罗斯可能无法访问</string>
@@ -821,7 +821,7 @@
     <string name="servers_nope_chat">由 adminForge 团队运营，他们也提供其他自由服务。支持与其他通讯软件的桥接。</string>
     <string name="servers_nope_chat_where">德国</string>
     <string name="servers_own_title">自建服务器</string>
-    <string name="servers_own_about">您可以搭建自己的服务器——这样您的对话就完全掌握在您自己手中。您需要一个域名和一点时间。</string>
+    <string name="servers_own_about">您可以搭建自己的服务器，这样您的对话就完全掌握在您自己手中。您需要一个域名和一点时间。</string>
     <string name="room_list_new_will_be_encrypted">该房间将加密</string>
     <string name="room_list_new_will_not_be_encrypted">该房间将不加密</string>
     <string name="room_access_history_header">新成员可见的历史</string>
@@ -848,7 +848,7 @@
     <string name="message_selection_copied">已复制</string>
     <string name="folders_all">全部</string>
     <string name="folders_title">文件夹</string>
-    <string name="folders_explanation">文件夹按规则归类聊天——私聊、群组、未读——并以标签的形式显示在列表上方。在您的所有设备上都一样。</string>
+    <string name="folders_explanation">文件夹按规则归类聊天（私聊、群组、未读），并以标签的形式显示在列表上方。在您的所有设备上都一样。</string>
     <string name="folders_new">新建文件夹</string>
     <string name="folders_suggested">可以从这些开始</string>
     <string name="folders_add">添加</string>
@@ -885,11 +885,11 @@
     <string name="stickers_settings_mine">我的贴纸</string>
     <string name="beta_developers">开发者选项</string>
     <string name="beta_shows_source">菜单中显示消息 JSON</string>
-    <string name="beta_shows_source_help">消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。</string>
+    <string name="beta_shows_source_help">消息菜单中会出现“查看 JSON”，即服务器发来的原始事件。消息显示不对时很有用。</string>
     <string name="beta_homeserver">服务器</string>
-    <string name="beta_homeserver_help">应用实际通信的地址——根据账号名称找到，不一定是登录时输入的那个。桥接不会改变它，只负责传输连接。</string>
+    <string name="beta_homeserver_help">应用实际通信的地址，根据账号名称找到，不一定是登录时输入的那个。桥接不会改变它，只负责传输连接。</string>
     <string name="beta_shows_all_events">聊天中的所有事件</string>
-    <string name="beta_shows_all_events_help">聊天中也会显示应用通常不显示的事件——权限、加入规则、通话、头像更改、无法解析的内容——以灰色行显示类型和发送者。</string>
+    <string name="beta_shows_all_events_help">聊天中也会显示应用通常不显示的事件（权限、加入规则、通话、头像更改、无法解析的内容），以灰色行显示类型和发送者。</string>
     <string name="beta_view_source">查看 JSON</string>
     <string name="beta_no_source">这条消息在服务器上还没有事件。</string>
     <string name="beta_demo_sign_in">演示登录</string>
@@ -908,7 +908,7 @@
     <string name="message_transcript_show">转写</string>
     <string name="message_transcript_hide">隐藏文字</string>
     <string name="message_transcript_not_allowed">未允许语音识别。可以在“设置”中允许。</string>
-    <string name="message_transcript_unavailable">此设备无法离线识别您的语言——Iskra 不会把语音发送到服务器。</string>
+    <string name="message_transcript_unavailable">此设备无法离线识别您的语言，Iskra 不会把语音发送到服务器。</string>
     <string name="message_transcript_nothing_heard">听不出任何字词。</string>
     <string name="message_transcript_failed">没能转写。请再试一次。</string>
     <string name="chats_threads">显示话题</string>

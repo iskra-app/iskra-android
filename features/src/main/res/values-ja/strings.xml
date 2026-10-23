@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">設定</string>
@@ -74,7 +74,7 @@
     <string name="beta_title">ベータ機能</string>
     <string name="beta_intro">まだ仕上がっていない機能はここにあります。邪魔ならオフに、気が変わったらまたオンにしてください。何も壊れず、何も失われません。</string>
     <string name="beta_native_sidebar">ネイティブのサイドバー</string>
-    <string name="beta_native_sidebar_help">チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。メールやメモのように、スマホらしさは控えめに。</string>
+    <string name="beta_native_sidebar_help">チャット一覧が普通の macOS のサイドバーになります。チャットはセクションにまとまり、検索は上に、行の間隔は詰まります。見た目はスマホよりメールやメモに近くなります。</string>
     <string name="beta_blobatar">イニシャルの代わりにキャラクター</string>
     <string name="beta_blobatar_help">自分の写真がない人には、代わりに小さなキャラクターが付きます。その人だけの、いつも同じ顔です。このデバイス上で描かれ、どこにも何も送られません。グループには文字の代わりにメンバーの顔が集まります。</string>
     <string name="beta_blobatar_force">写真の代わりにも</string>
@@ -109,14 +109,14 @@
     <string name="connection_default_bridge">Iskra のブリッジに戻す</string>
     <string name="connection_relays">リレー</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
-    <string name="connection_relays_footer">アプリとブリッジはここで互いを見つけます。複数あるのは予備ではありません。リクエストは全部に同時に送られ、いちばん速かったところから返事が来ます。空欄ならデフォルトの 3 つを使います。</string>
+    <string name="connection_relays_footer">アプリとブリッジはここで互いを見つけます。リクエストは全部に同時に送られ、いちばん速かったところから返事が来るので、1 つでは足りません。空欄ならデフォルトの 3 つを使います。</string>
     <string name="connection_my_key">このデバイスの鍵</string>
     <string name="connection_my_key_footer">ブリッジが非公開なら、この鍵をその ALLOWED_PUBKEYS に追加してください。そうしないと、まったく応答しません。</string>
     <string name="connection_copy">コピー</string>
     <string name="connection_copied">コピーしました</string>
     <string name="connection_check">ブリッジを確認</string>
     <string name="connection_checking">確認中…</string>
-    <string name="connection_check_ok">ブリッジが応答し、サーバーもつながっています — %d ms</string>
+    <string name="connection_check_ok">ブリッジが応答し、サーバーもつながっています。%d ms</string>
     <string name="connection_check_no_relay">応答するリレーがありません</string>
     <string name="connection_check_silent">ブリッジが応答しません。起動していますか？鍵は正しいですか？</string>
     <string name="connection_check_failed">うまくいきませんでした: %s</string>
@@ -207,7 +207,7 @@
     <string name="sign_in_try_through_bridge">ブリッジをオンにして再試行</string>
     <string name="sign_in_problem_unsupported_method">このサービスは、Iskra がまだ対応していないサインイン方法を使っています。</string>
     <string name="session_offline_title">接続がありません</string>
-    <string name="session_offline_message">会話はこのデバイスにちゃんとあります。今はサーバーにつながらないだけです。ネットワークを確認してください。</string>
+    <string name="session_offline_message">会話はこのデバイスにあります。今はサーバーにつながらないので、ネットワークを確認してください。</string>
     <string name="session_try_again">再試行</string>
     <string name="connection_offline">ネットワークなし</string>
     <string name="sign_in_ready_help">いつもの方法でサインインできるよう、ブラウザを開きます。</string>
@@ -236,7 +236,7 @@
     <string name="room_empty_title">まだ何もありません</string>
     <string name="room_empty_message">最初のメッセージを送りましょう。すべてはそこから始まります。</string>
     <string name="room_load_failed_title">チャットを開けませんでした</string>
-    <string name="room_load_failed_message">メッセージが消えたわけではありません。読み込めなかっただけです。接続を確認してください。</string>
+    <string name="room_load_failed_message">メッセージは残っていますが、読み込めませんでした。接続を確認してください。</string>
     <string name="room_try_again">再試行</string>
     <string name="room_open_details">チャットの情報を開く</string>
     <string name="room_details_title">このチャットについて</string>

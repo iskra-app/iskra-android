@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Core/Sources/IskraCore/Resources/en.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Core/Sources/IskraCore/Resources/en.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="device_generic">Iskra</string>
@@ -42,7 +42,7 @@
     <string name="timeline_edit_failed">The change wasn’t saved, so the message still says what it did. Try again.</string>
     <string name="timeline_pin_failed">The pinned messages couldn’t be changed. You may not be allowed to.</string>
     <string name="timeline_report_failed">The report didn’t go through. Try again.</string>
-    <string name="timeline_poll_failed">That didn’t work — the poll is as it was. Try again.</string>
+    <string name="timeline_poll_failed">That didn’t work, and the poll is as it was. Try again.</string>
     <string name="timeline_poll_ended_body">The poll has ended</string>
     <string name="room_event_joined">%s joined</string>
     <string name="room_event_left">%s left</string>
@@ -61,23 +61,23 @@
     <string name="room_action_topic_failed">The description didn’t change. You may not be allowed to.</string>
     <string name="room_action_picture_failed">The picture didn’t change. You may not be allowed to.</string>
     <string name="room_action_visibility_failed">Who can join this chat couldn’t be changed.</string>
-    <string name="room_action_invite_failed">The invitation didn’t go through. Check the address — it looks like @name:server.</string>
+    <string name="room_action_invite_failed">The invitation didn’t go through. Check the address: it looks like @name:server.</string>
     <string name="room_action_remove_failed">They couldn’t be removed. They are still in the chat.</string>
     <string name="room_action_ban_failed">They couldn’t be blocked. They are still in the chat.</string>
     <string name="room_action_role_failed">The role didn’t change. You may not be allowed to.</string>
     <string name="room_action_rules_failed">The permission didn’t change. You may not be allowed to.</string>
     <string name="room_action_leave_failed">You couldn’t leave the chat. Try again.</string>
-    <string name="room_action_create_failed">The chat wasn’t created. The server may not have answered — try again.</string>
+    <string name="room_action_create_failed">The chat wasn’t created. The server may not have answered, so try again.</string>
     <string name="room_action_join_address_invalid">A room address looks like #name:server or !id:server.</string>
     <string name="room_action_join_failed">Couldn’t join the room. It may not exist, may be closed, or the server didn’t answer.</string>
     <string name="room_action_alerts_failed">This chat’s notifications didn’t change. Try again.</string>
     <string name="account_name_failed">Your name didn’t change. Try again.</string>
     <string name="account_picture_failed">Your picture didn’t change. Try again.</string>
-    <string name="account_protect_failed">Your messages couldn’t be protected. Try again — the keys to your old messages are still where they were.</string>
+    <string name="account_protect_failed">Your messages couldn’t be protected. Try again: the keys to your old messages are still where they were.</string>
     <string name="account_new_key_failed">The new code wasn’t created. The old one still works.</string>
     <string name="account_restore_failed">That code didn’t fit. Check you copied all of it, spaces and all.</string>
-    <string name="account_stale_code_failed">The code is put together correctly — and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.</string>
-    <string name="account_start_over_failed">Couldn’t start again. Try again — for now, everything is as it was.</string>
+    <string name="account_stale_code_failed">The code is put together correctly and still does not fit this account. That happens when a recovery code has been created again: the previous one stops working for good.</string>
+    <string name="account_start_over_failed">Couldn’t start again. Try again: for now, everything is as it was.</string>
     <string name="account_block_failed">Couldn’t block them. Try again.</string>
     <string name="account_unblock_failed">Couldn’t unblock them. Try again.</string>
     <string name="push_invite">%s invites you to the chat</string>
@@ -87,8 +87,8 @@
     <string name="push_reaction">Reaction to your message</string>
     <string name="share_title">Send to…</string>
     <string name="share_cancel">Cancel</string>
-    <string name="share_empty">Open Iskra and sign in first — then your chats will show up here.</string>
-    <string name="share_will_send_on_open">It goes right away — Iskra opens to send it.</string>
+    <string name="share_empty">Open Iskra and sign in first, and your chats will show up here.</string>
+    <string name="share_will_send_on_open">It goes right away: Iskra opens to send it.</string>
     <string name="share_comment">Add a comment…</string>
     <string name="share_send">Send</string>
     <string name="share_locked">Iskra is locked</string>
@@ -96,14 +96,14 @@
     <string name="share_unlock">Unlock</string>
     <string name="share_unlock_reason">To share this to Iskra</string>
     <string name="room_action_accept_invite_failed">You couldn’t join the chat. The invitation may have been withdrawn.</string>
-    <string name="room_action_decline_invite_failed">The invitation wasn’t declined. It is still there — try again.</string>
-    <string name="room_action_pin_failed">The chat wasn’t pinned. It slid back — try again.</string>
-    <string name="room_action_archive_failed">The chat wasn’t archived. It is still in the list — try again.</string>
+    <string name="room_action_decline_invite_failed">The invitation wasn’t declined. It is still there, so try again.</string>
+    <string name="room_action_pin_failed">The chat wasn’t pinned. It slid back, so try again.</string>
+    <string name="room_action_archive_failed">The chat wasn’t archived. It is still in the list, so try again.</string>
     <string name="room_action_read_failed">The read state wouldn’t change.</string>
     <string name="room_action_report_failed">The report didn’t go through. Try again.</string>
     <string name="room_action_load_failed">This chat wouldn\'t open. Try again.</string>
-    <string name="notification_rules_direct_failed">The rule for personal chats wouldn’t change. The switch went back — try again.</string>
-    <string name="notification_rules_group_failed">The rule for groups wouldn’t change. The switch went back — try again.</string>
+    <string name="notification_rules_direct_failed">The rule for personal chats wouldn’t change. The switch went back, so try again.</string>
+    <string name="notification_rules_group_failed">The rule for groups wouldn’t change. The switch went back, so try again.</string>
     <string name="notification_rules_mention_failed">The rule for mentions wouldn’t change. Try again.</string>
     <string name="notification_rules_room_mention_failed">The rule for @room wouldn’t change. Try again.</string>
     <string name="notification_rules_invitation_failed">The rule for invitations wouldn’t change. Try again.</string>
@@ -119,23 +119,23 @@
     <string name="folders_save_failed">The folders couldn’t be saved. Try again.</string>
     <string name="live_location_start_failed">Live location couldn’t be started. Try again.</string>
     <string name="live_location_denied">Iskra isn’t allowed to use your location. You can allow it in Settings.</string>
-    <string name="live_location_stop_failed">No more points are being sent, but the server didn’t hear it stop — others may see it as live until it runs out.</string>
+    <string name="live_location_stop_failed">No more points are being sent, but the server didn’t hear it stop, so others may see it as live until it runs out.</string>
     <string name="widget_favourites_name">Favourite chats</string>
     <string name="widget_favourites_description">The people you write to most. Tap a face to open the chat.</string>
     <string name="widget_locked">Iskra is locked</string>
-    <string name="widget_empty">Open Iskra and sign in — then your chats will show up here.</string>
+    <string name="widget_empty">Open Iskra and sign in, and your chats will show up here.</string>
     <string name="live_activity_location_sharing">Sharing your location</string>
     <string name="live_activity_location_finding">Finding you…</string>
     <string name="live_activity_location_stop">Stop</string>
     <string name="live_activity_location_ended">Sharing has ended</string>
-    <string name="live_activity_location_stop_failed">The server didn’t hear it stop — others may see it as live until it runs out.</string>
+    <string name="live_activity_location_stop_failed">The server didn’t hear it stop, so others may see it as live until it runs out.</string>
     <string name="live_activity_media_sending_video">Sending a video</string>
     <string name="live_activity_media_sending_photo">Sending a photo</string>
     <string name="live_activity_media_sending_album">Sending an album</string>
     <string name="live_activity_media_sending_file">Sending a file</string>
     <string name="live_activity_media_preparing">Preparing…</string>
     <string name="live_activity_media_sent">Sent</string>
-    <string name="live_activity_media_failed">Not sent — tap to open the chat</string>
+    <string name="live_activity_media_failed">Not sent. Tap to open the chat</string>
     <string name="live_activity_media_waiting">Will carry on when you open Iskra</string>
     <plurals name="room_event_others">
         <item quantity="one">%1$s and %2$d other</item>

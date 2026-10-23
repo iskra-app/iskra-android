@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/fr.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Sources/IskraFeatures/Resources/fr.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Réglages</string>
@@ -74,7 +74,7 @@
     <string name="beta_title">Fonctions bêta</string>
     <string name="beta_intro">Ici se trouve ce qui n’est pas encore terminé. Désactivez-le si ça vous gêne, réactivez-le si vous changez d’avis : rien ne casse et rien ne se perd.</string>
     <string name="beta_native_sidebar">Barre latérale native</string>
-    <string name="beta_native_sidebar_help">La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Comme Mail et Notes, et moins comme un téléphone.</string>
+    <string name="beta_native_sidebar_help">La liste des discussions devient une barre latérale macOS ordinaire : discussions regroupées en sections, recherche en haut, lignes plus serrées. Ça ressemble à Mail et Notes, pas à un téléphone.</string>
     <string name="beta_blobatar">Des bestioles au lieu des initiales</string>
     <string name="beta_blobatar_help">Toute personne sans photo reçoit une petite bestiole à la place : la sienne, et toujours la même. Elle est dessinée ici, sur l’appareil ; rien n’est envoyé nulle part. Les groupes, au lieu d’une lettre, montrent un petit rassemblement de leurs membres.</string>
     <string name="beta_blobatar_force">Même à la place des photos</string>
@@ -103,20 +103,20 @@
     <string name="connection_apply_now">Se reconnecter maintenant</string>
     <string name="connection_address">Adresse du pont</string>
     <string name="connection_address_prompt">npub1… ou 64 caractères hex</string>
-    <string name="connection_address_footer">Un pont affiche son adresse au démarrage — la ligne « bridge address for Iskra: npub1… ».</string>
+    <string name="connection_address_footer">Un pont affiche son adresse au démarrage, dans la ligne « bridge address for Iskra: npub1… ».</string>
     <string name="connection_address_bad">Cela ne ressemble pas à une clé de pont</string>
     <string name="connection_address_secret">C’est une clé secrète. Il faut ici la clé publique, celle qui commence par npub.</string>
     <string name="connection_default_bridge">Revenir au pont d’Iskra</string>
     <string name="connection_relays">Relais</string>
     <string name="connection_relays_prompt">wss://relay.snort.social, wss://nostr.wine</string>
-    <string name="connection_relays_footer">C’est là que l’app et le pont se retrouvent. En mettre plusieurs n’est pas une roue de secours : la requête part vers tous à la fois et la réponse revient du plus rapide. Laissez vide pour les trois par défaut.</string>
+    <string name="connection_relays_footer">C’est là que l’app et le pont se retrouvent. La requête part vers tous à la fois et la réponse revient du plus rapide, donc un seul ne suffit pas. Laissez vide pour les trois par défaut.</string>
     <string name="connection_my_key">Clé de cet appareil</string>
     <string name="connection_my_key_footer">Si le pont est fermé, ajoutez cette clé à son ALLOWED_PUBKEYS, sinon il ne vous entendra pas du tout.</string>
     <string name="connection_copy">Copier</string>
     <string name="connection_copied">Copié</string>
     <string name="connection_check">Vérifier le pont</string>
     <string name="connection_checking">Vérification…</string>
-    <string name="connection_check_ok">Le pont a répondu, le serveur est là — %d ms</string>
+    <string name="connection_check_ok">Le pont a répondu, le serveur est là : %d ms</string>
     <string name="connection_check_no_relay">Aucun relais ne répond</string>
     <string name="connection_check_silent">Le pont ne répond pas. Est-il lancé, et est-ce la bonne clé ?</string>
     <string name="connection_check_failed">Échec : %s</string>
@@ -132,7 +132,7 @@
     <string name="connection_unfinished">À quoi s’attendre</string>
     <string name="connection_unfinished_body">Chaque requête fait le détour par un relais et coûte 200 à 350 ms : la connexion et la première ouverture des discussions sont donc nettement plus lentes qu’en direct, une seconde là où c’était instantané. Les nouveaux messages arrivent en revanche presque aussi vite qu’en direct. Les grosses pièces jointes passent aussi, mais mieux vaut les éviter sur des relais publics : pour les médias, donnez au pont un relais à lui.</string>
     <string name="connection_sees">Ce que voit le pont</string>
-    <string name="connection_sees_body">Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages — même dans les discussions non chiffrées — restent invisibles pour le pont. Votre adresse IP est vue par les relais, pas par le pont.</string>
+    <string name="connection_sees_body">Seulement à quel serveur vous vous connectez, quand, et combien d’octets. L’application chiffre elle-même la connexion au serveur : votre jeton, vos salons et vos messages restent invisibles pour le pont, même dans les discussions non chiffrées. Votre adresse IP est vue par les relais, pas par le pont.</string>
     <string name="settings_lock">Verrouillage de l’app</string>
     <string name="settings_lock_enable">Exiger Face ID ou le code</string>
     <string name="settings_lock_timeout">Demander</string>
@@ -207,7 +207,7 @@
     <string name="sign_in_try_through_bridge">Activer le pont et réessayer</string>
     <string name="sign_in_problem_unsupported_method">Ce service utilise un mode de connexion qu’Iskra ne prend pas encore en charge.</string>
     <string name="session_offline_title">Pas de connexion</string>
-    <string name="session_offline_message">Vos conversations sont là, sur cet appareil. Nous n’arrivons simplement pas à joindre le serveur pour l’instant : vérifiez votre réseau.</string>
+    <string name="session_offline_message">Vos conversations sont sur cet appareil. Le serveur est injoignable pour l’instant, vérifiez votre réseau.</string>
     <string name="session_try_again">Réessayer</string>
     <string name="connection_offline">Pas de réseau</string>
     <string name="sign_in_ready_help">Nous allons ouvrir votre navigateur pour que vous vous connectiez comme d’habitude.</string>
@@ -236,7 +236,7 @@
     <string name="room_empty_title">Rien ici pour l’instant</string>
     <string name="room_empty_message">Écrivez le premier message : c’est comme ça que tout commence.</string>
     <string name="room_load_failed_title">Impossible d’ouvrir la discussion</string>
-    <string name="room_load_failed_message">Les messages n’ont pas disparu : nous n’avons simplement pas pu les charger. Vérifiez la connexion.</string>
+    <string name="room_load_failed_message">Les messages sont toujours là, mais ils n’ont pas pu se charger. Vérifiez la connexion.</string>
     <string name="room_try_again">Réessayer</string>
     <string name="room_open_details">Ouvrir les infos de la discussion</string>
     <string name="room_details_title">À propos de cette discussion</string>
@@ -722,7 +722,7 @@
     <string name="chats_widget_help">Les discussions de quel compte afficher dans le widget quand aucune n’y est choisie. « Actif » est celui ouvert en ce moment dans Iskra.</string>
     <string name="privacy_title">Confidentialité</string>
     <string name="privacy_hide_presence">Masquer la dernière connexion</string>
-    <string name="privacy_hide_presence_help">Les autres ne verront pas quand vous étiez en ligne pour la dernière fois — et vous ne verrez pas la leur.</string>
+    <string name="privacy_hide_presence_help">Les autres ne verront pas quand vous étiez en ligne pour la dernière fois, et vous ne verrez pas la leur.</string>
     <string name="privacy_hide_typing">Masquer « écrit… »</string>
     <string name="privacy_hide_typing_help">Les autres ne verront pas quand vous écrivez.</string>
     <string name="media_download">Télécharger</string>
@@ -792,7 +792,7 @@
     <string name="qr_scan_hint">Pointez l’appareil photo vers le code QR d’une personne ou d’un salon</string>
     <string name="qr_not_matrix">Ce n’est pas un lien Matrix</string>
     <string name="qr_choose_picture">Choisir une image</string>
-    <string name="qr_no_camera">Pas d’accès à l’appareil photo. Autorisez-le dans Réglages — ou choisissez une image du code.</string>
+    <string name="qr_no_camera">Pas d’accès à l’appareil photo. Autorisez-le dans Réglages ou choisissez une image du code.</string>
     <string name="qr_nothing_found">Il n’y a pas de code QR sur cette image</string>
     <string name="qr_join_room">Rejoindre le salon</string>
     <string name="qr_open_room">Ouvrir</string>
@@ -848,7 +848,7 @@
     <string name="message_selection_copied">Copié</string>
     <string name="folders_all">Tous</string>
     <string name="folders_title">Dossiers</string>
-    <string name="folders_explanation">Les dossiers rassemblent les discussions selon des règles — personnelles, groupes, non lues — et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.</string>
+    <string name="folders_explanation">Les dossiers rassemblent les discussions selon des règles (personnelles, groupes, non lues) et apparaissent en onglets au-dessus de la liste. Ils sont identiques sur tous vos appareils.</string>
     <string name="folders_new">Nouveau dossier</string>
     <string name="folders_suggested">Vous pouvez commencer par ceux-ci</string>
     <string name="folders_add">Ajouter</string>
@@ -873,7 +873,7 @@
     <string name="folders_cancel">Annuler</string>
     <string name="folders_delete">Supprimer le dossier</string>
     <string name="folders_delete_question">Supprimer le dossier « %s » ?</string>
-    <string name="folders_delete_help">Les discussions restent où elles sont — seul l’onglet disparaît.</string>
+    <string name="folders_delete_help">Les discussions restent où elles sont, seul l’onglet disparaît.</string>
     <string name="folders_add_to_folder">Dans un dossier</string>
     <string name="folders_membership_title">Dossiers</string>
     <string name="folders_membership_footer">Cochée, la discussion est dans le dossier même hors de ses règles. Décochée, jamais.</string>
@@ -885,11 +885,11 @@
     <string name="stickers_settings_mine">Mes stickers</string>
     <string name="beta_developers">Pour les développeurs</string>
     <string name="beta_shows_source">JSON du message dans le menu</string>
-    <string name="beta_shows_source_help">Le menu d’un message propose « Voir le JSON » — l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.</string>
+    <string name="beta_shows_source_help">Le menu d’un message propose « Voir le JSON » : l’événement tel que le serveur l’a envoyé. Utile quand un message s’affiche mal.</string>
     <string name="beta_homeserver">Serveur</string>
-    <string name="beta_homeserver_help">L’adresse à laquelle l’app parle vraiment — trouvée à partir du nom du compte, pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.</string>
+    <string name="beta_homeserver_help">L’adresse à laquelle l’app parle vraiment, trouvée à partir du nom du compte et pas forcément celle saisie à la connexion. Un pont ne la change pas : il ne fait que porter la connexion.</string>
     <string name="beta_shows_all_events">Tous les événements du chat</string>
-    <string name="beta_shows_all_events_help">Le chat affiche aussi les événements que l’app laisse d’habitude de côté — droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu — en ligne grise avec le type et l’expéditeur.</string>
+    <string name="beta_shows_all_events_help">Le chat affiche aussi les événements que l’app laisse d’habitude de côté (droits, règles d’accès, appels, changements de photo, tout ce qui n’a pas pu être lu), en ligne grise avec le type et l’expéditeur.</string>
     <string name="beta_view_source">Voir le JSON</string>
     <string name="beta_no_source">Ce message n’a pas encore d’événement sur le serveur.</string>
     <string name="beta_demo_sign_in">Connexion de démonstration</string>
@@ -908,7 +908,7 @@
     <string name="message_transcript_show">Transcrire</string>
     <string name="message_transcript_hide">Masquer le texte</string>
     <string name="message_transcript_not_allowed">La reconnaissance vocale n’est pas autorisée. Vous pouvez l’autoriser dans Réglages.</string>
-    <string name="message_transcript_unavailable">Cet appareil ne reconnaît pas votre langue hors ligne — et Iskra n’enverra pas la voix à un serveur.</string>
+    <string name="message_transcript_unavailable">Cet appareil ne reconnaît pas votre langue hors ligne, et Iskra n’enverra pas la voix à un serveur.</string>
     <string name="message_transcript_nothing_heard">Aucun mot n’est audible.</string>
     <string name="message_transcript_failed">La transcription a échoué. Réessayez.</string>
     <string name="chats_threads">Afficher les fils</string>
