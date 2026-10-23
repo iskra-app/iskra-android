@@ -27,7 +27,7 @@ class AppSettings(context: Context) : UpdateStore {
     private val mutableAppearance = string(APPEARANCE)
     private val mutableFont = string(FONT)
     private val mutableDemo = flag(DEMO, false)
-    private val mutableCreatures = flag(CREATURES, true)
+    private val mutableCreatures = flag(CREATURES, CREATURES_BY_DEFAULT)
     private val mutableForceCreatures = flag(FORCE_CREATURES, false)
     private val mutableMedia = MutableStateFlow(
         MediaSettings(
@@ -47,7 +47,12 @@ class AppSettings(context: Context) : UpdateStore {
     /** Демо-сервер вместо аккаунта. Настоящий аккаунт не трогается и возвращается, когда выключить. */
     val demoBackend: StateFlow<Boolean> = mutableDemo.asStateFlow()
 
-    /** Существа вместо инициалов у тех, у кого нет картинки (`BetaFeatures.blobatar`), — по умолчанию да. */
+    /**
+     * Существа вместо инициалов у тех, у кого нет картинки (`BetaFeatures.blobatar`), — по умолчанию нет,
+     * как на iOS (`blobatarByDefault`). Они меняют лицо каждого человека в приложении: это то, о чём просят,
+     * а не то, что находят. Остаются в «Бета» для того, кто пойдёт искать; выключено — везде сразу (список,
+     * уведомления), все откатываются к инициалам вместе.
+     */
     val creatures: StateFlow<Boolean> = mutableCreatures.asStateFlow()
 
     /** Существа даже вместо картинок — просьба, а не умолчание. */
@@ -154,6 +159,7 @@ class AppSettings(context: Context) : UpdateStore {
         const val UPDATE_CACHED = "update.cached"
         const val UPDATE_DISMISSED = "update.dismissed"
         const val CREATURES = "beta.blobatar"
+        const val CREATURES_BY_DEFAULT = false
         const val FORCE_CREATURES = "beta.blobatar.force"
 
         // Ключи — те же, что у iOS (`MediaSettings.*Key`).

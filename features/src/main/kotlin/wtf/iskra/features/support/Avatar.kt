@@ -63,10 +63,11 @@ enum class AvatarShape {
 private const val SPACE_CORNER = 0.28f
 
 /**
- * Режим лиц (`FaceMode`, «Бета»): существа вместо инициалов, и — по просьбе — даже вместо картинок.
+ * Режим лиц (`FaceMode`, «Бета»): существа вместо инициалов, и — по просьбе — даже вместо картинок. По
+ * умолчанию выключен, как на iOS: лицо без картинки — круг с инициалами.
  * Существо растёт из идентификатора, поэтому выключенный режим — это инициалы, а не пустота.
  */
-data class FaceMode(val creatures: Boolean = true, val forced: Boolean = false)
+data class FaceMode(val creatures: Boolean = false, val forced: Boolean = false)
 
 val LocalFaceMode = compositionLocalOf { FaceMode() }
 

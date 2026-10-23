@@ -169,7 +169,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     var openEvent by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
     var settingsPage by rememberSaveable(session.sessionId) { mutableStateOf<SettingsPage?>(null) }
     val settings = model.settings
-    val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(true)).collectAsStateWithLifecycle()
+    val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
     val timeline = remember(roomId) {
