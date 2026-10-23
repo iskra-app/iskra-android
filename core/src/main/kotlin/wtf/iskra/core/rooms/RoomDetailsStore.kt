@@ -3,6 +3,7 @@ package wtf.iskra.core.rooms
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,12 +12,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.matrix.rustcomponents.sdk.Client
+import org.matrix.rustcomponents.sdk.JoinRule
 import org.matrix.rustcomponents.sdk.MembershipState
 import org.matrix.rustcomponents.sdk.NotificationSettings
 import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomInfo
+import org.matrix.rustcomponents.sdk.PowerLevel
+import org.matrix.rustcomponents.sdk.RoomHistoryVisibility
 import org.matrix.rustcomponents.sdk.RoomInfoListener
 import org.matrix.rustcomponents.sdk.RoomMember
+import org.matrix.rustcomponents.sdk.RoomVisibility
+import org.matrix.rustcomponents.sdk.UserPowerLevelUpdate
+import org.matrix.rustcomponents.sdk.isRoomAliasFormatValid
+import org.matrix.rustcomponents.sdk.roomAliasNameFromRoomDisplayName
+import org.matrix.rustcomponents.sdk.suggestedPowerLevelForRole
 import org.matrix.rustcomponents.sdk.StateEventType
 import org.matrix.rustcomponents.sdk.TaskHandle
 import uniffi.matrix_sdk.RoomMemberRole
@@ -25,6 +34,7 @@ import wtf.iskra.core.notifications.RoomAlerts
 import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.support.withTimeLimit
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /** Участник, как его показывает «О чате». */
@@ -35,6 +45,14 @@ data class RoomMemberSummary(
     val role: Role,
     /** Позван, но ещё не вошёл. */
     val isInvited: Boolean,
+    /** Число за ролью: только сравнивается, никогда не показывается — см. [Authority]. */
+    val authority: Authority = Authority.Level(0),
+    /**
+     * Кто-то ещё в комнате зовёт себя так же. Отображаемые имена в Matrix не уникальны и не проверены, так что «Борис» в
+     * комнате может быть двумя людьми — мелкая и дешёвая подмена. SDK её замечает; список тогда показывает Matrix ID
+     * рядом с именем, потому что ID — то, что никто не подделает.
+     */
+    val isNameAmbiguous: Boolean = false,
 ) {
     enum class Role { ADMINISTRATOR, MODERATOR, MEMBER }
 }
@@ -46,6 +64,16 @@ enum class RoomDetailsFailure(val message: Int) {
     RENAME(R.string.room_action_rename_failed),
     TOPIC(R.string.room_action_topic_failed),
     PICTURE(R.string.room_action_picture_failed),
+    INVITE(R.string.room_action_invite_failed),
+    REMOVE(R.string.room_action_remove_failed),
+    BAN(R.string.room_action_ban_failed),
+    UNBAN(R.string.room_action_unban_failed),
+    ROLE(R.string.room_action_role_failed),
+    HISTORY(R.string.room_action_history_failed),
+    ADDRESS(R.string.room_action_address_failed),
+    ADDRESS_TAKEN(R.string.room_action_address_taken),
+    DIRECTORY(R.string.room_action_directory_failed),
+    LEAVE(R.string.room_action_leave_failed),
 }
 
 /**
@@ -57,6 +85,14 @@ data class RoomPermissions(
     val canRename: Boolean = false,
     val canChangeTopic: Boolean = false,
     val canChangePicture: Boolean = false,
+    val canInvite: Boolean = false,
+    val canRemove: Boolean = false,
+    val canBan: Boolean = false,
+    val canChangeRoles: Boolean = false,
+    /** Кто читает сказанное до прихода — `m.room.history_visibility`. */
+    val canChangeHistory: Boolean = false,
+    /** Адрес комнаты `#имя:сервер` и список ли её сервер в каталоге. */
+    val canChangeAddress: Boolean = false,
 ) {
     val canEditAnything: Boolean get() = canRename || canChangeTopic || canChangePicture
 }
@@ -80,11 +116,24 @@ data class RoomDetailsState(
     /** Прозвище на этом устройстве (только личный чат). */
     val localName: String? = null,
     val permissions: RoomPermissions = RoomPermissions(),
+    /** Заблокированные — для тех, кто может их вернуть ([RoomDetailsStore.unban]). */
+    val banned: List<RoomMemberSummary> = emptyList(),
+    /** Входит ли любой, кто нашёл комнату, или по приглашению. Читается из правил входа; `false`, пока их нет. */
+    val isPublic: Boolean = false,
+    /** Кто читает прошлое. */
+    val history: HistoryAccess = HistoryAccess.SHARED,
+    /** Опубликованный адрес `#имя:сервер`, если есть, — из него сделана ссылка. */
+    val canonicalAlias: String? = null,
+    /** Есть ли комната в каталоге сервера; null — не спрашивали: знает только сервер, и спрашивает только тот, кто меняет. */
+    val isInDirectory: Boolean? = null,
     /** Картинка уходит на сервер — лицо на экране ещё старое. */
     val isUploadingPicture: Boolean = false,
     val failure: RoomDetailsFailure? = null,
 ) {
     val isDirect: Boolean get() = kind == RoomKind.DIRECT
+
+    /** Имя адресного имени без `#` и сервера — то, что показывает поле. */
+    val addressName: String get() = canonicalAlias?.drop(1)?.substringBefore(':').orEmpty()
 }
 
 /**
@@ -113,6 +162,15 @@ class RoomDetailsStore internal constructor(
 
     private val fetching = Mutex()
     private var notifications: NotificationSettings? = null
+
+    /** Вес этого аккаунта в комнате — от него зависит, кого можно трогать. */
+    private var ownAuthority: Authority = Authority.Level(0)
+
+    /** Прочие адреса комнаты: смена главного не должна их ронять. */
+    private var alternativeAliases: List<String> = emptyList()
+
+    /** Какой прогон: [stop] увеличивает, и пережившее await сверяет. */
+    private var generation = 0
 
     /** Явным вызовом с экрана, а не побочным эффектом: комнату, которую не открыть, видно сразу. */
     suspend fun load() {
@@ -145,8 +203,8 @@ class RoomDetailsStore internal constructor(
         }
 
         // Сначала то, что есть в сторе, — экран не ждёт сервер ради уже известного; затем свежее.
-        members(fresh = false)?.let { list -> mutableState.update { it.copy(members = list) } }
-        members(fresh = true)?.let { list -> mutableState.update { it.copy(members = list) } }
+        members(fresh = false)?.let(::apply)
+        members(fresh = true)?.let(::apply)
         mutableState.update { it.copy(isLoadingMembers = false) }
 
         loadAlerts()
@@ -269,9 +327,229 @@ class RoomDetailsStore internal constructor(
 
     fun dismissFailure() = mutableState.update { it.copy(failure = null) }
 
+    // MARK: Кого можно трогать
+
+    /** Может ли этот аккаунт вообще действовать над этим человеком — правила сервера, см. [RoomModeration.canManage]. */
+    fun canManage(member: RoomMemberSummary): Boolean =
+        RoomModeration.canManage(member.userId, member.authority, ownUserId, ownAuthority)
+
+    /** Роли, которые можно отдать этому человеку; пусто, если комната не даёт менять роли или его не тронуть. */
+    fun assignableRoles(member: RoomMemberSummary): List<RoomMemberSummary.Role> =
+        if (mutableState.value.permissions.canChangeRoles && canManage(member)) {
+            RoomModeration.rolesGrantableBy(ownAuthority, ::authorityOf)
+        } else {
+            emptyList()
+        }
+
+    /**
+     * Повысить или понизить. Уровень — предложение самого SDK для роли: таблицы «роль → число» в комнате нет и быть не
+     * может (Matrix называет пороги для *действий*, не для ролей; «администратор — 100» — соглашение клиентов, а не
+     * факт, который комната может заявить), так что это единственный честный источник, и все другие клиенты пишут те же
+     * числа. Бесконечность создателя никому не выдать — пройдёт только `Value`.
+     */
+    suspend fun setRole(role: RoomMemberSummary.Role, member: RoomMemberSummary) {
+        if (role !in assignableRoles(member)) return
+        val level = (runCatching { suggestedPowerLevelForRole(roleOf(role)) }.getOrNull() as? PowerLevel.Value)?.value
+        if (level == null) {
+            fail(RoomDetailsFailure.ROLE)
+            return
+        }
+        try {
+            withTimeLimit(LIMIT) { room.updatePowerLevelsForUsers(listOf(UserPowerLevelUpdate(member.userId, level))) }
+            // Сразу на экране, а потом перечитано, когда комната о нём услышит — тот же довод, что у блокировки ([settle]).
+            mutableState.update { state ->
+                state.copy(members = state.members.map { if (it.userId == member.userId) it.copy(role = role, authority = Authority.Level(level)) else it })
+            }
+            settle { loaded -> loaded.joined.firstOrNull { it.userId == member.userId }?.role == role }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "role change refused: ${Log.describe(error)}")
+            fail(RoomDetailsFailure.ROLE)
+        }
+    }
+
+    // MARK: Кто здесь
+
+    /**
+     * Позвать по Matrix ID, одного за другим; отвечает теми, кого сервер не принял. Своего `failure` не ставит: лист,
+     * что просит, — поверх экрана этого стора, а предупреждение из-под листа никто не увидит. Лист говорит сам и оставляет
+     * отказанных выбранными, чтобы «ещё раз» было одним нажатием.
+     */
+    suspend fun invite(userIds: List<String>): List<String> {
+        val refused = ArrayList<String>()
+        for (userId in userIds) {
+            if (!RoomModeration.isMatrixId(userId)) {
+                refused += userId
+                continue
+            }
+            try {
+                withTimeLimit(LIMIT) { room.inviteUserById(userId.trim()) }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                Log.error(Log.Category.ROOMS, "invitation refused: ${Log.describe(error)}")
+                refused += userId
+            }
+        }
+        return refused
+    }
+
+    suspend fun remove(member: RoomMemberSummary) {
+        if (!mutableState.value.permissions.canRemove || !canManage(member)) return
+        try {
+            withTimeLimit(LIMIT) { room.kickUser(member.userId, null) }
+            members(fresh = true)?.let(::apply)
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "removal refused: ${Log.describe(error)}")
+            fail(RoomDetailsFailure.REMOVE)
+        }
+    }
+
+    /**
+     * Блокировка — удаление, которое ещё и закрывает дверь. Отличается от [remove] и в состоянии комнаты, и в голове
+     * человека, и единственная здесь без пути назад в интерфейсе, поэтому экран спрашивает до вызова.
+     */
+    suspend fun ban(member: RoomMemberSummary) {
+        if (!mutableState.value.permissions.canBan || !canManage(member)) return
+        try {
+            withTimeLimit(LIMIT) { room.banUser(member.userId, null) }
+            // Сразу на экране — из участников в список закрытых, — и перечитано, когда комната о нём услышит.
+            mutableState.update { state ->
+                state.copy(
+                    members = state.members.filterNot { it.userId == member.userId },
+                    banned = if (state.banned.any { it.userId == member.userId }) state.banned else state.banned + member,
+                )
+            }
+            settle { loaded -> loaded.banned.any { it.userId == member.userId } }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "ban refused: ${Log.describe(error)}")
+            fail(RoomDetailsFailure.BAN)
+        }
+    }
+
+    /** Вернуть: запрет снят, и войти можно снова — не «впущен». Matrix просит того же права, что для самой блокировки. */
+    suspend fun unban(member: RoomMemberSummary) {
+        if (!mutableState.value.permissions.canBan) return
+        val previous = mutableState.value.banned
+        mutableState.update { state -> state.copy(banned = state.banned.filterNot { it.userId == member.userId }) }
+        try {
+            withTimeLimit(LIMIT) { room.unbanUser(member.userId, null) }
+            settle { loaded -> loaded.banned.none { it.userId == member.userId } }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "unban refused: ${Log.describe(error)}")
+            mutableState.update { it.copy(banned = previous) }
+            fail(RoomDetailsFailure.UNBAN)
+        }
+    }
+
+    /**
+     * Перечитывает участников, пока комната не согласится с тем, что мы только что сделали. Сервер принимает блокировку
+     * задолго до того, как копия комнаты на этом устройстве услышит о ней: она приходит синхронизацией, и до тех пор
+     * `members()` отвечает из стора, где её нет, — список с заблокированным внутри, прочитанный обратно поверх экрана,
+     * только что его снявшего. Поэтому читается несколько раз, ненадолго, и берётся первый ответ, что догнал. Тот, что
+     * не догнал никогда, оставляет экран таким, как его положили.
+     */
+    private suspend fun settle(caughtUp: (Loaded) -> Boolean) {
+        val mine = generation
+        repeat(SETTLE_ATTEMPTS) {
+            val loaded = members(fresh = true) ?: return
+            if (mine != generation) return
+            if (caughtUp(loaded)) {
+                apply(loaded)
+                return
+            }
+            delay(SETTLE_PAUSE)
+        }
+    }
+
+    // MARK: История и адрес
+
+    /** Кто может прочесть сказанное до прихода. */
+    suspend fun setHistory(choice: HistoryAccess) {
+        val state = mutableState.value
+        if (!state.permissions.canChangeHistory || choice == state.history) return
+        val previous = state.history
+        mutableState.update { it.copy(history = choice) }
+        try {
+            withTimeLimit(LIMIT) { room.updateHistoryVisibility(visibility(choice)) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "history visibility refused: ${Log.describe(error)}")
+            mutableState.update { if (it.history == choice) it.copy(history = previous) else it }
+            fail(RoomDetailsFailure.HISTORY)
+        }
+    }
+
+    /** Спрашивает сервер, есть ли комната в его каталоге. Спрашивает только экран, который это меняет. */
+    suspend fun loadDirectory() {
+        val visibility = runCatching { withTimeLimit(LIMIT) { room.getRoomVisibility() } }.getOrNull() ?: return
+        mutableState.update { it.copy(isInDirectory = visibility is RoomVisibility.Public) }
+    }
+
+    suspend fun setInDirectory(listed: Boolean) {
+        val state = mutableState.value
+        if (!state.permissions.canChangeAddress || listed == state.isInDirectory) return
+        val previous = state.isInDirectory
+        mutableState.update { it.copy(isInDirectory = listed) }
+        try {
+            withTimeLimit(LIMIT) { room.updateRoomVisibility(if (listed) RoomVisibility.Public else RoomVisibility.Private) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "directory listing refused: ${Log.describe(error)}")
+            mutableState.update { it.copy(isInDirectory = previous) }
+            fail(RoomDetailsFailure.DIRECTORY)
+        }
+    }
+
+    /** Сервер, на котором делаются адреса: то, что после двоеточия в нашем ID. */
+    val addressServer: String get() = ownUserId.substringAfter(':', "")
+
+    /**
+     * Даёт комнате адрес `#имя:сервер` или снимает его ([name] пустое). Два дела на сервере, в этом порядке: адрес
+     * занимается в таблице псевдонимов сервера (`publishRoomAliasInRoomDirectory` — обманчивое имя: это псевдоним, а не
+     * список комнат) и только потом называется в состоянии комнаты главным. Наоборот — в комнате оказался бы адрес,
+     * который ведёт в никуда или в чужую комнату. Заявка, вернувшаяся `false`, — адрес занят, и это говорится прямо.
+     * Старый адрес отпускается после — но только если он был этого сервера.
+     */
+    suspend fun setAddress(name: String) {
+        val state = mutableState.value
+        if (!state.permissions.canChangeAddress) return
+        val local = addressName(name)
+        val alias = if (local.isEmpty()) null else "#$local:$addressServer"
+        if (alias == state.canonicalAlias) return
+        if (alias != null && !isRoomAliasFormatValid(alias)) {
+            fail(RoomDetailsFailure.ADDRESS)
+            return
+        }
+        val previous = state.canonicalAlias
+        try {
+            if (alias != null) {
+                val claimed = withTimeLimit(LIMIT) { room.publishRoomAliasInRoomDirectory(alias) }
+                if (!claimed) {
+                    fail(RoomDetailsFailure.ADDRESS_TAKEN)
+                    return
+                }
+            }
+            withTimeLimit(LIMIT) { room.updateCanonicalAlias(alias, alternativeAliases.filter { it != alias }) }
+            mutableState.update { it.copy(canonicalAlias = alias) }
+            if (previous != null && previous.endsWith(":$addressServer")) {
+                runCatching { withTimeLimit(LIMIT) { room.removeRoomAliasFromRoomDirectory(previous) } }
+            }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "address refused: ${Log.describe(error)}")
+            fail(RoomDetailsFailure.ADDRESS)
+        }
+    }
+
+    private fun fail(failure: RoomDetailsFailure) = mutableState.update { it.copy(failure = failure) }
+
     /** Экран ушёл: подписки отпускаются, хендлы — нативные, GC о них не знает. */
     fun stop() {
         stopped = true
+        generation += 1
         infoHandle?.cancel()
         infoHandle = null
         localNamesJob?.cancel()
@@ -292,6 +570,12 @@ class RoomDetailsStore internal constructor(
                     canRename = it.canOwnUserSendState(StateEventType.RoomName),
                     canChangeTopic = it.canOwnUserSendState(StateEventType.RoomTopic),
                     canChangePicture = it.canOwnUserSendState(StateEventType.RoomAvatar),
+                    canInvite = it.canOwnUserInvite(),
+                    canRemove = it.canOwnUserKick(),
+                    canBan = it.canOwnUserBan(),
+                    canChangeRoles = it.canOwnUserSendState(StateEventType.RoomPowerLevels),
+                    canChangeHistory = it.canOwnUserSendState(StateEventType.RoomHistoryVisibility),
+                    canChangeAddress = it.canOwnUserSendState(StateEventType.RoomCanonicalAlias),
                 )
             }.getOrNull()
         }
@@ -309,15 +593,21 @@ class RoomDetailsStore internal constructor(
                 memberCount = info.joinedMembersCount.toInt(),
                 localName = localNames?.name(roomId),
                 permissions = permissions ?: it.permissions,
+                isPublic = info.joinRule is JoinRule.Public,
+                history = historyAccess(info.historyVisibility),
+                canonicalAlias = info.canonicalAlias?.takeIf { alias -> alias.isNotBlank() },
             )
         }
+        alternativeAliases = info.alternativeAliases
         info.destroy()
     }
 
     private fun nameFor(kind: RoomKind, server: String): String =
         (if (kind == RoomKind.DIRECT) localNames?.name(roomId) else null) ?: server
 
-    private suspend fun members(fresh: Boolean): List<RoomMemberSummary>? = try {
+    private class Loaded(val joined: List<RoomMemberSummary>, val banned: List<RoomMemberSummary>)
+
+    private suspend fun members(fresh: Boolean): Loaded? = try {
         withTimeLimit(LIMIT) {
             val iterator = if (fresh) room.members() else room.membersNoSync()
             val all = ArrayList<RoomMember>()
@@ -327,7 +617,7 @@ class RoomDetailsStore internal constructor(
                 all += chunk
             }
             iterator.destroy()
-            all.mapNotNull(::summary).sortedWith(compareBy({ it.isInvited }, { it.role.ordinal }, { it.name.lowercase() }))
+            partition(all)
         }
     } catch (error: Throwable) {
         if (error is CancellationException) throw error
@@ -335,22 +625,43 @@ class RoomDetailsStore internal constructor(
         null
     }
 
-    private fun summary(member: RoomMember): RoomMemberSummary? {
-        val invited = member.membership is MembershipState.Invite
-        if (member.membership !is MembershipState.Join && !invited) return null
-        // Боты-служащие моста (`isServiceMember`) — не люди этого разговора.
-        if (member.isServiceMember) return null
-        return RoomMemberSummary(
-            userId = member.userId,
-            name = member.displayName?.takeIf { it.isNotBlank() } ?: member.userId,
-            avatarUrl = member.avatarUrl?.takeIf { it.isNotEmpty() },
-            role = when (member.suggestedRoleForPowerLevel) {
-                RoomMemberRole.CREATOR, RoomMemberRole.ADMINISTRATOR -> RoomMemberSummary.Role.ADMINISTRATOR
-                RoomMemberRole.MODERATOR -> RoomMemberSummary.Role.MODERATOR
-                else -> RoomMemberSummary.Role.MEMBER
-            },
-            isInvited = invited,
+    /**
+     * Участники, и отдельно те, кого комната закрыла, — за один проход: итератор вычерпывается раз. Сначала те, кто ведёт
+     * комнату, потом остальные по имени.
+     */
+    private fun partition(all: List<RoomMember>): Loaded {
+        val joined = ArrayList<RoomMemberSummary>()
+        val banned = ArrayList<RoomMemberSummary>()
+        for (member in all) {
+            // Боты-служащие моста (`isServiceMember`) — не люди этого разговора.
+            if (member.isServiceMember) continue
+            when (member.membership) {
+                is MembershipState.Join -> summary(member, invited = false)?.let(joined::add)
+                is MembershipState.Invite -> summary(member, invited = true)?.let(joined::add)
+                is MembershipState.Ban -> summary(member, invited = false)?.let(banned::add)
+                else -> Unit
+            }
+        }
+        return Loaded(
+            joined.sortedWith(compareBy({ it.isInvited }, { it.role.ordinal }, { it.name.lowercase() })),
+            banned.sortedBy { it.name.lowercase() },
         )
+    }
+
+    private fun summary(member: RoomMember, invited: Boolean): RoomMemberSummary? = RoomMemberSummary(
+        userId = member.userId,
+        name = member.displayName?.takeIf { it.isNotBlank() } ?: member.userId,
+        avatarUrl = member.avatarUrl?.takeIf { it.isNotEmpty() },
+        role = role(member.suggestedRoleForPowerLevel),
+        isInvited = invited,
+        authority = authority(member.powerLevel),
+        isNameAmbiguous = member.isNameAmbiguous,
+    )
+
+    private fun apply(loaded: Loaded) {
+        val own = loaded.joined.firstOrNull { it.userId == ownUserId }
+        if (own != null) ownAuthority = own.authority
+        mutableState.update { it.copy(members = loaded.joined, banned = loaded.banned) }
     }
 
     /** Правило этого чата, а нет своего — умолчание для такого чата (зашифрован ли, личный ли). */
@@ -375,10 +686,60 @@ class RoomDetailsStore internal constructor(
         notifications ?: client.getNotificationSettings().also { notifications = it }
     }
 
-    private companion object {
-        val LIMIT = 15.seconds
+    private fun authorityOf(role: RoomMemberSummary.Role): Authority =
+        (runCatching { suggestedPowerLevelForRole(roleOf(role)) }.getOrNull() as? PowerLevel.Value)?.let { Authority.Level(it.value) }
+            ?: Authority.Unlimited
+
+    companion object {
+        /** «@имя:сервер» и ничего другого — см. [RoomModeration.isMatrixId]. */
+        fun isMatrixId(text: String): Boolean = RoomModeration.isMatrixId(text)
+
+        /** Из того, что напечатали: правило SDK для имени адреса — строчные, дефисы вместо пробелов, ничего, на чём споткнётся URL. */
+        fun addressName(typed: String): String {
+            var text = typed.trim().removePrefix("#")
+            text = text.substringBefore(':')
+            return if (text.isEmpty()) "" else roomAliasNameFromRoomDisplayName(text)
+        }
+
+        private fun role(role: RoomMemberRole): RoomMemberSummary.Role = when (role) {
+            // Создатель держит бесконечный уровень и не понижается: для читающего это тот же администратор.
+            RoomMemberRole.CREATOR, RoomMemberRole.ADMINISTRATOR -> RoomMemberSummary.Role.ADMINISTRATOR
+            RoomMemberRole.MODERATOR -> RoomMemberSummary.Role.MODERATOR
+            else -> RoomMemberSummary.Role.MEMBER
+        }
+
+        private fun roleOf(role: RoomMemberSummary.Role): RoomMemberRole = when (role) {
+            RoomMemberSummary.Role.ADMINISTRATOR -> RoomMemberRole.ADMINISTRATOR
+            RoomMemberSummary.Role.MODERATOR -> RoomMemberRole.MODERATOR
+            RoomMemberSummary.Role.MEMBER -> RoomMemberRole.USER
+        }
+
+        private fun authority(level: PowerLevel): Authority = when (level) {
+            is PowerLevel.Infinite -> Authority.Unlimited
+            is PowerLevel.Value -> Authority.Level(level.value)
+        }
+
+        private fun historyAccess(visibility: RoomHistoryVisibility): HistoryAccess = when (visibility) {
+            is RoomHistoryVisibility.Invited -> HistoryAccess.INVITED
+            is RoomHistoryVisibility.Joined -> HistoryAccess.JOINED
+            is RoomHistoryVisibility.WorldReadable -> HistoryAccess.WORLD_READABLE
+            // Shared — умолчание спецификации для комнаты, что молчит, а своё значение сервера приложению не описать;
+            // показанное как умолчание, оно в худшем случае фраза о прошлом комнаты, а не оставленная открытой дверь.
+            else -> HistoryAccess.SHARED
+        }
+
+        private fun visibility(access: HistoryAccess): RoomHistoryVisibility = when (access) {
+            HistoryAccess.SHARED -> RoomHistoryVisibility.Shared
+            HistoryAccess.INVITED -> RoomHistoryVisibility.Invited
+            HistoryAccess.JOINED -> RoomHistoryVisibility.Joined
+            HistoryAccess.WORLD_READABLE -> RoomHistoryVisibility.WorldReadable
+        }
+
+        private const val SETTLE_ATTEMPTS = 10
+        private val SETTLE_PAUSE = 400.milliseconds
+        private val LIMIT = 15.seconds
         /** Картинка до 1024 px — сотни килобайт; на медленной сети это не пятнадцать секунд. */
-        val UPLOAD_LIMIT = 60.seconds
-        const val CHUNK = 200
+        private val UPLOAD_LIMIT = 60.seconds
+        private const val CHUNK = 200
     }
 }

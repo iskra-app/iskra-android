@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.AlertDialog
@@ -65,7 +66,8 @@ import wtf.iskra.features.support.RoomAvatar
 
 /**
  * «О чате» (`RoomInfoView` на iOS): кто это, как он зовётся на этом устройстве, сколько о нём говорить
- * и кто в нём. Открывается нажатием на шапку переписки. Роли, приглашения и бан — дальше по этапу 8.
+ * и кто в нём; а кому комната позволяет — роли, приглашения, удаление и блокировка, история для новых людей и адрес.
+ * Открывается нажатием на шапку переписки.
  *
  * [isOffline] — без сети чат читают и пишут в него, но не меняют: правила здесь не трогаются.
  */
@@ -83,6 +85,9 @@ fun RoomDetailsScreen(
     DisposableEffect(store) { onDispose { store.stop() } }
     BackHandler(onBack = onBack)
     var leaving by remember { mutableStateOf(false) }
+    var query by rememberSaveable(store.roomId) { mutableStateOf("") }
+    var picked by remember { mutableStateOf<RoomMemberSummary?>(null) }
+    var inviting by remember { mutableStateOf(false) }
     // Правка — своим экраном поверх этого, а стор остаётся здесь: подписка на комнату нужна обоим.
     var editing by rememberSaveable(store.roomId) { mutableStateOf(false) }
     val canEdit = !state.isDirect && state.permissions.canEditAnything
@@ -135,11 +140,40 @@ fun RoomDetailsScreen(
 
             if (!state.isDirect && state.members.isNotEmpty()) {
                 SectionTitle(R.string.room_tabs_members)
+                // Поиск — когда людей столько, что листать дольше, чем набрать.
+                if (state.members.size > SEARCH_FROM) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(stringResource(R.string.profile_search)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy),
+                    )
+                }
+                val needle = query.trim()
+                val shown = if (needle.isEmpty()) state.members else state.members.filter {
+                    it.name.contains(needle, ignoreCase = true) || it.userId.contains(needle, ignoreCase = true)
+                }
+                if (state.permissions.canInvite && !isOffline) {
+                    Group({
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.room_manage_invite)) },
+                            leadingContent = { Icon(Icons.Outlined.PersonAdd, contentDescription = null, tint = wtf.iskra.design.LocalAccent.current.control) },
+                            modifier = Modifier.clickable { inviting = true },
+                            colors = rowColors(),
+                        )
+                    })
+                }
                 Group(
-                    *state.members.take(MEMBERS_SHOWN).map { member ->
-                        @Composable { Member(member) }
+                    *shown.take(MEMBERS_SHOWN).map { member ->
+                        @Composable { Member(member) { picked = member } }
                     }.toTypedArray(),
                 )
+            }
+            if (!state.isDirect) {
+                BannedSection(store, state, isOffline)
+                HistorySection(store, state, isOffline)
+                AddressSection(store, state, isOffline)
             }
 
             Group({
@@ -156,6 +190,9 @@ fun RoomDetailsScreen(
             })
         }
     }
+
+    picked?.let { member -> MemberSheet(store, member, isOffline, onDismiss = { picked = null }) }
+    if (inviting) InviteSheet(store, onDismiss = { inviting = false })
 
     if (leaving) {
         val direct = state.isDirect
@@ -254,28 +291,24 @@ private fun LocalName(store: RoomDetailsStore) {
 }
 
 @Composable
-private fun Member(member: RoomMemberSummary) {
+private fun Member(member: RoomMemberSummary, onClick: () -> Unit) {
     ListItem(
         headlineContent = { Text(member.name) },
+        // Два «Бориса» в комнате — повод показать то, что подделать нельзя: Matrix ID.
         supportingContent = when {
+            member.isNameAmbiguous -> { { Text(member.userId) } }
             member.role == RoomMemberSummary.Role.ADMINISTRATOR -> { { Text(stringResource(R.string.room_administrator)) } }
             member.role == RoomMemberSummary.Role.MODERATOR -> { { Text(stringResource(R.string.room_moderator)) } }
             else -> null
         },
         leadingContent = { Avatar(member.name, member.avatarUrl, Theme.Size.avatar, seed = member.userId) },
+        modifier = Modifier.clickable(onClick = onClick),
         colors = rowColors(),
     )
 }
 
-@Composable
-private fun Hint(text: Int) {
-    Text(
-        stringResource(text),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = Theme.Spacing.generous + Theme.Spacing.close),
-    )
-}
-
-/** Больше — список прокручивали бы ради прокрутки; поиск по участникам — следующим пунктом этапа 8. */
+/** Больше — список прокручивали бы ради прокрутки. */
 private const val MEMBERS_SHOWN = 100
+
+/** С какого числа людей показывается поиск. */
+private const val SEARCH_FROM = 8
