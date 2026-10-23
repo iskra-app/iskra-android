@@ -139,6 +139,8 @@ import wtf.iskra.core.timeline.SendFailure
 import wtf.iskra.core.timeline.TimelineRow
 import wtf.iskra.core.timeline.TimelineState
 import wtf.iskra.core.timeline.ThreadSettings
+import wtf.iskra.core.rooms.IdentityChangeException
+import wtf.iskra.core.rooms.IdentityChangesStore
 import wtf.iskra.core.timeline.TimelineStore
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.PrimaryActionButton
@@ -175,6 +177,8 @@ fun RoomScreen(
     openThread: ((String) -> TimelineStore?)? = null,
     /** Нажали на шапку — «О чате». Null — его отсюда нет (тред). */
     onOpenDetails: (() -> Unit)? = null,
+    /** У кого в комнате сменились ключи (`UserSession.identityChanges`). Null — у треда: баннер у комнаты под ним. */
+    identityChanges: IdentityChangesStore? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -204,6 +208,10 @@ fun RoomScreen(
     // Открытие — вызов стора: первую страницу он просит сам, в `open()` (docs/PROMPT.md, 4.2).
     LaunchedEffect(store) { store.start() }
     DisposableEffect(store) { onDispose { store.close() } }
+    if (identityChanges != null) {
+        LaunchedEffect(identityChanges) { identityChanges.start() }
+        DisposableEffect(identityChanges) { onDispose { identityChanges.stop() } }
+    }
     BackHandler(onBack = onBack)
 
     var field by rememberSaveable(store.roomId, stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue()) }
@@ -315,6 +323,23 @@ fun RoomScreen(
 
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
+        // По одному человеку, самому давнему: ответ на него поднимает следующего.
+        identityChanges?.let { identity ->
+            val waiting by identity.changes.collectAsStateWithLifecycle()
+            waiting.firstOrNull()?.let { change ->
+                var failed by remember(change.userId) { mutableStateOf(false) }
+                IdentityChangeBanner(change, failed) {
+                    scope.launch {
+                        failed = try {
+                            identity.acknowledge(change)
+                            false
+                        } catch (_: IdentityChangeException) {
+                            true
+                        }
+                    }
+                }
+            }
+        }
         // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
         pinned.messages.lastOrNull()?.takeIf { hasPinned && !isThread }?.let { latest ->
             PinnedStrip(latest, count = pinned.messages.size, onClick = { jumpTo = latest.id }, onOpenList = { showsPinned = true })

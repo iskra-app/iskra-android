@@ -178,6 +178,9 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
     var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
+    // Стор смены ключей одноразовый — его останавливает экран комнаты, когда уходит, — поэтому на возврате
+    // из «О чате» (комната пересоздаётся) нужен новый.
+    val identityChanges = remember(roomId, showingDetails) { roomId?.let(session::identityChanges) }
     val details = remember(roomId, showingDetails) { roomId?.takeIf { showingDetails }?.let(session::details) }
     val rooms by session.rooms.state.collectAsStateWithLifecycle()
     val rootScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -263,6 +266,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 initialJump = openEvent,
                 openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
                 onOpenDetails = { showingDetails = true },
+                identityChanges = identityChanges,
             )
             else -> RoomListScreen(
                 session.rooms,

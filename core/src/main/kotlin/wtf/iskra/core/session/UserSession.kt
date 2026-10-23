@@ -11,6 +11,7 @@ import wtf.iskra.core.notifications.NotificationRulesStore
 import wtf.iskra.core.notifications.PushRegistration
 import wtf.iskra.core.notifications.PushTarget
 import wtf.iskra.core.notifications.ReactionPushRule
+import wtf.iskra.core.rooms.IdentityChangesStore
 import wtf.iskra.core.rooms.RoomListStore
 import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
@@ -198,6 +199,16 @@ class UserSession internal constructor(
         if (isDemo || closed) return
         PushRegistration(client, sessionId).register(target, authentication.deviceName, language)
         ReactionPushRule.enable(client)
+    }
+
+    /**
+     * Кто в комнате с ключами, которых это устройство не узнаёт, — для экрана, который её показывает;
+     * [IdentityChangesStore.stop], когда он уходит. Свои хендлы на каждый стор: два экрана одной комнаты
+     * (планшет) подписались бы дважды, и каждый снимал бы предупреждение сам, один из них — поздно.
+     */
+    fun identityChanges(roomId: String): IdentityChangesStore? {
+        val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
+        return IdentityChangesStore(room, client.encryption(), userId, scope)
     }
 
     /** «О чате» комнаты — для экрана, который её показывает; [RoomDetailsStore.stop], когда он уходит. */
