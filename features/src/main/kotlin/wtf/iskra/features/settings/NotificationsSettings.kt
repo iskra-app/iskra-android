@@ -221,7 +221,7 @@ private fun Alerts(current: RoomAlerts, enabled: Boolean, onSelect: (RoomAlerts)
 }
 
 @Composable
-private fun Footer(text: Int) {
+internal fun Footer(text: Int) {
     Text(
         stringResource(text),
         style = MaterialTheme.typography.bodySmall,

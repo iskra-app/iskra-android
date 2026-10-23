@@ -105,7 +105,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT, LIBRARIES }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, MEDIA, BETA, ABOUT, LIBRARIES }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -159,6 +159,7 @@ fun SettingsScreen(
             scroll = scroll,
             title = when (page) {
                 SettingsPage.MAIN -> R.string.settings_title
+                SettingsPage.PROFILE -> R.string.account_edit_title
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
                 SettingsPage.MEDIA -> R.string.media_title
                 SettingsPage.CHATS -> R.string.settings_chats
@@ -181,6 +182,7 @@ fun SettingsScreen(
                         if (accounts.isAvailable) AccountsSection(accounts, onSwitchAccount, onAddAccount, onSignOutOther)
                     }
                 }
+                SettingsPage.PROFILE -> ProfileEdit(session)
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
@@ -262,6 +264,9 @@ private fun Main(
         Avatar(profile.displayName ?: session.userId, profile.avatarUrl, Theme.Size.avatarProfile, seed = session.userId)
         Text(profile.displayName ?: session.userId, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
         Text(session.userId, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Имя и картинка меняются на своём экране, а не здесь: экран, который читают, не должен
+        // править себя от случайного касания (`ProfileEditView` на iOS).
+        TextButton(onClick = { onNavigate(SettingsPage.PROFILE) }) { Text(stringResource(R.string.account_edit)) }
     }
     accountsSection()
     // «Выйти» — или, когда аккаунтов несколько и неясно, из какого, — «Выйти из Саши».

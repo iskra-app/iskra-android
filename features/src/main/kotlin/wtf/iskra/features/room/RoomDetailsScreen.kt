@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.AlertDialog
@@ -82,13 +83,26 @@ fun RoomDetailsScreen(
     DisposableEffect(store) { onDispose { store.stop() } }
     BackHandler(onBack = onBack)
     var leaving by remember { mutableStateOf(false) }
+    // Правка — своим экраном поверх этого, а стор остаётся здесь: подписка на комнату нужна обоим.
+    var editing by rememberSaveable(store.roomId) { mutableStateOf(false) }
+    val canEdit = !state.isDirect && state.permissions.canEditAnything
 
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+    if (editing && canEdit) {
+        RoomEdit(store, isOffline, onBack = { editing = false })
+    } else Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         TopAppBar(
             title = { Text(stringResource(R.string.room_details_title)) },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                }
+            },
+            // Карандаш — только тому, кому комната что-то менять разрешает (`RoomInfoView` на iOS).
+            actions = {
+                if (canEdit) {
+                    IconButton(onClick = { editing = true }) {
+                        Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.room_manage_edit))
+                    }
                 }
             },
             windowInsets = WindowInsets(0),

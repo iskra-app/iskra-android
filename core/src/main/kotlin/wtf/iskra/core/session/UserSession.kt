@@ -1,16 +1,20 @@
 package wtf.iskra.core.session
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import wtf.iskra.core.media.MediaLoader
 import wtf.iskra.core.notifications.NotificationRulesStore
 import wtf.iskra.core.notifications.PushRegistration
 import wtf.iskra.core.notifications.PushTarget
 import wtf.iskra.core.notifications.ReactionPushRule
 import wtf.iskra.core.rooms.RoomListStore
+import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
+import wtf.iskra.core.support.withTimeLimit
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.timeline.TimelineStore
 import org.matrix.rustcomponents.sdk.Client
@@ -73,10 +77,77 @@ class UserSession internal constructor(
 
     /** Спросить профиль у сервера (или у кэша SDK). Без сети — остаётся, каким был. */
     suspend fun loadProfile() {
-        val name = runCatching { wtf.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.displayName() } }.getOrNull()
-        val avatar = runCatching { wtf.iskra.core.support.withTimeLimit(PROFILE_LIMIT) { client.avatarUrl() } }.getOrNull()
+        val name = runCatching { withTimeLimit(PROFILE_LIMIT) { client.displayName() } }.getOrNull()
+        val avatar = runCatching { withTimeLimit(PROFILE_LIMIT) { client.avatarUrl() } }.getOrNull()
         mutableProfile.value = Profile(name ?: mutableProfile.value.displayName, avatar ?: mutableProfile.value.avatarUrl)
-        // Переключателю аккаунтов: закрытый аккаунт спросить не у кого.
+        rememberProfile()
+    }
+
+    /**
+     * Новое имя профиля. Пустое — не имя, а стёртое поле, которое оставили: его не отправляют. Сразу
+     * показывается новое; сервер отказал — старое возвращается, а отказ отдаётся экрану (null — вышло).
+     *
+     * Сбой возвращается, а не кладётся в поле сеанса — как `throws(AccountActionFailure)` на iOS: сеанс
+     * живёт всё время работы приложения, а алерт настроек — нет.
+     */
+    suspend fun rename(name: String): AccountActionFailure? {
+        val trimmed = name.trim()
+        val previous = mutableProfile.value
+        if (trimmed.isEmpty() || trimmed == previous.displayName) return null
+        mutableProfile.value = previous.copy(displayName = trimmed)
+        return try {
+            withTimeLimit(PROFILE_LIMIT) { client.setDisplayName(trimmed) }
+            rememberProfile()
+            null
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.SESSION, "the name would not change: ${Log.describe(error)}")
+            if (mutableProfile.value.displayName == trimmed) mutableProfile.value = mutableProfile.value.copy(displayName = previous.displayName)
+            AccountActionFailure.NAME
+        }
+    }
+
+    /**
+     * Новая картинка профиля — байты JPEG, уже обрезанные в квадрат без метаданных (`AvatarCrop` в
+     * `:features`). Байтами, а не путём к файлу: файл пришлось бы потом кому-то удалять.
+     */
+    suspend fun setPicture(jpeg: ByteArray): AccountActionFailure? = try {
+        withTimeLimit(UPLOAD_LIMIT) { client.uploadAvatar("image/jpeg", jpeg) }
+        val url = runCatching { withTimeLimit(PROFILE_LIMIT) { client.avatarUrl() } }.getOrNull()
+        if (url != null) mutableProfile.value = mutableProfile.value.copy(avatarUrl = url)
+        rememberProfile()
+        null
+    } catch (error: Throwable) {
+        if (error is CancellationException) throw error
+        Log.error(Log.Category.SESSION, "the picture would not change: ${Log.describe(error)}")
+        AccountActionFailure.PICTURE
+    }
+
+    /**
+     * [rename], когда спросить уже некого: экран профиля ушёл с полем в руках. Уход — тоже «оставили
+     * поле», и имя не должно потеряться вместе с экраном; отказ виден по вернувшемуся старому имени.
+     */
+    fun renameInBackground(name: String) {
+        scope.launch { rename(name) }
+    }
+
+    suspend fun removePicture(): AccountActionFailure? {
+        val previous = mutableProfile.value.avatarUrl ?: return null
+        mutableProfile.value = mutableProfile.value.copy(avatarUrl = null)
+        return try {
+            withTimeLimit(PROFILE_LIMIT) { client.removeAvatar() }
+            rememberProfile()
+            null
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.SESSION, "the picture would not clear: ${Log.describe(error)}")
+            if (mutableProfile.value.avatarUrl == null) mutableProfile.value = mutableProfile.value.copy(avatarUrl = previous)
+            AccountActionFailure.PICTURE
+        }
+    }
+
+    /** Переключателю аккаунтов: закрытый аккаунт спросить не у кого. */
+    private fun rememberProfile() {
         if (!isDemo) authentication.rememberProfile(sessionId, mutableProfile.value.displayName, mutableProfile.value.avatarUrl)
     }
 
@@ -174,5 +245,7 @@ class UserSession internal constructor(
 
     private companion object {
         val PROFILE_LIMIT = kotlin.time.Duration.parse("15s")
+        /** Картинка до 1024 px — сотни килобайт; на медленной сети это не пятнадцать секунд. */
+        val UPLOAD_LIMIT = kotlin.time.Duration.parse("60s")
     }
 }

@@ -53,6 +53,10 @@ enum class AccountActionFailure(val explanation: Int) {
      * устройство должно получить ключ от того, или начать с чистого листа.
      */
     BACKUP_ELSEWHERE(R.string.account_backup_elsewhere_failed),
+
+    /** Имя или картинка профиля — сервер не принял. */
+    NAME(R.string.account_name_failed),
+    PICTURE(R.string.account_picture_failed),
 }
 
 /** Как сервер хочет подтверждения, прежде чем выбросить старую личность. */

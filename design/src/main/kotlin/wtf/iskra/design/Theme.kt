@@ -236,6 +236,15 @@ object Theme {
 
         /** Насколько темнеет переписка за открытым меню. */
         const val MENU_SCRIM = 0.4f
+
+        /** Вуаль обрезки аватара (`AvatarCropper`): то, что не войдёт в лицо, видно, но под тенью. */
+        const val CROP_VEIL = 0.55f
+
+        /** Контур лица в обрезке: заметен на любом фото, но не спорит с ним. */
+        const val CROP_OUTLINE = 0.8f
+
+        /** Тень под карандашом на картинке, которую можно сменить (`EditableAvatar`). */
+        const val EDITABLE = 0.4f
     }
 
     object Tint {
