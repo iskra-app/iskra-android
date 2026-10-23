@@ -94,7 +94,7 @@ object PhotoPreparation {
         return Blurhash.encode(pixels, width, height)
     }
 
-    private fun blurhashOf(original: ByteArray, bounds: BitmapFactory.Options): String {
+    internal fun blurhashOf(original: ByteArray, bounds: BitmapFactory.Options): String {
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return Blurhash.NEUTRAL
         var sample = 1
         while (max(bounds.outWidth, bounds.outHeight) / (sample * 2) >= Blurhash.SIDE) sample *= 2

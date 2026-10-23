@@ -15,6 +15,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import wtf.iskra.core.media.MediaSettings
+import wtf.iskra.core.mock.JsonValues
+import wtf.iskra.core.stickers.Sticker
+import wtf.iskra.core.stickers.StickerPicture
+import uniffi.matrix_sdk_base.EncryptionState
 import wtf.iskra.core.media.PhotoPreparation
 import wtf.iskra.core.media.VoiceWaveform
 import wtf.iskra.core.media.VideoPreparation
@@ -145,6 +149,9 @@ enum class TimelineFailure(val message: Int) {
 
     /** Закрепить или открепить не дали — чаще всего нет прав. */
     PIN(R.string.timeline_pin_failed),
+
+    /** Стикер не ушёл: нет сети, комнату не удалось спросить или картинка не чиста. */
+    STICKER(R.string.timeline_sticker_failed),
 }
 
 /**
@@ -178,6 +185,8 @@ class TimelineStore internal constructor(
     private val threadSettings: () -> ThreadSettings = { ThreadSettings() },
     /** Прозвища личных чатов: шапка, имена на сообщениях собеседника и в цитатах его. */
     private val localNames: wtf.iskra.core.rooms.LocalNames.Account? = null,
+    /** Скачать картинку по `mxc://` — стикеру из пака в зашифрованной комнате (`sendSticker`). Null — нечем. */
+    private val downloadMedia: (suspend (url: String) -> ByteArray)? = null,
 ) {
     /** Имя от сервера — чтобы снять прозвище, пока экран открыт, не дожидаясь нового `RoomInfo`. */
     private var serverTitle: String? = null
@@ -866,6 +875,94 @@ class TimelineStore internal constructor(
     }
 
     /**
+     * Стикер из пака — двумя дорогами, по комнате (порт `send(sticker:)`):
+     * - **точно не зашифрована**: настоящий `m.sticker` через `Room.sendRaw`, ссылкой на картинку пака;
+     * - **иначе** (почти любой настоящий разговор): картинка скачивается и уходит *зашифрованной картинкой*
+     *   `sticker.<расширение>` через очередь отправки (`StickerPicture`). `sendRaw` — мимо очереди, и всё,
+     *   что очередь делает тихо и с повторами (ключи, участники, остановка на проверенном человеке), случилось
+     *   бы здесь одним таймаутом: «стикер не ушёл». Через очередь он ждёт сеть как сообщение, а остановка —
+     *   «Не отправлено» с «Отправить всё равно» на пузыре.
+     */
+    suspend fun sendSticker(sticker: Sticker, replyingTo: String? = null): Boolean =
+        if (isKnownUnencrypted()) sendRawSticker(sticker, replyingTo) else sendSealedSticker(sticker, replyingTo)
+
+    /** Только «точно нет»: «наверное нет» — не ответ на вопрос, можно ли картинке уйти открытой. Спрашивается у сервера. */
+    private suspend fun isKnownUnencrypted(): Boolean = try {
+        withTimeLimit(SDK_LIMIT) { room.latestEncryptionState() } == EncryptionState.NOT_ENCRYPTED
+    } catch (error: Exception) {
+        if (error is CancellationException) throw error
+        false
+    }
+
+    private suspend fun sendRawSticker(sticker: Sticker, replyingTo: String?): Boolean = try {
+        val content = JsonValues.encode(sticker.eventContent(replyingTo?.let(::eventId)))
+        withTimeLimit(SDK_LIMIT) { room.sendRaw("m.sticker", content) }
+        true
+    } catch (error: Exception) {
+        if (error is CancellationException) throw error
+        Log.error(Log.Category.MEDIA, "стикер не отправился: ${Log.describe(error)}")
+        fail(TimelineFailure.STICKER)
+        false
+    }
+
+    private suspend fun sendSealedSticker(sticker: Sticker, replyingTo: String?): Boolean {
+        val timeline = timeline
+        val download = downloadMedia
+        if (timeline == null || download == null) {
+            fail(TimelineFailure.STICKER)
+            return false
+        }
+        val prepared = try {
+            val bytes = withTimeLimit(STICKER_DOWNLOAD_LIMIT) { download(sticker.url) }
+            withContext(Dispatchers.Default) { StickerPicture.prepare(bytes) }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "картинка стикера не скачалась: ${Log.describe(error)}")
+            null
+        }
+        if (prepared == null) {
+            fail(TimelineFailure.STICKER)
+            return false
+        }
+        val parameters = UploadParameters(
+            source = UploadSource.Data(prepared.bytes, prepared.filename),
+            caption = null,
+            formattedCaption = null,
+            mentions = null,
+            inReplyTo = replyingTo?.let(::eventId),
+        )
+        val info = ImageInfo(
+            height = prepared.height.toULong(),
+            width = prepared.width.toULong(),
+            mimetype = prepared.mimeType,
+            size = prepared.bytes.size.toULong(),
+            thumbnailInfo = null,
+            thumbnailSource = null,
+            blurhash = prepared.blurhash,
+            isAnimated = false,
+        )
+        return try {
+            val handle = withTimeLimit(SDK_LIMIT) { timeline.sendImage(parameters, null, info) }
+            scope.launch {
+                try {
+                    handle.join()
+                } catch (error: Exception) {
+                    if (error is CancellationException) throw error
+                    Log.error(Log.Category.MEDIA, "стикер не загрузился: ${Log.describe(error)}")
+                } finally {
+                    handle.destroy()
+                }
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "стикер не отправился: ${Log.describe(error)}")
+            fail(TimelineFailure.STICKER)
+            false
+        }
+    }
+
+    /**
      * Видео — по настройкам: сжатое и без места, дат и устройства (`VideoPreparation`). Не очистилось —
      * не уходит, как фото. SDK получает *путь*: сотни мегабайт байтами держали бы память; копия живёт,
      * пока идёт загрузка, и удаляется, когда SDK её дочитал, — или при следующем запуске.
@@ -1283,6 +1380,7 @@ class TimelineStore internal constructor(
         const val MAXIMUM_OPENING_PAGES = 4
         const val MAXIMUM_REFILL_PAGES = 20
         val SDK_LIMIT = 30.seconds
+        val STICKER_DOWNLOAD_LIMIT = 60.seconds
 
         /** Насколько близко открывать карту у получателя: улица — видно, какой дом и на какой улице. */
         val LOCATION_ZOOM: UByte = 15u

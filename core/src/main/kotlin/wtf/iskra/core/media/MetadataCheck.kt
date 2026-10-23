@@ -16,18 +16,25 @@ package wtf.iskra.core.media
  * - PNG: чанки. Можно: картинка и её цвет. Нельзя: eXIf, tEXt, zTXt, iTXt, tIME, неизвестные и хвост
  *   после IEND.
  *
- * Чего не разобрать — не JPEG и не PNG, или битое, — то не чистое.
+ * - WebP: чанки RIFF. Можно: картинка, прозрачность, анимация, цвет. Нельзя: `EXIF`, `XMP `, неизвестные,
+ *   флаги EXIF/XMP в `VP8X` и хвост за объявленным размером.
+ *
+ * Чего не разобрать — не JPEG, не PNG и не WebP, или битое, — то не чистое.
  */
 object MetadataCheck {
     fun isClean(bytes: ByteArray): Boolean = when {
         isJpeg(bytes) -> cleanJpeg(bytes)
         isPng(bytes) -> cleanPng(bytes)
+        isWebp(bytes) -> cleanWebp(bytes)
         else -> false
     }
 
     fun isJpeg(bytes: ByteArray): Boolean = bytes.size >= 4 && u8(bytes, 0) == 0xFF && u8(bytes, 1) == SOI
 
     fun isPng(bytes: ByteArray): Boolean = bytes.size >= PNG_SIGNATURE.size && PNG_SIGNATURE.indices.all { bytes[it] == PNG_SIGNATURE[it] }
+
+    fun isWebp(bytes: ByteArray): Boolean =
+        bytes.size >= WEBP_HEADER && startsWith(bytes, 0, bytes.size, RIFF) && startsWith(bytes, 8, bytes.size - 8, WEBP)
 
     private fun cleanJpeg(bytes: ByteArray): Boolean {
         var at = 2
@@ -85,6 +92,37 @@ object MetadataCheck {
         return false
     }
 
+    /**
+     * WebP — контейнер RIFF: `RIFF`, длина, `WEBP`, дальше чанки (четыре буквы, длина, данные до чётного
+     * байта). Размер в заголовке обязан сходиться с файлом: дописанное за ним — хвост. EXIF и XMP —
+     * чанки, но в `VP8X` о них ещё и флаги: файл, объявивший их, не чист, даже если чанка не нашлось.
+     * Кадры анимации (`ANMF`) несут свои чанки внутри, и их проверяют тем же списком.
+     */
+    private fun cleanWebp(bytes: ByteArray): Boolean {
+        val declared = u32le(bytes, 4) + 8
+        if (declared != bytes.size.toLong() || bytes.size % 2 != 0) return false
+        return cleanWebpChunks(bytes, WEBP_HEADER, bytes.size)
+    }
+
+    private fun cleanWebpChunks(bytes: ByteArray, from: Int, to: Int): Boolean {
+        var at = from
+        while (at < to) {
+            if (at + CHUNK_HEADER > to) return false
+            val type = String(bytes, at, 4, Charsets.ISO_8859_1)
+            val length = u32le(bytes, at + 4)
+            val body = at + CHUNK_HEADER
+            val end = body + length + (length and 1)
+            if (end > to || type !in WEBP_ALLOWED) return false
+            if (type == "VP8X" && (length < 10 || u8(bytes, body) and WEBP_EXIF_OR_XMP != 0)) return false
+            if (type == "ANMF" && (length < ANMF_HEADER || !cleanWebpChunks(bytes, body + ANMF_HEADER, (body + length).toInt()))) return false
+            at = end.toInt()
+        }
+        return at == to
+    }
+
+    private fun u32le(bytes: ByteArray, at: Int): Long =
+        (u8(bytes, at).toLong()) or (u8(bytes, at + 1).toLong() shl 8) or (u8(bytes, at + 2).toLong() shl 16) or (u8(bytes, at + 3).toLong() shl 24)
+
     private fun startsWith(bytes: ByteArray, start: Int, size: Int, prefix: ByteArray): Boolean =
         size >= prefix.size && prefix.indices.all { bytes[start + it] == prefix[it] }
 
@@ -108,6 +146,15 @@ object MetadataCheck {
     private val PNG_SIGNATURE = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 0x0D, 0x0A, 0x1A, 0x0A)
     private const val CHUNK_HEADER = 8
     private const val CRC = 4
+
+    private const val WEBP_HEADER = 12
+    private const val ANMF_HEADER = 16
+    private const val WEBP_EXIF_OR_XMP = 0x0C
+    private val RIFF = "RIFF".toByteArray(Charsets.US_ASCII)
+    private val WEBP = "WEBP".toByteArray(Charsets.US_ASCII)
+
+    /** Картинка, её прозрачность, анимация и цвет. Ни `EXIF`, ни `XMP `. */
+    private val WEBP_ALLOWED = setOf("VP8 ", "VP8L", "VP8X", "ALPH", "ANIM", "ANMF", "ICCP")
 
     /** Картинка и её цвет. Ни слова о том, кто, где и когда. */
     private val PNG_ALLOWED = setOf("IHDR", "PLTE", "IDAT", "IEND", "tRNS", "gAMA", "cHRM", "sRGB", "iCCP", "sBIT", "bKGD", "pHYs")

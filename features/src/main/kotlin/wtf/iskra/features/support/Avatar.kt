@@ -199,7 +199,7 @@ internal fun initials(name: String): String {
  * которого никто не собирался делать. Запрос — в пикселях круга, а не в dp: иначе размазня.
  */
 @Composable
-private fun rememberAvatarImage(url: String?, size: Dp): ImageBitmap? {
+internal fun rememberAvatarImage(url: String?, size: Dp): ImageBitmap? {
     val loader = LocalMediaLoader.current
     val pixels = with(LocalDensity.current) { size.roundToPx() }
     var image by remember(url) { mutableStateOf(url?.let { AvatarCache.get(it) }) }

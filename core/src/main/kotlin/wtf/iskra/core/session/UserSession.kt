@@ -70,6 +70,29 @@ class UserSession internal constructor(
     /** Поиск по своим сообщениям — по локальному индексу, на сервер не уходит. */
     val search = wtf.iskra.core.search.SearchStore(client, scope, strings)
 
+    /**
+     * Стикеры, которые аккаунт может отправить (`StickerLibrary`): сессии, а не комнаты — свой пак,
+     * подписки и недавние лежат в account data и общие для устройств. Пак *комнаты* читается авторизованным
+     * HTTP-запросом (на iOS — `authorisedSender`), которого здесь ещё нет: он придёт с маршрутом этапа 9, и
+     * до него лист показывает свой пак, подписки и «Искорки», но не пак открытой комнаты.
+     */
+    val stickers = wtf.iskra.core.stickers.StickerLibrary(
+        readAccountData = { type -> client.accountData(type) },
+        writeAccountData = { type, content -> client.setAccountData(type, content) },
+        readRoomPack = { _, _ -> null },
+        upload = { mimeType, bytes -> client.uploadMedia(mimeType, bytes, null) },
+    )
+
+    /** Картинка по `mxc://` — стикеру в зашифрованной комнате (`TimelineStore.sendSticker`). */
+    private val downloadMedia: suspend (String) -> ByteArray = { url ->
+        val source = org.matrix.rustcomponents.sdk.MediaSource.fromUrl(url)
+        try {
+            client.getMediaContent(source)
+        } finally {
+            source.destroy()
+        }
+    }
+
     /** Как человека зовут и его картинка — для шапки настроек. Читается [loadProfile]. */
     data class Profile(val displayName: String?, val avatarUrl: String?)
 
@@ -169,6 +192,7 @@ class UserSession internal constructor(
             onOwnMessagesRead = { rooms.noteRead(roomId, it) },
             threadSettings = threadSettings,
             localNames = localNames,
+            downloadMedia = downloadMedia,
         )
     }
 
@@ -187,6 +211,7 @@ class UserSession internal constructor(
             scope = scope,
             threadRootId = rootEventId,
             localNames = localNames,
+            downloadMedia = downloadMedia,
         )
     }
 

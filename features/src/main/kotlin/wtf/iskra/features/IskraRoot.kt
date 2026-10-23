@@ -267,6 +267,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
                 onOpenDetails = { showingDetails = true },
                 identityChanges = identityChanges,
+                stickers = session.stickers,
             )
             else -> RoomListScreen(
                 session.rooms,

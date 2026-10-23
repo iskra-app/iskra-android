@@ -1,5 +1,6 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
@@ -141,6 +142,7 @@ import wtf.iskra.core.timeline.TimelineState
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.rooms.IdentityChangeException
 import wtf.iskra.core.rooms.IdentityChangesStore
+import wtf.iskra.core.stickers.StickerLibrary
 import wtf.iskra.core.timeline.TimelineStore
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.PrimaryActionButton
@@ -179,6 +181,8 @@ fun RoomScreen(
     onOpenDetails: (() -> Unit)? = null,
     /** У кого в комнате сменились ключи (`UserSession.identityChanges`). Null — у треда: баннер у комнаты под ним. */
     identityChanges: IdentityChangesStore? = null,
+    /** Стикеры аккаунта (`UserSession.stickers`). Null — кнопки стикеров нет. */
+    stickers: StickerLibrary? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -194,7 +198,7 @@ fun RoomScreen(
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-                RoomScreen(thread, onBack = { openedThread = null }, mediaSettings = mediaSettings)
+                RoomScreen(thread, onBack = { openedThread = null }, mediaSettings = mediaSettings, stickers = stickers)
             }
         }
     }
@@ -321,6 +325,21 @@ fun RoomScreen(
         if (mentionQuery != null && candidates.isEmpty()) candidates = store.mentionCandidates()
     }
 
+    var choosingSticker by remember(store.roomId) { mutableStateOf(false) }
+    if (choosingSticker && stickers != null) {
+        StickerPicker(
+            library = stickers,
+            roomId = store.roomId,
+            onPick = { sticker ->
+                choosingSticker = false
+                val reply = replyingTo
+                replyingTo = null
+                scope.launch { if (store.sendSticker(sticker, reply?.id)) stickers.used(sticker) }
+            },
+            onDismiss = { choosingSticker = false },
+        )
+    }
+
     Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
@@ -414,6 +433,7 @@ fun RoomScreen(
                     runCatching { recordVideo.launch(uri) }.onFailure { capturing = null }
                 },
                 onLocation = { locating = true },
+                onStickers = if (stickers != null) ({ choosingSticker = true }) else null,
                 canPaste = { Camera.clipboardHasMedia(context) },
                 onPaste = {
                     scope.launch {
@@ -1414,6 +1434,8 @@ private fun Composer(
     onTakePhoto: () -> Unit = {},
     onRecordVideo: () -> Unit = {},
     onLocation: () -> Unit = {},
+    /** Лист стикеров; null — стикеров здесь нет (нет библиотеки). */
+    onStickers: (() -> Unit)? = null,
     canPaste: () -> Boolean = { false },
     onPaste: () -> Unit = {},
     onRemoveAttachment: (PendingAttachment) -> Unit,
@@ -1506,6 +1528,14 @@ private fun Composer(
                 maxLines = COMPOSER_LINES,
                 shape = RoundedCornerShape(Theme.Radius.bubble),
                 colors = pillColors(),
+                // Мордочка в конце поля, как в Telegram. В правке стикеру взяться неоткуда.
+                trailingIcon = if (onStickers != null && editing == null) {
+                    {
+                        IconButton(onClick = onStickers) {
+                            Icon(Icons.Filled.EmojiEmotions, contentDescription = stringResource(R.string.stickers_open))
+                        }
+                    }
+                } else null,
             )
             // Нечего отправить — микрофон: голосовое начинается там же, где уходят слова.
             if (!canSend && editing == null) {
