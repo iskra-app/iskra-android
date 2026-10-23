@@ -231,9 +231,21 @@ internal object TimelineMapper {
                 ),
             )
             is MsgLikeKind.LiveLocation -> {
-                val last = kind.content.locations.lastOrNull()
-                val (lat, lon) = last?.geoUri?.let(::geo) ?: (0.0 to 0.0)
-                MessageKind.Location(lat, lon, kind.content.description)
+                // SDK собирает точки трансляции под событием, с которого она началась; последняя — где
+                // человек сейчас. До первой карте не на что встать, и она это говорит (`hasPosition`),
+                // а не рисует пин у берегов Африки.
+                val content = kind.content
+                val last = content.locations.lastOrNull()
+                val point = last?.let { share -> geo(share.geoUri)?.let { share to it } }
+                val (lat, lon) = point?.second ?: (0.0 to 0.0)
+                MessageKind.Location(
+                    lat, lon, content.description,
+                    MessageKind.Location.LiveSpan(
+                        isLive = content.isLive,
+                        until = MessagePreview.instant(content.ts).plusMillis(content.timeoutMs.toLong()),
+                        updatedAt = point?.let { MessagePreview.instant(it.first.ts) },
+                    ),
+                )
             }
             is MsgLikeKind.Redacted -> MessageKind.Deleted
             is MsgLikeKind.UnableToDecrypt -> MessageKind.Unreadable

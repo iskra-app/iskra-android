@@ -93,7 +93,25 @@ sealed interface MessageKind {
     data class Voice(val attachment: Attachment, val waveform: List<Float>) : MessageKind
     data class Audio(val attachment: Attachment) : MessageKind
     data class File(val attachment: Attachment) : MessageKind
-    data class Location(val latitude: Double, val longitude: Double, val name: String?) : MessageKind
+    data class Location(val latitude: Double, val longitude: Double, val name: String?, val live: LiveSpan? = null) : MessageKind {
+        /**
+         * Чья-то геопозиция *на ходу* (MSC3489): последняя точка трансляции. Порт `Location.LiveSpan`.
+         */
+        data class LiveSpan(
+            /** Говорит ли ещё сам делящийся, что трансляция идёт: остановить её можно раньше срока. */
+            val isLive: Boolean,
+            /** Когда она кончится сама. */
+            val until: Instant,
+            /** Когда пришла последняя точка; null, пока ни одной. */
+            val updatedAt: Instant?,
+        ) {
+            /** Всё ещё движется по карте: включена и не вышла за срок. */
+            fun isActive(now: Instant): Boolean = isLive && until.isAfter(now)
+
+            /** Есть ли что показать на карте: только что начатая трансляция точки не имеет. */
+            val hasPosition: Boolean get() = updatedAt != null
+        }
+    }
     data class Poll(val poll: wtf.iskra.core.timeline.Poll) : MessageKind
 
     /** Сообщение есть, но этому устройству не дали ключ. */

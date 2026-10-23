@@ -3,6 +3,7 @@ package wtf.iskra.features.room
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.text.format.DateFormat
 import android.text.format.DateUtils
 import android.text.format.Formatter
 import androidx.compose.foundation.Canvas
@@ -30,10 +31,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.util.Date
 import wtf.iskra.features.support.FileOpener
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,23 +95,43 @@ internal fun AttachmentContent(message: Message, ink: Color, fill: Color, onFill
         }
         is MessageKind.Location -> {
             val context = LocalContext.current
+            val live = kind.live
+            // Трансляция заканчивается сама: «до 18:30» должно смениться на «закончилась», не дожидаясь
+            // перерисовки от нового события.
+            val now by produceState(Instant.now(), live) {
+                while (live != null) {
+                    delay(LIVE_TICK_MS)
+                    value = Instant.now()
+                }
+            }
+            val waiting = live != null && !live.hasPosition
+            val openInMaps: () -> Unit = {
+                // Карту выбирает человек: координаты уходят только в приложение, которое он открыл.
+                val label = Uri.encode(kind.name.orEmpty())
+                val uri = Uri.parse("$GEO${kind.latitude},${kind.longitude}?q=${kind.latitude},${kind.longitude}($label)")
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: ActivityNotFoundException) {
+                    // Карт на телефоне нет — нажатию просто нечего открыть.
+                }
+            }
             Line(
                 icon = Icons.Filled.Place,
                 title = kind.name ?: stringResource(R.string.location_title),
-                detail = stringResource(R.string.location_coordinates, kind.latitude, kind.longitude),
+                detail = when {
+                    live == null -> stringResource(R.string.location_coordinates, kind.latitude, kind.longitude)
+                    waiting -> stringResource(R.string.location_live_waiting)
+                    live.isActive(now) -> stringResource(
+                        R.string.location_live_until,
+                        DateFormat.getTimeFormat(context).format(Date.from(live.until)),
+                    )
+                    else -> stringResource(R.string.location_live_ended)
+                },
                 ink = ink,
                 fill = fill,
                 onFill = onFill,
-                onClick = {
-                    // Карту выбирает человек: координаты уходят только в приложение, которое он открыл.
-                    val label = Uri.encode(kind.name.orEmpty())
-                    val uri = Uri.parse("$GEO${kind.latitude},${kind.longitude}?q=${kind.latitude},${kind.longitude}($label)")
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                    } catch (_: ActivityNotFoundException) {
-                        // Карт на телефоне нет — нажатию просто нечего открыть.
-                    }
-                },
+                // Без первой точки открывать нечего: карта встала бы на 0°, 0°.
+                onClick = openInMaps.takeUnless { waiting },
             )
         }
         else -> Unit
@@ -235,6 +260,7 @@ private fun Waveform(samples: List<Float>, progress: Float, played: Color, rest:
 }
 
 private const val GEO = "geo:"
+private const val LIVE_TICK_MS = 30_000L
 private const val QUIET = 0.7f
 private const val REST = 0.35f
 private const val MILLIS = 1000L
