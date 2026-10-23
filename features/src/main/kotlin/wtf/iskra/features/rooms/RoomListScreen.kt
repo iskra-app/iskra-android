@@ -158,16 +158,6 @@ fun RoomListScreen(
             )
         }
         if (!showingArchive) banner()
-        if (!state.isLoadingInitialRooms && source.isNotEmpty()) {
-            PillField(
-                value = query,
-                onValueChange = { query = it },
-                // «Поиск», а не «по сообщениям»: пока ищутся названия чатов; сообщения — с поиском SDK.
-                placeholder = stringResource(R.string.profile_search),
-                leading = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
-            )
-        }
 
         when {
             state.isLoadingInitialRooms -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -178,6 +168,20 @@ fun RoomListScreen(
             else -> {
                 val now = Instant.now()
                 LazyColumn(Modifier.fillMaxSize()) {
+                    // Поиск — первым элементом списка, а не прибит к заголовку: уезжает вместе с чатами, а
+                    // вернуться к нему — прокрутить наверх, как в Telegram. Над архивом.
+                    if (source.isNotEmpty()) {
+                        item(key = "search") {
+                            PillField(
+                                value = query,
+                                onValueChange = { query = it },
+                                // «Поиск», а не «по сообщениям»: ищутся и названия чатов, и сообщения.
+                                placeholder = stringResource(R.string.profile_search),
+                                leading = { Icon(Icons.Outlined.Search, contentDescription = null) },
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+                            )
+                        }
+                    }
                     // Архив — строкой над списком, как в Telegram: смахнутые чаты никуда не делись.
                     if (!showingArchive && query.isBlank() && state.archivedRooms.isNotEmpty()) {
                         item(key = "archive") {
