@@ -20,6 +20,7 @@ import wtf.iskra.core.stickers.Sticker
 import wtf.iskra.core.stickers.StickerPicture
 import uniffi.matrix_sdk_base.EncryptionState
 import wtf.iskra.core.media.PhotoPreparation
+import wtf.iskra.core.media.PreparedVideo
 import wtf.iskra.core.media.VoiceWaveform
 import wtf.iskra.core.media.VideoPreparation
 import org.matrix.rustcomponents.sdk.ThumbnailInfo
@@ -984,6 +985,27 @@ class TimelineStore internal constructor(
             fail(TimelineFailure.SEND)
             return false
         }
+        return sendPrepared(timeline, prepared, caption, replyingTo)
+    }
+
+    /**
+     * Кружок: запись камеры, квадрат без метаданных (`VideoPreparation.prepareNote`) — обычным `m.video`
+     * через SDK, чтобы лицо шло зашифрованным (`VideoNote`). Без подписи: кружок — реплика.
+     */
+    suspend fun sendVideoNote(context: android.content.Context, source: android.net.Uri, replyingTo: String? = null): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        val prepared = VideoPreparation.prepareNote(context, source, VideoPreparation.outgoing(context.cacheDir))
+        if (prepared == null) {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        return sendPrepared(timeline, prepared, caption = null, replyingTo = replyingTo)
+    }
+
+    private suspend fun sendPrepared(timeline: Timeline, prepared: PreparedVideo, caption: String?, replyingTo: String?): Boolean {
         val parameters = UploadParameters(
             source = UploadSource.File(prepared.file.absolutePath),
             caption = caption?.trim()?.ifEmpty { null },

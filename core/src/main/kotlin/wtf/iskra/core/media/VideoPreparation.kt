@@ -118,6 +118,82 @@ object VideoPreparation {
         return withContext(Dispatchers.IO) { describe(file, "$stem.mp4") }
     }
 
+    /**
+     * Кружок: запись камеры → квадрат [VideoNote.SIDE] по центру, H.264/AAC в MP4, 30 кадров, битрейт — от
+     * площади кадра ([VideoNote.bitRate]), как `SquareVideoExporter` на iOS. Кроп по центру совпадает с тем,
+     * что человек видел в круге превью: он ставил лицо в круг, и вернуться должно то же самое.
+     *
+     * Всегда новый контейнер и всегда очистка, без настройки: лицо человека не уходит с местом, датой и
+     * устройством, что бы ни стояло в «Фото и видео». Не очистилось — null, и кружок не уходит.
+     */
+    suspend fun prepareNote(context: Context, source: Uri, directory: File): PreparedVideo? {
+        directory.mkdirs()
+        val size = withContext(Dispatchers.IO) {
+            context.contentResolver.openAssetFileDescriptor(source, "r")?.use { it.length } ?: -1L
+        }
+        val target = File(directory, "${UUID.randomUUID()}.mp4")
+        val done = runCatching { squareNote(context, source, target, size) }
+        if (done.isFailure) {
+            done.exceptionOrNull()?.let { if (it is CancellationException) throw it }
+            Log.error(Log.Category.MEDIA, "кружок не подготовился: ${Log.describe(done.exceptionOrNull()!!)}")
+            target.delete()
+            return null
+        }
+        if (!withContext(Dispatchers.IO) { Mp4MetadataCheck.isClean(target) }) {
+            Log.error(Log.Category.MEDIA, "кружок не отправлен: в контейнере остались метаданные")
+            target.delete()
+            return null
+        }
+        val prepared = withContext(Dispatchers.IO) { describe(target, "video-note.mp4") }
+        // Не квадрат или длиннее минуты — получатель не узнает в нём кружок (`MessagePreview.isVideoNote`).
+        if (prepared.width != prepared.height || prepared.durationMs > VideoNote.MAXIMUM_MS) {
+            Log.error(Log.Category.MEDIA, "кружок вышел не кружком: ${prepared.width}x${prepared.height}, ${prepared.durationMs} мс")
+            target.delete()
+            return null
+        }
+        return prepared
+    }
+
+    private suspend fun squareNote(context: Context, source: Uri, target: File, sourceSize: Long) {
+        val encoders = DefaultEncoderFactory.Builder(context)
+            .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(VideoNote.bitRate(VideoNote.SIDE, VideoNote.SIDE)).build())
+            .setRequestedAudioEncoderSettings(AudioEncoderSettings.Builder().setBitrate(VideoNote.AUDIO_BIT_RATE).build())
+            .build()
+        val effects = listOf<Effect>(
+            // Заполнить квадрат с обрезкой по центру — а не вписать с полями.
+            Presentation.createForWidthAndHeight(VideoNote.SIDE, VideoNote.SIDE, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP),
+            FrameDropEffect.createDefaultFrameDropEffect(VideoNote.FRAME_RATE.toFloat()),
+        )
+        val item = EditedMediaItem.Builder(MediaItem.fromUri(source)).setEffects(Effects(emptyList(), effects)).build()
+        val limit = (EXPORT_FLOOR_SECONDS + EXPORT_PER_MB_SECONDS * (sourceSize.coerceAtLeast(0) / MEGABYTE).coerceAtMost(MAX_MB_FOR_LIMIT)).seconds
+        withTimeLimit(limit) {
+            withContext(Dispatchers.Main) {
+                suspendCancellableCoroutine { continuation ->
+                    val transformer = Transformer.Builder(context)
+                        .setAssetLoaderFactory(
+                            DefaultAssetLoaderFactory(context, DefaultDecoderFactory.Builder(context).setEnableDecoderFallback(true).build(), Clock.DEFAULT, null),
+                        )
+                        .setMuxerFactory(InAppMp4Muxer.Factory { entries -> entries.retainAll { it is Mp4OrientationData } })
+                        .setVideoMimeType(MimeTypes.VIDEO_H264)
+                        .setAudioMimeType(MimeTypes.AUDIO_AAC)
+                        .setEncoderFactory(encoders)
+                        .addListener(object : Transformer.Listener {
+                            override fun onCompleted(composition: Composition, exportResult: ExportResult) {
+                                if (continuation.isActive) continuation.resume(Unit)
+                            }
+
+                            override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
+                                if (continuation.isActive) continuation.resumeWithException(exportException)
+                            }
+                        })
+                        .build()
+                    continuation.invokeOnCancellation { transformer.cancel() }
+                    transformer.start(item, target.absolutePath)
+                }
+            }
+        }
+    }
+
     /** Что известно об исходном ролике: размер файла, рамка, битрейт и кадры — чтобы не раздувать. */
     private class Probe(val size: Long, val width: Int, val height: Int, val bitRate: Int?, val frameRate: Float?)
 
@@ -235,4 +311,33 @@ object VideoPreparation {
     private const val EXPORT_FLOOR_SECONDS = 60L
     private const val EXPORT_PER_MB_SECONDS = 4L
     private const val MAX_MB_FOR_LIMIT = 2_000L
+}
+
+/**
+ * Кружок — квадратное видео не длиннее минуты: так его узнаёт получатель (`MessagePreview.isVideoNote`),
+ * а не по своему полю события. Поле значило бы `uploadMedia` + `sendRaw`, то есть лицо человека на сервере
+ * открытым текстом; обычный `m.video` через SDK шифруется как положено. Цена названа прямо: квадратный
+ * ролик короче минуты от чужого клиента здесь нарисуется кругом, а наши круги в Element — квадратным видео.
+ * Порт `VideoNote.swift`.
+ */
+object VideoNote {
+    /** Потолок записи; детектор верит ему. */
+    const val MAXIMUM_MS = 60_000L
+
+    /** Запись останавливается чуть раньше: контейнер добавляет доли секунды, и 60,03 с кружком уже не узнать. */
+    const val RECORDING_LIMIT_MS = 59_500L
+
+    /** Сторона квадрата. Кружок рисуется кругом в 200 точек — 480 с запасом на плотные экраны. */
+    const val SIDE = 480
+    const val FRAME_RATE = 30
+    const val AUDIO_BIT_RATE = 64_000
+
+    /**
+     * Битрейт — от площади кадра: единственная мера, что переживает смену разрешения. Одна десятая бита на
+     * пиксель в секунду — рабочая цифра для H.264 на говорящей голове; на квадрате 480 это около
+     * 700 кбит/с, и минута занимает пять мегабайт, а не тридцать.
+     */
+    const val BITS_PER_PIXEL = 0.1
+
+    fun bitRate(width: Int, height: Int): Int = (width * height * BITS_PER_PIXEL * FRAME_RATE).toInt()
 }

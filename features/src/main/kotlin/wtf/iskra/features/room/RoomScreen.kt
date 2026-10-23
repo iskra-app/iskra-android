@@ -283,6 +283,64 @@ fun RoomScreen(
     var micDenied by remember { mutableStateOf(false) }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> if (!granted) micDenied = true }
     DisposableEffect(recorder) { onDispose { recorder.cancel() } }
+    // Кружок: тот же рычаг, что у голосового, но пишет камера, а кнопка — и переключатель режима
+    // (короткое нажатие меняет, зажатие пишет). Режим помнится на комнату, как в Telegram.
+    var videoMode by rememberSaveable(store.roomId) { mutableStateOf(false) }
+    val noteRecorder = remember(store.roomId) { VideoNoteRecorder(context) }
+    val noteElapsed by noteRecorder.elapsed.collectAsStateWithLifecycle()
+    var noteLocked by remember(store.roomId) { mutableStateOf(false) }
+    var cameraDenied by remember { mutableStateOf(false) }
+    // Камеры нет или она не поднялась: оверлей уже закрылся сам — сказать почему.
+    var noCamera by remember { mutableStateOf(false) }
+    val cameraUnavailable by noteRecorder.unavailable.collectAsStateWithLifecycle()
+    LaunchedEffect(cameraUnavailable) { if (cameraUnavailable) noCamera = true }
+    val sendNote: () -> Unit = {
+        val reply = replyingTo
+        scope.launch {
+            val recorded = noteRecorder.finish()
+            noteLocked = false
+            lockReach = -1f
+            if (recorded != null) {
+                replyingTo = null
+                store.sendVideoNote(context, recorded, reply?.id)
+                recorded.path?.let { java.io.File(it).delete() }
+            }
+        }
+        Unit
+    }
+    val cancelNote: () -> Unit = {
+        noteRecorder.cancel()
+        noteLocked = false
+        lockReach = -1f
+    }
+    LaunchedEffect(noteElapsed == null) { if (noteElapsed == null) noteLocked = false }
+    DisposableEffect(noteRecorder) {
+        noteRecorder.onLimit = sendNote
+        onDispose {
+            noteRecorder.onLimit = null
+            noteRecorder.cancel()
+        }
+    }
+    val cameraPermissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+        if (granted.values.any { !it }) cameraDenied = true
+    }
+    fun granted(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    // Раз приложение объявляет CAMERA (кружки), системная камера без выданного разрешения бросает
+    // SecurityException, а не открывается: спросить сначала, и открыть, когда выдали.
+    var afterCamera by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val cameraOnly = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
+        val next = afterCamera
+        afterCamera = null
+        if (allowed) next?.invoke() else cameraDenied = true
+    }
+    fun withCamera(action: () -> Unit) {
+        if (granted(Manifest.permission.CAMERA)) {
+            action()
+        } else {
+            afterCamera = action
+            cameraOnly.launch(Manifest.permission.CAMERA)
+        }
+    }
     // Файл — системным выбором документов: любой тип, уйдёт как есть.
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { picked ->
         if (picked != null) attachments = (attachments + PendingAttachment(picked, PendingAttachment.Kind.FILE)).distinct().take(MAX_ATTACHMENTS)
@@ -423,14 +481,18 @@ fun RoomScreen(
                 attachments = attachments,
                 onAttachPhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
                 onTakePhoto = {
-                    val uri = Camera.newCapture(context, video = false)
-                    capturing = PendingAttachment(uri, PendingAttachment.Kind.PHOTO)
-                    runCatching { takePhoto.launch(uri) }.onFailure { capturing = null }
+                    withCamera {
+                        val uri = Camera.newCapture(context, video = false)
+                        capturing = PendingAttachment(uri, PendingAttachment.Kind.PHOTO)
+                        runCatching { takePhoto.launch(uri) }.onFailure { capturing = null }
+                    }
                 },
                 onRecordVideo = {
-                    val uri = Camera.newCapture(context, video = true)
-                    capturing = PendingAttachment(uri, PendingAttachment.Kind.VIDEO)
-                    runCatching { recordVideo.launch(uri) }.onFailure { capturing = null }
+                    withCamera {
+                        val uri = Camera.newCapture(context, video = true)
+                        capturing = PendingAttachment(uri, PendingAttachment.Kind.VIDEO)
+                        runCatching { recordVideo.launch(uri) }.onFailure { capturing = null }
+                    }
                 },
                 onLocation = { locating = true },
                 onStickers = if (stickers != null) ({ choosingSticker = true }) else null,
@@ -466,20 +528,35 @@ fun RoomScreen(
                             }
                         } else {
                             MicButton(
-                                recording = recordingElapsed != null,
-                                hasPermission = { ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED },
-                                onNeedPermission = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
+                                recording = if (videoMode) noteElapsed != null else recordingElapsed != null,
+                                hasPermission = {
+                                    granted(Manifest.permission.RECORD_AUDIO) && (!videoMode || granted(Manifest.permission.CAMERA))
+                                },
+                                onNeedPermission = {
+                                    if (videoMode) {
+                                        cameraPermissions.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
+                                    } else {
+                                        micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                },
                                 onStart = {
                                     VoicePlayback.stop()
-                                    recorder.start(scope)
+                                    if (videoMode) {
+                                        noteRecorder.begin()
+                                        true
+                                    } else {
+                                        recorder.start(scope)
+                                    }
                                 },
-                                onFinish = sendRecording,
-                                onCancel = { recorder.cancel() },
+                                onFinish = if (videoMode) sendNote else sendRecording,
+                                onCancel = { if (videoMode) cancelNote() else recorder.cancel() },
                                 onLock = {
-                                    voiceLocked = true
+                                    if (videoMode) noteLocked = true else voiceLocked = true
                                     justLocked = true
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
+                                video = videoMode,
+                                onToggle = { videoMode = !videoMode },
                                 onReach = { lockReach = it },
                                 modifier = Modifier.padding(bottom = Theme.Spacing.tight),
                             )
@@ -560,6 +637,30 @@ fun RoomScreen(
         onDispose { if (draftLoaded && editing == null) scope.launch { store.saveDraft(field.text) } }
     }
 
+    if (noteElapsed != null) {
+        VideoNoteOverlay(
+            recorder = noteRecorder,
+            locked = noteLocked,
+            lockReach = lockReach,
+            justLocked = justLocked,
+            onSend = sendNote,
+            onCancel = cancelNote,
+        )
+    }
+    if (noCamera) {
+        AlertDialog(
+            onDismissRequest = { noCamera = false },
+            confirmButton = { TextButton(onClick = { noCamera = false }) { Text(stringResource(android.R.string.ok)) } },
+            text = { Text(stringResource(R.string.video_note_no_camera)) },
+        )
+    }
+    if (cameraDenied) {
+        AlertDialog(
+            onDismissRequest = { cameraDenied = false },
+            confirmButton = { TextButton(onClick = { cameraDenied = false }) { Text(stringResource(android.R.string.ok)) } },
+            text = { Text(stringResource(R.string.video_note_needs_camera)) },
+        )
+    }
     if (micDenied) {
         AlertDialog(
             onDismissRequest = { micDenied = false },

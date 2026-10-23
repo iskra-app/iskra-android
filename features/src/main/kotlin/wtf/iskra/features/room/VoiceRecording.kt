@@ -4,6 +4,7 @@ import android.text.format.DateUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,7 +36,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.Theme
@@ -45,6 +49,10 @@ import wtf.iskra.features.R
  * замка — пишется дальше без пальца (docs/PROMPT.md, 11.3; `RecordLock` на iOS). Разрешения нет —
  * первое нажатие его просит, а не пишет. [onReach] — сколько пройдено до замка, 0…1, и −1, когда
  * рисовать нечего: по нему рисуется [RecordLock].
+ *
+ * Если дан [onToggle], кнопка — и переключатель голос / видео (`mode` на iOS): короткое нажатие меняет, что
+ * она записывает ([video]), а зажатие — пишет. Запись начинается, когда нажатие признано долгим, а не в
+ * тот же миг: иначе переключить было бы нечем, не начав записи.
  */
 @Composable
 internal fun MicButton(
@@ -57,20 +65,33 @@ internal fun MicButton(
     modifier: Modifier = Modifier,
     onLock: () -> Unit = {},
     onReach: (Float) -> Unit = {},
+    video: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     val accent = LocalAccent.current
     val cancelDistance = with(LocalDensity.current) { Theme.Size.swipeToReply.toPx() * CANCEL_STRETCH }
     val lockDistance = with(LocalDensity.current) { Theme.Size.gestureReach.toPx() }
-    val label = stringResource(R.string.voice_record)
+    val label = stringResource(if (video) R.string.video_note_record else R.string.voice_record)
+    val switchLabel = stringResource(if (video) R.string.recording_switch_to_voice else R.string.recording_switch_to_video)
     Box(
         modifier
             .size(Theme.Size.minimumTapTarget)
             .clip(CircleShape)
             .background(if (recording) accent.control else MaterialTheme.colorScheme.secondaryContainer)
-            .semantics { contentDescription = label }
-            .pointerInput(Unit) {
+            .semantics {
+                contentDescription = label
+                // TalkBack не зажимает: переключатель — действием, как `accessibilityActions` на iOS.
+                if (onToggle != null) customActions = listOf(CustomAccessibilityAction(switchLabel) { onToggle(); true })
+            }
+            // Ключ — режим: обработчики голоса и видео разные, и жест не должен держать прежние.
+            .pointerInput(video) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
+                    if (onToggle != null && awaitLongPressOrCancellation(down.id) == null) {
+                        // Отпустили раньше долгого нажатия — это переключатель, а не запись.
+                        onToggle()
+                        return@awaitEachGesture
+                    }
                     if (!hasPermission()) {
                         onNeedPermission()
                         return@awaitEachGesture
@@ -108,7 +129,7 @@ internal fun MicButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(Icons.Filled.Mic, contentDescription = null, tint = if (recording) accent.foreground else MaterialTheme.colorScheme.onSecondaryContainer)
+        Icon(if (video) Icons.Filled.Videocam else Icons.Filled.Mic, contentDescription = null, tint = if (recording) accent.foreground else MaterialTheme.colorScheme.onSecondaryContainer)
     }
 }
 

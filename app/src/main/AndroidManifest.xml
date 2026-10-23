@@ -6,6 +6,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Голосовые (docs/PROMPT.md, 11.3): спрашивается при первой записи, не при запуске. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!--
+        Кружки (docs/PROMPT.md, 11.4): камера для записи видеосообщения, спрашивается при первой записи.
+        Не обязательна: без камеры приложение ставится и работает, кружок просто нечем записать.
+    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
     <!-- «Место»: одна точка по просьбе человека, из видимого приложения. Фоновой геопозиции нет. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
