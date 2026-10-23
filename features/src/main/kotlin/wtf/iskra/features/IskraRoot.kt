@@ -168,6 +168,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     // Найденное поиском: открыть комнату — и на этом сообщении.
     var openEvent by rememberSaveable(session.sessionId) { mutableStateOf<String?>(null) }
     var settingsPage by rememberSaveable(session.sessionId) { mutableStateOf<SettingsPage?>(null) }
+    // «Новый чат» поверх списка: открывает комнату и закрывается сам.
+    var creating by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     val settings = model.settings
     val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
@@ -269,9 +271,18 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 identityChanges = identityChanges,
                 stickers = session.stickers,
             )
+            creating -> wtf.iskra.features.rooms.NewConversationScreen(
+                session,
+                onOpen = {
+                    creating = false
+                    openRoom = it
+                },
+                onClose = { creating = false },
+            )
             else -> RoomListScreen(
                 session.rooms,
                 onOpen = { openRoom = it },
+                onNewConversation = { creating = true },
                 search = session.search,
                 onOpenAt = { room, event ->
                     openEvent = event

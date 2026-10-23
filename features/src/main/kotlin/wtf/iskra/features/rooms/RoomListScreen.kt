@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MarkChatRead
 import androidx.compose.material.icons.outlined.MarkChatUnread
 import androidx.compose.material.icons.outlined.PushPin
@@ -122,6 +123,8 @@ fun RoomListScreen(
     folders: ChatFolders? = null,
     /** Долгое нажатие на полосу папок — к их настройкам. */
     onEditFolders: () -> Unit = {},
+    /** «Новый чат» (карандаш в шапке): личный чат, комната, каталог. Null — кнопки нет. */
+    onNewConversation: (() -> Unit)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -175,6 +178,7 @@ fun RoomListScreen(
                 accountMenu = accountMenu,
                 scroll = scroll,
                 settingsDot = settingsDot,
+                onNewConversation = onNewConversation,
             )
         }
         if (!showingArchive) banner()
@@ -288,6 +292,7 @@ private fun Header(
     accountMenu: (@Composable (Boolean, () -> Unit) -> Unit)? = null,
     scroll: androidx.compose.material3.TopAppBarScrollBehavior? = null,
     settingsDot: Boolean = false,
+    onNewConversation: (() -> Unit)? = null,
 ) {
     var showsAccounts by remember { mutableStateOf(false) }
     TopAppBar(
@@ -304,6 +309,11 @@ private fun Header(
             }
         },
         actions = {
+            if (onNewConversation != null) {
+                IconButton(onClick = onNewConversation) {
+                    Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.room_list_new_conversation))
+                }
+            }
             // Касание — настройки, долгое — аккаунты, как на iOS. Кнопка своя: у `IconButton` нет долгого.
             Box {
                 Box(

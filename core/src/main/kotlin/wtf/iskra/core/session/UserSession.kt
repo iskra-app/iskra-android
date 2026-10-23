@@ -64,6 +64,9 @@ class UserSession internal constructor(
 
     private val strings = strings
 
+    /** Новый разговор: личный чат, комната, вход по адресу, каталог сервера. */
+    val conversations = wtf.iskra.core.rooms.Conversations(client, userId, scope)
+
     /** Правила уведомлений аккаунта — push rules на сервере (экран «Уведомления»). */
     val notificationRules: NotificationRulesStore by lazy { NotificationRulesStore(client) }
 
