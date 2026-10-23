@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Core/Sources/IskraCore/Resources/ru.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Core/Sources/IskraCore/Resources/ru.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="device_generic">Iskra</string>
@@ -81,6 +81,7 @@
     <string name="account_block_failed">Не получилось заблокировать. Попробуйте ещё раз.</string>
     <string name="account_unblock_failed">Не получилось разблокировать. Попробуйте ещё раз.</string>
     <string name="push_invite">%s приглашает вас в чат</string>
+    <string name="push_group_line">%1$s: %2$s</string>
     <string name="push_hidden_title">Iskra</string>
     <string name="push_hidden_body">Новое сообщение</string>
     <string name="push_reaction">Реакция на ваше сообщение</string>

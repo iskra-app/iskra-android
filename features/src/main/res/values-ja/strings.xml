@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/ja.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">設定</string>
@@ -103,7 +103,7 @@
     <string name="connection_apply_now">今すぐ再接続</string>
     <string name="connection_address">ブリッジのアドレス</string>
     <string name="connection_address_prompt">npub1… または 16 進 64 文字</string>
-    <string name="connection_address_footer">初期設定では Iskra の開発者が運営するブリッジです。ご自身のブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。</string>
+    <string name="connection_address_footer">ブリッジは起動時にアドレスを表示します。「bridge address for Iskra: npub1…」の行です。</string>
     <string name="connection_address_bad">ブリッジの鍵ではないようです</string>
     <string name="connection_address_secret">それは秘密鍵です。ここに入れるのは公開鍵、npub で始まるほうです。</string>
     <string name="connection_default_bridge">Iskra のブリッジに戻す</string>
@@ -169,6 +169,13 @@
     <string name="storage_search_confirm_body">アプリが再読み込みされます。しばらくは検索ですべてが見つからないことがあります。インデックスは読み進めるうちに作り直されます。メッセージや写真はそのまま残ります。</string>
     <string name="storage_search_failed">インデックスを消去できませんでした。もう一度お試しください。</string>
     <string name="settings_about">Iskraについて</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_system">システムと同じ</string>
+    <string name="settings_language_help">メニューとシステムのウインドウは再起動後に切り替わります。</string>
+    <string name="settings_language_restart_title">Iskraを再起動しますか？</string>
+    <string name="settings_language_restart_message">メニューとシステムのウインドウは、再起動後に新しい言語に切り替わります。</string>
+    <string name="settings_language_restart">再起動</string>
+    <string name="settings_language_restart_later">後で</string>
     <string name="settings_app_name">Iskra App</string>
     <string name="about_title">Iskra について</string>
     <string name="about_tagline">Swift で書かれた、iPhone・iPad・Mac 向けのオープンソースの Matrix クライアント。</string>
@@ -250,12 +257,13 @@
     <string name="message_menu_deleted_at">削除: %s</string>
     <string name="room_today">今日</string>
     <string name="room_yesterday">昨日</string>
+    <string name="appearance_theme_and_colors">テーマと色</string>
     <string name="appearance_theme">テーマ</string>
+    <string name="appearance_accent">アクセントカラー</string>
     <string name="appearance_mode_system">システムに合わせる</string>
     <string name="appearance_mode_light">ライト</string>
     <string name="appearance_mode_dark">ダーク</string>
     <string name="appearance_compact">コンパクト表示</string>
-    <string name="appearance_accent">アプリの色</string>
     <string name="appearance_avatars">アバター</string>
     <string name="appearance_tint_interface">画面全体に色を付ける</string>
     <string name="appearance_color_red">赤</string>
@@ -474,6 +482,7 @@
     <string name="picture_change">変更</string>
     <string name="picture_remove">削除</string>
     <string name="room_manage_edit">編集</string>
+    <string name="room_manage_close_info">チャット情報を隠す</string>
     <string name="room_manage_edit_title">チャットを編集</string>
     <string name="room_manage_name_header">名前</string>
     <string name="room_manage_delete_chat">チャットを削除</string>
@@ -735,6 +744,7 @@
     <string name="devices_new_sign_in_yes">はい、自分です</string>
     <string name="devices_new_sign_in_no">自分ではありません</string>
     <string name="message_menu_reactors_all">すべて · %d</string>
+    <string name="message_menu_seen_and_reacted">%1$s · %2$s</string>
     <string name="message_media_counter">%1$d / %2$d</string>
     <string name="message_media_skip_back">15 秒戻る</string>
     <string name="message_media_skip_forward">15 秒進む</string>
@@ -857,6 +867,7 @@
     <string name="folders_excluded_header">表示しない</string>
     <string name="folders_add_chats">チャットを追加</string>
     <string name="folders_choose_chats">チャットを選択</string>
+    <string name="folders_edit_list">編集</string>
     <string name="folders_done">完了</string>
     <string name="folders_cancel">キャンセル</string>
     <string name="folders_delete">フォルダを削除</string>
@@ -874,6 +885,10 @@
     <string name="beta_developers">開発者向け</string>
     <string name="beta_shows_source">メニューにメッセージのJSON</string>
     <string name="beta_shows_source_help">メッセージのメニューに「JSONを表示」が加わり、サーバーから届いたイベントをそのまま見られます。表示がおかしいときに役立ちます。</string>
+    <string name="beta_homeserver">サーバー</string>
+    <string name="beta_homeserver_help">アプリが実際に通信しているアドレスです。サインイン時に入力したものではなく、アカウント名から見つけたものです。ブリッジはこれを変えず、接続を運ぶだけです。</string>
+    <string name="beta_shows_all_events">チャットのすべてのイベント</string>
+    <string name="beta_shows_all_events_help">権限、参加ルール、通話、写真の変更、読み取れなかったものなど、普段は表示しないイベントも、種類と送信者を添えた灰色の行としてチャットに表示します。</string>
     <string name="beta_view_source">JSONを表示</string>
     <string name="beta_no_source">このメッセージにはまだサーバー上のイベントがありません。</string>
     <string name="beta_demo_sign_in">デモサインイン</string>
@@ -918,6 +933,10 @@
     <string name="photo_editor_yellow">黄</string>
     <string name="photo_editor_green">緑</string>
     <string name="photo_editor_blue">青</string>
+    <string name="avatar_crop_title">移動と拡大</string>
+    <string name="avatar_crop_zoom">拡大率</string>
+    <string name="avatar_crop_cancel">キャンセル</string>
+    <string name="avatar_crop_done">完了</string>
     <plurals name="room_list_reactions">
         <item quantity="other">新しいリアクション %d 件</item>
     </plurals>
@@ -932,6 +951,9 @@
     </plurals>
     <plurals name="room_list_unread">
         <item quantity="other">未読 %d 件</item>
+    </plurals>
+    <plurals name="message_menu_seen">
+        <item quantity="other">%d人が既読</item>
     </plurals>
     <plurals name="message_menu_reactors">
         <item quantity="other">リアクション %d 件</item>

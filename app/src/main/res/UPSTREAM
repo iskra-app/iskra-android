@@ -1,3 +1,3 @@
-iskra 993652eab24901ec89ed6cd3367efeeac23c0556
+iskra cb07f441f14e6781441a2ae5e9cbf7c4d12ef282
 Apps/Shared/*.lproj
 Привезено scripts/sync-from-ios.sh. Не править руками: правка делается там и привозится.

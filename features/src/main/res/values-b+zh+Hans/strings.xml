@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">设置</string>
@@ -103,7 +103,7 @@
     <string name="connection_apply_now">立即重新连接</string>
     <string name="connection_address">网桥地址</string>
     <string name="connection_address_prompt">npub1… 或 64 位十六进制字符</string>
-    <string name="connection_address_footer">默认是 Iskra 开发者运行的网桥。您自己的网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。</string>
+    <string name="connection_address_footer">网桥启动时会打印它的地址——即“bridge address for Iskra: npub1…”这一行。</string>
     <string name="connection_address_bad">这看起来不像网桥密钥</string>
     <string name="connection_address_secret">这是私钥。这里需要的是公钥，也就是以 npub 开头的那个。</string>
     <string name="connection_default_bridge">恢复为 Iskra 网桥</string>
@@ -169,6 +169,13 @@
     <string name="storage_search_confirm_body">应用会重新加载。一段时间内搜索可能找不全——索引会在您阅读时重新建立。您的消息和照片原封不动。</string>
     <string name="storage_search_failed">没能清除索引。请再试一次。</string>
     <string name="settings_about">关于 Iskra</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_system">跟随系统</string>
+    <string name="settings_language_help">菜单和系统窗口将在重启后切换。</string>
+    <string name="settings_language_restart_title">重新启动 Iskra？</string>
+    <string name="settings_language_restart_message">菜单和系统窗口将在重新启动后切换为新语言。</string>
+    <string name="settings_language_restart">重新启动</string>
+    <string name="settings_language_restart_later">稍后</string>
     <string name="settings_app_name">Iskra App</string>
     <string name="about_title">关于 Iskra</string>
     <string name="about_tagline">一款用 Swift 编写、面向 iPhone、iPad 和 Mac 的开源 Matrix 客户端。</string>
@@ -250,12 +257,13 @@
     <string name="message_menu_deleted_at">删除于 %s</string>
     <string name="room_today">今天</string>
     <string name="room_yesterday">昨天</string>
+    <string name="appearance_theme_and_colors">主题与颜色</string>
     <string name="appearance_theme">主题</string>
+    <string name="appearance_accent">强调色</string>
     <string name="appearance_mode_system">跟随系统</string>
     <string name="appearance_mode_light">浅色</string>
     <string name="appearance_mode_dark">深色</string>
     <string name="appearance_compact">紧凑视图</string>
-    <string name="appearance_accent">应用颜色</string>
     <string name="appearance_avatars">头像</string>
     <string name="appearance_tint_interface">为界面着色</string>
     <string name="appearance_color_red">红色</string>
@@ -474,6 +482,7 @@
     <string name="picture_change">更换</string>
     <string name="picture_remove">移除</string>
     <string name="room_manage_edit">编辑</string>
+    <string name="room_manage_close_info">隐藏聊天信息</string>
     <string name="room_manage_edit_title">编辑聊天</string>
     <string name="room_manage_name_header">名称</string>
     <string name="room_manage_delete_chat">删除聊天</string>
@@ -735,6 +744,7 @@
     <string name="devices_new_sign_in_yes">是的，是我</string>
     <string name="devices_new_sign_in_no">不是我</string>
     <string name="message_menu_reactors_all">全部 · %d</string>
+    <string name="message_menu_seen_and_reacted">%1$s · %2$s</string>
     <string name="message_media_counter">%1$d / %2$d</string>
     <string name="message_media_skip_back">后退 15 秒</string>
     <string name="message_media_skip_forward">前进 15 秒</string>
@@ -857,6 +867,7 @@
     <string name="folders_excluded_header">从不显示</string>
     <string name="folders_add_chats">添加聊天</string>
     <string name="folders_choose_chats">选择聊天</string>
+    <string name="folders_edit_list">编辑</string>
     <string name="folders_done">完成</string>
     <string name="folders_cancel">取消</string>
     <string name="folders_delete">删除文件夹</string>
@@ -874,6 +885,10 @@
     <string name="beta_developers">开发者选项</string>
     <string name="beta_shows_source">菜单中显示消息 JSON</string>
     <string name="beta_shows_source_help">消息菜单中会出现“查看 JSON”——服务器发来的原始事件。消息显示不对时很有用。</string>
+    <string name="beta_homeserver">服务器</string>
+    <string name="beta_homeserver_help">应用实际通信的地址——根据账号名称找到，不一定是登录时输入的那个。桥接不会改变它，只负责传输连接。</string>
+    <string name="beta_shows_all_events">聊天中的所有事件</string>
+    <string name="beta_shows_all_events_help">聊天中也会显示应用通常不显示的事件——权限、加入规则、通话、头像更改、无法解析的内容——以灰色行显示类型和发送者。</string>
     <string name="beta_view_source">查看 JSON</string>
     <string name="beta_no_source">这条消息在服务器上还没有事件。</string>
     <string name="beta_demo_sign_in">演示登录</string>
@@ -918,6 +933,10 @@
     <string name="photo_editor_yellow">黄色</string>
     <string name="photo_editor_green">绿色</string>
     <string name="photo_editor_blue">蓝色</string>
+    <string name="avatar_crop_title">移动和缩放</string>
+    <string name="avatar_crop_zoom">缩放</string>
+    <string name="avatar_crop_cancel">取消</string>
+    <string name="avatar_crop_done">完成</string>
     <plurals name="room_list_reactions">
         <item quantity="other">%d 个新回应</item>
     </plurals>
@@ -932,6 +951,9 @@
     </plurals>
     <plurals name="room_list_unread">
         <item quantity="other">%d 条未读</item>
+    </plurals>
+    <plurals name="message_menu_seen">
+        <item quantity="other">%d 人已读</item>
     </plurals>
     <plurals name="message_menu_reactors">
         <item quantity="other">%d 个回应</item>

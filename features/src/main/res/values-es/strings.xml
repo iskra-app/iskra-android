@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/es.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/es.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Ajustes</string>
@@ -103,7 +103,7 @@
     <string name="connection_apply_now">Reconectar ahora</string>
     <string name="connection_address">Dirección del puente</string>
     <string name="connection_address_prompt">npub1… o 64 caracteres hex</string>
-    <string name="connection_address_footer">Por defecto aquí está el puente que mantienen los desarrolladores de Iskra. Un puente propio muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».</string>
+    <string name="connection_address_footer">Un puente muestra su dirección al arrancar: la línea «bridge address for Iskra: npub1…».</string>
     <string name="connection_address_bad">No parece una clave de puente</string>
     <string name="connection_address_secret">Esa es una clave secreta. Aquí hace falta la pública: la que empieza por npub.</string>
     <string name="connection_default_bridge">Volver al puente de Iskra</string>
@@ -169,6 +169,13 @@
     <string name="storage_search_confirm_body">La app se recargará. Durante un tiempo la búsqueda no lo encontrará todo: el índice se rellena mientras lee. Sus mensajes y fotos siguen donde están.</string>
     <string name="storage_search_failed">No se ha podido vaciar el índice. Inténtelo de nuevo.</string>
     <string name="settings_about">Acerca de Iskra</string>
+    <string name="settings_language">Idioma</string>
+    <string name="settings_language_system">Como en el sistema</string>
+    <string name="settings_language_help">Los menús y las ventanas del sistema cambian al reiniciar.</string>
+    <string name="settings_language_restart_title">¿Reiniciar Iskra?</string>
+    <string name="settings_language_restart_message">Los menús y las ventanas del sistema cambiarán al nuevo idioma después de reiniciar.</string>
+    <string name="settings_language_restart">Reiniciar</string>
+    <string name="settings_language_restart_later">Más tarde</string>
     <string name="settings_app_name">Iskra App</string>
     <string name="about_title">Acerca de Iskra</string>
     <string name="about_tagline">Un cliente de Matrix de código abierto para iPhone, iPad y Mac, escrito en Swift.</string>
@@ -250,12 +257,13 @@
     <string name="message_menu_deleted_at">Eliminado %s</string>
     <string name="room_today">Hoy</string>
     <string name="room_yesterday">Ayer</string>
+    <string name="appearance_theme_and_colors">Tema y colores</string>
     <string name="appearance_theme">Tema</string>
+    <string name="appearance_accent">Color de acento</string>
     <string name="appearance_mode_system">Como el sistema</string>
     <string name="appearance_mode_light">Claro</string>
     <string name="appearance_mode_dark">Oscuro</string>
     <string name="appearance_compact">Vista compacta</string>
-    <string name="appearance_accent">Color de la app</string>
     <string name="appearance_avatars">Avatares</string>
     <string name="appearance_tint_interface">Teñir la interfaz</string>
     <string name="appearance_color_red">Rojo</string>
@@ -474,6 +482,7 @@
     <string name="picture_change">Cambiar</string>
     <string name="picture_remove">Quitar</string>
     <string name="room_manage_edit">Editar</string>
+    <string name="room_manage_close_info">Ocultar información del chat</string>
     <string name="room_manage_edit_title">Editar chat</string>
     <string name="room_manage_name_header">Nombre</string>
     <string name="room_manage_delete_chat">Eliminar chat</string>
@@ -735,6 +744,7 @@
     <string name="devices_new_sign_in_yes">Sí, fui yo</string>
     <string name="devices_new_sign_in_no">No fui yo</string>
     <string name="message_menu_reactors_all">Todas · %d</string>
+    <string name="message_menu_seen_and_reacted">%1$s · %2$s</string>
     <string name="message_media_counter">%1$d de %2$d</string>
     <string name="message_media_skip_back">Atrás 15 segundos</string>
     <string name="message_media_skip_forward">Adelante 15 segundos</string>
@@ -857,6 +867,7 @@
     <string name="folders_excluded_header">No mostrar nunca</string>
     <string name="folders_add_chats">Añadir chats</string>
     <string name="folders_choose_chats">Elija chats</string>
+    <string name="folders_edit_list">Editar</string>
     <string name="folders_done">Listo</string>
     <string name="folders_cancel">Cancelar</string>
     <string name="folders_delete">Eliminar carpeta</string>
@@ -874,6 +885,10 @@
     <string name="beta_developers">Para desarrolladores</string>
     <string name="beta_shows_source">JSON del mensaje en el menú</string>
     <string name="beta_shows_source_help">El menú del mensaje tendrá «Ver JSON»: el evento tal como lo envió el servidor. Útil si un mensaje se muestra mal.</string>
+    <string name="beta_homeserver">Servidor</string>
+    <string name="beta_homeserver_help">La dirección con la que la app habla de verdad: se averigua a partir del nombre de la cuenta, no es necesariamente la que se escribió al entrar. Un puente no la cambia; solo lleva la conexión.</string>
+    <string name="beta_shows_all_events">Todos los eventos del chat</string>
+    <string name="beta_shows_all_events_help">El chat mostrará también los eventos que la app suele omitir —permisos, reglas de acceso, llamadas, cambios de foto, todo lo que no se pudo leer— como una línea gris con el tipo y el remitente.</string>
     <string name="beta_view_source">Ver JSON</string>
     <string name="beta_no_source">Este mensaje aún no tiene evento en el servidor.</string>
     <string name="beta_demo_sign_in">Inicio de sesión de demostración</string>
@@ -918,6 +933,10 @@
     <string name="photo_editor_yellow">Amarillo</string>
     <string name="photo_editor_green">Verde</string>
     <string name="photo_editor_blue">Azul</string>
+    <string name="avatar_crop_title">Mover y ampliar</string>
+    <string name="avatar_crop_zoom">Zoom</string>
+    <string name="avatar_crop_cancel">Cancelar</string>
+    <string name="avatar_crop_done">Listo</string>
     <plurals name="room_list_reactions">
         <item quantity="one">%d reacción nueva</item>
         <item quantity="many">%d reacciones nuevas</item>
@@ -942,6 +961,11 @@
         <item quantity="one">%d sin leer</item>
         <item quantity="many">%d sin leer</item>
         <item quantity="other">%d sin leer</item>
+    </plurals>
+    <plurals name="message_menu_seen">
+        <item quantity="one">%d leído</item>
+        <item quantity="many">%d leídos</item>
+        <item quantity="other">%d leídos</item>
     </plurals>
     <plurals name="message_menu_reactors">
         <item quantity="one">%d reacción</item>

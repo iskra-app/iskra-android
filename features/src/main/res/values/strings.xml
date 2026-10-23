@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/en.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/en.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Settings</string>
@@ -103,7 +103,7 @@
     <string name="connection_apply_now">Reconnect now</string>
     <string name="connection_address">Bridge address</string>
     <string name="connection_address_prompt">npub1… or 64 hex characters</string>
-    <string name="connection_address_footer">By default this is the bridge the Iskra developers run. A bridge of your own prints its address when it starts — the line “bridge address for Iskra: npub1…”.</string>
+    <string name="connection_address_footer">A bridge prints its address when it starts — the line “bridge address for Iskra: npub1…”.</string>
     <string name="connection_address_bad">That does not look like a bridge key</string>
     <string name="connection_address_secret">That is a secret key. The public one is wanted here — the one that starts with npub.</string>
     <string name="connection_default_bridge">Back to the Iskra bridge</string>
@@ -169,6 +169,13 @@
     <string name="storage_search_confirm_body">The app will reload. For a while search will not find everything — the index fills again as you read. Your messages and photos stay where they are.</string>
     <string name="storage_search_failed">The index could not be cleared. Try again.</string>
     <string name="settings_about">About Iskra</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">Same as system</string>
+    <string name="settings_language_help">Menus and system windows switch after a restart.</string>
+    <string name="settings_language_restart_title">Restart Iskra?</string>
+    <string name="settings_language_restart_message">Menus and system windows switch to the new language after a restart.</string>
+    <string name="settings_language_restart">Restart</string>
+    <string name="settings_language_restart_later">Later</string>
     <string name="settings_app_name">Iskra App</string>
     <string name="about_title">About Iskra</string>
     <string name="about_tagline">An open-source Matrix client for iPhone, iPad and Mac, written in Swift.</string>
@@ -250,12 +257,13 @@
     <string name="message_menu_deleted_at">Deleted %s</string>
     <string name="room_today">Today</string>
     <string name="room_yesterday">Yesterday</string>
+    <string name="appearance_theme_and_colors">Theme and colours</string>
     <string name="appearance_theme">Theme</string>
+    <string name="appearance_accent">Accent colour</string>
     <string name="appearance_mode_system">System</string>
     <string name="appearance_mode_light">Light</string>
     <string name="appearance_mode_dark">Dark</string>
     <string name="appearance_compact">Compact view</string>
-    <string name="appearance_accent">App colour</string>
     <string name="appearance_avatars">Avatars</string>
     <string name="appearance_tint_interface">Tint the interface</string>
     <string name="appearance_color_red">Red</string>
@@ -474,6 +482,7 @@
     <string name="picture_change">Change</string>
     <string name="picture_remove">Remove</string>
     <string name="room_manage_edit">Edit</string>
+    <string name="room_manage_close_info">Hide chat info</string>
     <string name="room_manage_edit_title">Edit chat</string>
     <string name="room_manage_name_header">Name</string>
     <string name="room_manage_delete_chat">Delete chat</string>
@@ -735,6 +744,7 @@
     <string name="devices_new_sign_in_yes">Yes, it was me</string>
     <string name="devices_new_sign_in_no">It wasn’t me</string>
     <string name="message_menu_reactors_all">All · %d</string>
+    <string name="message_menu_seen_and_reacted">%1$s · %2$s</string>
     <string name="message_media_counter">%1$d of %2$d</string>
     <string name="message_media_skip_back">Back 15 seconds</string>
     <string name="message_media_skip_forward">Forward 15 seconds</string>
@@ -857,6 +867,7 @@
     <string name="folders_excluded_header">Never show</string>
     <string name="folders_add_chats">Add chats</string>
     <string name="folders_choose_chats">Choose chats</string>
+    <string name="folders_edit_list">Edit</string>
     <string name="folders_done">Done</string>
     <string name="folders_cancel">Cancel</string>
     <string name="folders_delete">Delete folder</string>
@@ -874,6 +885,10 @@
     <string name="beta_developers">For developers</string>
     <string name="beta_shows_source">Message JSON in the menu</string>
     <string name="beta_shows_source_help">A message’s menu gets “View JSON” — the event as the server sent it. Useful when a message shows up wrong.</string>
+    <string name="beta_homeserver">Server</string>
+    <string name="beta_homeserver_help">The address the app really talks to — found from the account’s name, not necessarily what was typed at sign-in. A bridge doesn’t change it; it only carries the connection.</string>
+    <string name="beta_shows_all_events">All events in chats</string>
+    <string name="beta_shows_all_events_help">Chats also show the events the app normally leaves out — permissions, join rules, calls, picture changes, anything that failed to parse — as a grey line with the type and the sender.</string>
     <string name="beta_view_source">View JSON</string>
     <string name="beta_no_source">This message has no event on the server yet.</string>
     <string name="beta_demo_sign_in">Demo sign-in</string>
@@ -918,6 +933,10 @@
     <string name="photo_editor_yellow">Yellow</string>
     <string name="photo_editor_green">Green</string>
     <string name="photo_editor_blue">Blue</string>
+    <string name="avatar_crop_title">Move and zoom</string>
+    <string name="avatar_crop_zoom">Zoom</string>
+    <string name="avatar_crop_cancel">Cancel</string>
+    <string name="avatar_crop_done">Done</string>
     <plurals name="room_list_reactions">
         <item quantity="one">%d new reaction</item>
         <item quantity="other">%d new reactions</item>
@@ -937,6 +956,10 @@
     <plurals name="room_list_unread">
         <item quantity="one">%d unread</item>
         <item quantity="other">%d unread</item>
+    </plurals>
+    <plurals name="message_menu_seen">
+        <item quantity="one">%d seen</item>
+        <item quantity="other">%d seen</item>
     </plurals>
     <plurals name="message_menu_reactors">
         <item quantity="one">%d reaction</item>

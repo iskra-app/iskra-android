@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@993652eab249: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Настройки</string>
@@ -103,7 +103,7 @@
     <string name="connection_apply_now">Переподключиться сейчас</string>
     <string name="connection_address">Адрес моста</string>
     <string name="connection_address_prompt">npub1… или 64 знака hex</string>
-    <string name="connection_address_footer">По умолчанию здесь мост, который держат разработчики Iskra. Свой мост печатает адрес при запуске — строка «bridge address for Iskra: npub1…».</string>
+    <string name="connection_address_footer">Мост печатает свой адрес при запуске — строка «bridge address for Iskra: npub1…».</string>
     <string name="connection_address_bad">Не похоже на ключ моста</string>
     <string name="connection_address_secret">Это секретный ключ. Нужен публичный — тот, что начинается с npub.</string>
     <string name="connection_default_bridge">Вернуть мост Iskra</string>
@@ -149,6 +149,13 @@
     <string name="settings_blocked_empty_message">Заблокированные люди появятся здесь. Их сообщения вы не увидите.</string>
     <string name="settings_unblock">Разблокировать</string>
     <string name="settings_about">Об Iskra</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_system">Как в системе</string>
+    <string name="settings_language_help">Меню и системные окна переключатся после перезапуска.</string>
+    <string name="settings_language_restart_title">Перезапустить Iskra?</string>
+    <string name="settings_language_restart_message">Меню и системные окна переключатся на новый язык после перезапуска.</string>
+    <string name="settings_language_restart">Перезапустить</string>
+    <string name="settings_language_restart_later">Позже</string>
     <string name="settings_app_name">Iskra App</string>
     <string name="about_title">Об Iskra</string>
     <string name="about_tagline">Клиент Matrix для iPhone, iPad и Mac на Swift с открытым исходным кодом.</string>
@@ -250,12 +257,13 @@
     <string name="message_menu_deleted_at">Удалено %s</string>
     <string name="room_today">Сегодня</string>
     <string name="room_yesterday">Вчера</string>
+    <string name="appearance_theme_and_colors">Тема и цвета</string>
     <string name="appearance_theme">Тема</string>
+    <string name="appearance_accent">Акцентный цвет</string>
     <string name="appearance_mode_system">Как в системе</string>
     <string name="appearance_mode_light">Светлая</string>
     <string name="appearance_mode_dark">Тёмная</string>
     <string name="appearance_compact">Компактный вид</string>
-    <string name="appearance_accent">Цвет приложения</string>
     <string name="appearance_avatars">Аватарки</string>
     <string name="appearance_tint_interface">Тонировать интерфейс</string>
     <string name="appearance_color_red">Красный</string>
@@ -474,6 +482,7 @@
     <string name="picture_change">Изменить</string>
     <string name="picture_remove">Удалить</string>
     <string name="room_manage_edit">Изменить</string>
+    <string name="room_manage_close_info">Скрыть информацию о чате</string>
     <string name="room_manage_edit_title">Изменить чат</string>
     <string name="room_manage_name_header">Название</string>
     <string name="room_manage_delete_chat">Удалить чат</string>
@@ -735,6 +744,7 @@
     <string name="devices_new_sign_in_yes">Да, это я</string>
     <string name="devices_new_sign_in_no">Это не я</string>
     <string name="message_menu_reactors_all">Все · %d</string>
+    <string name="message_menu_seen_and_reacted">%1$s · %2$s</string>
     <string name="message_media_counter">%1$d из %2$d</string>
     <string name="message_media_skip_back">Назад на 15 секунд</string>
     <string name="message_media_skip_forward">Вперёд на 15 секунд</string>
@@ -857,6 +867,7 @@
     <string name="folders_excluded_header">Никогда не показывать</string>
     <string name="folders_add_chats">Добавить чаты</string>
     <string name="folders_choose_chats">Выберите чаты</string>
+    <string name="folders_edit_list">Изменить</string>
     <string name="folders_done">Готово</string>
     <string name="folders_cancel">Отмена</string>
     <string name="folders_delete">Удалить папку</string>
@@ -874,6 +885,10 @@
     <string name="beta_developers">Для разработчиков</string>
     <string name="beta_shows_source">JSON сообщения в меню</string>
     <string name="beta_shows_source_help">В меню сообщения появится «Просмотреть JSON» — событие так, как его прислал сервер. Пригодится, если сообщение показывается не так.</string>
+    <string name="beta_homeserver">Сервер</string>
+    <string name="beta_homeserver_help">Адрес, с которым на самом деле разговаривает приложение, — после поиска по имени аккаунта, а не тот, что вводили при входе. Мост его не меняет: он только везёт соединение.</string>
+    <string name="beta_shows_all_events">Все события в чате</string>
+    <string name="beta_shows_all_events_help">В чате появятся и те события, которые приложение обычно не показывает: права, правила входа, звонки, смена аватарки, всё, что не удалось разобрать, — серой строкой с типом и отправителем.</string>
     <string name="beta_view_source">Просмотреть JSON</string>
     <string name="beta_no_source">У этого сообщения пока нет события на сервере.</string>
     <string name="beta_demo_sign_in">Демо-вход</string>
@@ -918,6 +933,10 @@
     <string name="photo_editor_yellow">Жёлтый</string>
     <string name="photo_editor_green">Зелёный</string>
     <string name="photo_editor_blue">Синий</string>
+    <string name="avatar_crop_title">Переместите и приблизьте</string>
+    <string name="avatar_crop_zoom">Масштаб</string>
+    <string name="avatar_crop_cancel">Отмена</string>
+    <string name="avatar_crop_done">Готово</string>
     <plurals name="room_list_reactions">
         <item quantity="one">%d новая реакция</item>
         <item quantity="few">%d новые реакции</item>
@@ -947,6 +966,12 @@
         <item quantity="few">%d непрочитанных</item>
         <item quantity="many">%d непрочитанных</item>
         <item quantity="other">%d непрочитанных</item>
+    </plurals>
+    <plurals name="message_menu_seen">
+        <item quantity="one">%d прочитал</item>
+        <item quantity="few">%d прочитали</item>
+        <item quantity="many">%d прочитали</item>
+        <item quantity="other">%d прочитали</item>
     </plurals>
     <plurals name="message_menu_reactors">
         <item quantity="one">%d реакция</item>
