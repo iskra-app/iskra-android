@@ -155,6 +155,22 @@ class RoomListStore(
     private var sendQueueRestart: Job? = null
     private val sendQueueRecovery = SendQueueRecovery()
 
+    /** Живая лента на каждую строку на экране — см. [RoomPeek] и [PeekLine]. */
+    private val peeks = HashMap<String, RoomPeek>()
+
+    /** Строки, которые список говорит видимыми прямо сейчас. */
+    private val visibleRows = HashSet<String>()
+
+    /** Комнаты с лентой, давно не виденные первыми, — какие уйдут, когда их слишком много. */
+    private val peekOrder = mutableListOf<String>()
+
+    /**
+     * Комнаты в очереди на ленту: открываются по одной. Появление списка — десяток строк разом, а десяток лент,
+     * собранных бок о бок на первой синхронизации, — та давка, от которой и стоит пятидесятимиллисекундное склеивание.
+     */
+    private val peekQueue = ArrayDeque<String>()
+    private var peekOpener: Job? = null
+
     private var notificationSettings: NotificationSettings? = null
     private var mutedRoomIds: Set<String> = emptySet()
 
@@ -603,6 +619,7 @@ class RoomListStore(
         typingHandles.clear()
         mutableTyping.value = emptySet()
 
+        stopPeeks()
         sendQueueHandle?.cancel()
         sendQueueHandle = null
         sendQueueErrorHandle?.cancel()
@@ -824,7 +841,16 @@ class RoomListStore(
         answer.draft?.getOrNull().let { saved ->
             if (answer.draft != null && !drafts.containsKey(roomId)) drafts[roomId] = saved
         }
-        val last = MessagePreview.lastMessage(answer.latest, strings, readUpTo[roomId])
+        val sdkLast = MessagePreview.lastMessage(answer.latest, strings, readUpTo[roomId])
+        // Собственная последняя строка чата, где его строка на экране и у чата она есть — см. [PeekLine]. Кроме случая, когда
+        // SDK знает о более новом: заглянувшая лента — страница комнаты, и только что пришедшее сообщение может дойти до
+        // пересказа на миг раньше страницы.
+        val peeked = peeks[roomId]?.line
+        val last = if (peeked != null && sdkLast?.activity.let { it == null || peeked.date >= it }) {
+            LastMessage(peeked.text, peeked.date, peeked.kind, peeked.mark, peeked.sender)
+        } else {
+            sdkLast
+        }
         return RoomSummary.of(
             info = answer.info,
             ownUserId = ownUserId,
@@ -900,6 +926,72 @@ class RoomListStore(
         if (known != null && date <= known) return
         readUpTo[roomId] = date
         rebuilds.schedule(setOf(roomId))
+    }
+
+    // MARK: Заглядывание в чаты
+
+    /** Строка вышла на экран. */
+    fun rowAppeared(roomId: String) {
+        if (hasStopped) return
+        visibleRows += roomId
+        peekOrder.remove(roomId)
+        peekOrder += roomId
+        if (roomId !in peeks && roomId !in peekQueue) {
+            peekQueue += roomId
+            openPeeks()
+        }
+        trimPeeks()
+    }
+
+    /** Строка ушла с экрана. Лента остаётся, пока их не слишком много — см. [PEEK_LIMIT]: вернувшаяся строка не открывается дважды. */
+    fun rowDisappeared(roomId: String) {
+        visibleRows -= roomId
+        peekQueue.remove(roomId)
+    }
+
+    private fun openPeeks() {
+        // Не `!= null`: на главном потоке `launch` исполняется сразу, и цикл мог уже кончиться (первой в очереди было
+        // приглашение) до того, как вернул `Job` — тогда в поле остаётся *завершённая* задача, и ленты не открылись бы никогда.
+        if (peekOpener?.isActive == true) return
+        val mine = generation
+        peekOpener = scope.launch {
+            while (mine == generation && peekQueue.isNotEmpty()) {
+                val roomId = peekQueue.removeFirst()
+                if (roomId in peeks) continue
+                val room = orderedRooms.firstOrNull { it.id == roomId }?.room ?: continue
+                // У приглашения ещё нет разговора, в который заглянуть, а пространство — не разговор.
+                val joined = runCatching { room.membership() == Membership.JOINED && !room.isSpace() }.getOrDefault(false)
+                if (!joined) continue
+                val peek = RoomPeek(room, ownUserId.orEmpty(), strings, scope)
+                peek.onChange = { if (!hasStopped) rebuilds.schedule(setOf(roomId)) }
+                peeks[roomId] = peek
+                peek.start()
+            }
+        }
+    }
+
+    private fun trimPeeks() {
+        var excess = peeks.size - PEEK_LIMIT
+        if (excess <= 0) return
+        for (roomId in peekOrder.toList()) {
+            if (excess <= 0) break
+            if (roomId in visibleRows) continue
+            val peek = peeks.remove(roomId) ?: continue
+            peek.stop()
+            excess -= 1
+            rebuilds.schedule(setOf(roomId))
+        }
+        peekOrder.removeAll { it !in peeks && it !in peekQueue && it !in visibleRows }
+    }
+
+    private fun stopPeeks() {
+        peekOpener?.cancel()
+        peekOpener = null
+        peekQueue.clear()
+        peeks.values.forEach { it.stop() }
+        peeks.clear()
+        peekOrder.clear()
+        visibleRows.clear()
     }
 
     fun clearFailure() = mutableState.update { it.copy(failure = null) }
@@ -991,5 +1083,8 @@ class RoomListStore(
         /** Коротко: ответа никто не ждёт, ждут выхода, которому это мешает. */
         val STOP_LIMIT = 5.seconds
         val SYNC_RESTART_DELAY = 2.seconds
+
+        /** Сколько лент держится: экран и прокрутка в обе стороны; вернувшаяся в эти пределы строка не открывается дважды. */
+        const val PEEK_LIMIT = 40
     }
 }

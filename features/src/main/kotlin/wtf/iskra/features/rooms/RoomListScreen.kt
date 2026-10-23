@@ -66,6 +66,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -219,6 +220,11 @@ fun RoomListScreen(
                         }
                     }
                     items(shown, key = { it.id }) { room ->
+                        // Строка на экране — список заглядывает в её чат (`RoomPeek`), и уходит, когда строка ушла.
+                        DisposableEffect(room.id) {
+                            store.rowAppeared(room.id)
+                            onDispose { store.rowDisappeared(room.id) }
+                        }
                         if (room.isInvitation) {
                             InviteRow(
                                 room = room,
