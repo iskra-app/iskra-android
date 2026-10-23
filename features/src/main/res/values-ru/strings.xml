@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Настройки</string>
@@ -276,6 +276,7 @@
     <string name="appearance_color_mono">Чёрно-белый</string>
     <string name="appearance_wallpaper">Обои</string>
     <string name="appearance_wallpaper_dimming">Затемнение</string>
+    <string name="appearance_wallpaper_lightening">Осветление</string>
     <string name="appearance_wallpaper_choose">Выбрать другое фото</string>
     <string name="appearance_wallpaper_none">Без обоев</string>
     <string name="appearance_wallpaper_sunset">Закат</string>

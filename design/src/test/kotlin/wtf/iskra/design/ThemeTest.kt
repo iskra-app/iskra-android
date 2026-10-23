@@ -46,6 +46,7 @@ class ThemeTest {
         assertEquals(listOf(4f, 8f, 12f, 16f, 24f), with(Theme.Spacing) { listOf(tight, close, normal, roomy, generous) }.map { it.value })
         assertEquals(12f, Theme.Spacing.betweenSenders.value)
         assertEquals(2f, Theme.Spacing.withinRun.value)
+        assertEquals(8f, Theme.Spacing.withinCompactRun.value)
         assertEquals(40f, Theme.Size.avatar.value)
         assertEquals(56f, Theme.Size.roomAvatar.value)
         assertEquals(64f, Theme.Size.avatarLarge.value)

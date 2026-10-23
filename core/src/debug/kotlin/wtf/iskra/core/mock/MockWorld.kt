@@ -262,10 +262,10 @@ internal class MockWorld(private val now: Long = System.currentTimeMillis()) {
             room, me, "im.ponies.room_emotes",
             json(
                 "pack" to json("display_name" to "Искра", "usage" to listOf("sticker")),
-                "images" to pack(StickerArt.CONNECTED, StickerArt.UNLOCKED, StickerArt.SURPRISE, StickerArt.BYPASS),
+                "images" to pack(StickerArt.LOADING, StickerArt.UNLOCKED, StickerArt.SURPRISE, StickerArt.CURIOUS),
             ),
         )
-        sticker(room, kostya, StickerArt.CONNECTED)
+        sticker(room, kostya, StickerArt.UNLOCKED)
 
         rooms.getValue(room).accountData["m.tag"] = json("tags" to json("m.favourite" to json("order" to 0.1)))
         read(room, me, rooms.getValue(room).events.size - 5)

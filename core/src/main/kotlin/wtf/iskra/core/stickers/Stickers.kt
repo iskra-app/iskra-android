@@ -8,7 +8,7 @@ import wtf.iskra.core.mock.obj
 import wtf.iskra.core.mock.str
 
 /**
- * Стикеры, с которыми приходит приложение, — «Искорки»: розовая искра с бордовыми глазами, двенадцать
+ * Стикеры, с которыми приходит приложение, — «Искорки»: розовая искра с бордовыми глазами, десять
  * настроений (`StickerArt.swift`). PNG 512×512 на прозрачном, нарисованы руками; привозит
  * `sync-from-ios`. Те же картинки стоят в паках демо.
  *
@@ -18,7 +18,7 @@ import wtf.iskra.core.mock.str
  */
 enum class StickerArt(val emoji: String) {
     HELLO("👋"), JOY("🎉"), LOVE("❤️"), CURIOUS("🤔"), SURPRISE("😮"), SLEEPY("😴"),
-    SAD("😢"), GRUMPY("😒"), LOADING("⏳"), UNLOCKED("🔓"), BYPASS("🏃"), CONNECTED("📶");
+    SAD("😢"), GRUMPY("😒"), LOADING("⏳"), UNLOCKED("🔓");
 
     val shortcode: String get() = name.lowercase()
 

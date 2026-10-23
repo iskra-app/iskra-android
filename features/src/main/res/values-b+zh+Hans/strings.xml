@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@cb07f441f14e: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@943a8ef689f2: Sources/IskraFeatures/Resources/zh-Hans.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">设置</string>
@@ -276,6 +276,7 @@
     <string name="appearance_color_mono">黑白</string>
     <string name="appearance_wallpaper">壁纸</string>
     <string name="appearance_wallpaper_dimming">调暗</string>
+    <string name="appearance_wallpaper_lightening">调亮</string>
     <string name="appearance_wallpaper_choose">选择其他照片</string>
     <string name="appearance_wallpaper_none">无壁纸</string>
     <string name="appearance_wallpaper_sunset">日落</string>

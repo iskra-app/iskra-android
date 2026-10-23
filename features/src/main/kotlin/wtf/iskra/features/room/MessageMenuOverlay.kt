@@ -71,8 +71,8 @@ import kotlin.math.roundToInt
 /** Одно действие в колонке меню: слово, значок и опасное ли оно (красным). */
 internal class MenuAction(val title: String, val icon: ImageVector, val destructive: Boolean = false, val run: () -> Unit)
 
-/** Шесть, что предлагаются первыми (`QuickReaction`): то, что люди правда ставят, за одно нажатие. */
-internal val QUICK_REACTIONS = listOf("❤️", "👍", "😂", "😮", "😢", "🙏")
+/** Пять, что предлагаются первыми (`QuickReaction`): то, что люди правда ставят, за одно нажатие. */
+internal val QUICK_REACTIONS = listOf("❤️", "👍", "😂", "😮", "😢")
 
 /**
  * Меню долгого нажатия — своё, а не системное (`MessageMenuOverlay` на iOS). Три вещи над затемнённой
@@ -158,7 +158,7 @@ private fun MenuLayout(anchor: Rect, alignEnd: Boolean, content: @Composable () 
     }
 }
 
-/** Шесть эмодзи и «+». Свои отмечены подложкой — нажатие на свою снимает её. */
+/** Пять эмодзи и «+». Свои отмечены подложкой — нажатие на свою снимает её. */
 @Composable
 private fun ReactionBar(mine: Set<String>, onPick: (String) -> Unit, onMore: () -> Unit) {
     val accent = LocalAccent.current

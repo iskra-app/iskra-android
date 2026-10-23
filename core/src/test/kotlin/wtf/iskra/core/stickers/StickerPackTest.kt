@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import wtf.iskra.core.mock.JsonValues
+import wtf.iskra.core.mock.int
 import wtf.iskra.core.mock.json
 import wtf.iskra.core.mock.obj
 
@@ -146,6 +147,20 @@ class StickerPackTest {
         val again = account.library().apply { load(null) }
         assertEquals(first, account.uploads)
         assertEquals(StickerArt.entries.size, again.state.value.packs.single { it.isBuiltIn }.stickers.size)
+    }
+
+    @Test
+    fun anExtraKeyInTheStoredSetIsIgnoredAndNothingIsUploaded() = runBlocking {
+        val account = Account()
+        account.library().load(null)
+        val uploaded = account.uploads
+        val stored = JsonValues.decodeObject(account.data.getValue(StickerLibrary.BUILT_IN_TYPE))
+        stored["images"].obj()!!["bypass"] = image("mxc://s/old", body = "🏃", usage = listOf("sticker"))
+        assertEquals(StickerArt.VERSION, stored["version"].int())
+        account.data[StickerLibrary.BUILT_IN_TYPE] = JsonValues.encode(stored)
+        val again = account.library().apply { load(null) }
+        assertEquals(10, again.state.value.packs.single { it.isBuiltIn }.stickers.size)
+        assertEquals(uploaded, account.uploads)
     }
 
     @Test
