@@ -36,6 +36,8 @@ composeBom = "2026.09.00"
 media3 = "1.11.1"
 # Запись кружочков (docs/PROMPT.md, 11.4): CameraX поверх Camera2, без сервисов Google. Apache 2.0.
 camerax = "1.6.1"
+# Чтение QR (docs/PROMPT.md, 5): только декодер ZXing, без ML Kit и сервисов Google. Apache 2.0.
+zxing = "3.5.3"
 # Тональные палитры Material 3 из цвета акцента (HCT, схемы TonalSpot/Monochrome). Порт на Kotlin
 # material-color-utilities Google, без Compose и без библиотек Google; MIT.
 materialColorUtilities = "5.0.1"
@@ -84,6 +86,7 @@ androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.r
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 androidx-camera-video = { module = "androidx.camera:camera-video", version.ref = "camerax" }
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "materialColorUtilities" }
 

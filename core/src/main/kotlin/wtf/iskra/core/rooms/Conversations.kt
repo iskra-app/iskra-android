@@ -232,6 +232,58 @@ class Conversations internal constructor(
         return join(trimmed, via)
     }
 
+    /** Входит в комнату, на которую указала ссылка: серверы, через которые спрашивать, ей приложены ([MatrixLink.Room]). */
+    suspend fun joinRoom(idOrAlias: String, via: List<String>): String {
+        if (!isRoomAddress(idOrAlias)) throw ConversationException(ConversationFailure.BAD_ADDRESS)
+        return join(idOrAlias, via)
+    }
+
+    /**
+     * Комната, в которой аккаунт уже есть, по этому ID или псевдониму. Локально, поэтому QR комнаты, где ты состоишь, открывает её
+     * сразу, и без сети, а не просит сервер впустить в ту, откуда не уходил. Null — нет такой.
+     */
+    suspend fun joinedRoom(idOrAlias: String): String? {
+        val roomId = if (idOrAlias.startsWith("!")) {
+            idOrAlias
+        } else {
+            val resolved = runCatching { withTimeLimit(DIRECTORY_LIMIT) { client.resolveRoomAlias(idOrAlias) } }.getOrNull() ?: return null
+            resolved.roomId
+        }
+        val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
+        return try {
+            if (room.membership() == Membership.JOINED) room.id() else null
+        } finally {
+            room.close()
+        }
+    }
+
+    /**
+     * Что за комната, на которую указала ссылка, — прежде чем решать входить: имя, тема, сколько людей. Null, когда сервер не
+     * говорит — комната закрытая или её нет; войти всё равно можно, и вызывающий предложит.
+     */
+    suspend fun roomPreview(idOrAlias: String, via: List<String>): PublicRoom? {
+        val preview = runCatching {
+            withTimeLimit(DIRECTORY_LIMIT) {
+                if (idOrAlias.startsWith("#")) client.getRoomPreviewFromRoomAlias(idOrAlias) else client.getRoomPreviewFromRoomId(idOrAlias, via)
+            }
+        }.getOrNull() ?: return null
+        return try {
+            PublicRoom(preview.info())
+        } finally {
+            preview.close()
+        }
+    }
+
+    /**
+     * Что сервер скажет о человеке: имя и картинку. Тот, о ком он молчит, всё равно человек: возвращается один ID, и ему можно
+     * писать.
+     */
+    suspend fun profile(userId: String): PersonProfile {
+        val profile = runCatching { withTimeLimit(DIRECTORY_LIMIT) { client.getProfile(userId) } }.getOrNull()
+            ?: return PersonProfile(userId, null, null)
+        return PersonProfile(userId, profile.displayName, profile.avatarUrl)
+    }
+
     /** Входит в комнату из каталога. */
     suspend fun joinRoom(room: PublicRoom): String = join(room.alias ?: room.id, emptyList())
 

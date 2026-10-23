@@ -48,6 +48,8 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.video)
     implementation(libs.androidx.camera.view)
+    // Чтение QR: только декодер, без сервисов Google (docs/PROMPT.md, 5 — «не ML Kit»).
+    implementation(libs.zxing.core)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.collections.immutable)
     debugImplementation(libs.compose.ui.tooling)

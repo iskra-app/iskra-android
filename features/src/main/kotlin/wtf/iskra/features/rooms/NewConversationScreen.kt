@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
@@ -62,6 +63,7 @@ import wtf.iskra.core.rooms.Contact
 import wtf.iskra.core.rooms.ConversationException
 import wtf.iskra.core.rooms.ConversationFailure
 import wtf.iskra.core.rooms.Conversations
+import wtf.iskra.core.rooms.MatrixLink
 import wtf.iskra.core.rooms.PersonProfile
 import wtf.iskra.core.rooms.PublicRoom
 import wtf.iskra.core.rooms.RoomDetailsStore
@@ -76,9 +78,10 @@ import wtf.iskra.features.settings.SectionTitle
 import wtf.iskra.features.settings.Toggle
 import wtf.iskra.features.settings.rowColors
 import wtf.iskra.features.support.Avatar
+import wtf.iskra.features.support.QrScanner
 import wtf.iskra.features.support.RoomAvatar
 
-private enum class Page { CHATS, NEW_ROOM, PUBLIC_ROOMS, JOIN_BY_ADDRESS }
+private enum class Page { CHATS, SCAN, LINK, NEW_ROOM, PUBLIC_ROOMS, JOIN_BY_ADDRESS }
 
 /**
  * «Новый чат», как в Telegram: сверху поле для людей, под ним три пути в комнату, потом все, с кем у аккаунта уже есть
@@ -89,15 +92,28 @@ private enum class Page { CHATS, NEW_ROOM, PUBLIC_ROOMS, JOIN_BY_ADDRESS }
  * кому можно написать, знает о нём каталог или нет: сервер перечисляет лишь тех, кого хочет. Все пути отсюда — комната,
  * которую надо показать, и все выходят через [onOpen].
  *
- * Сканер QR-кода — с мостом и камерой этапа 9, отдельным пунктом: здесь его нет.
+ * Сканер QR читает ссылку на человека или комнату и ведёт на её страницу ([MatrixLinkScreen]): сразу в комнату не входит.
  */
 @Composable
 fun NewConversationScreen(session: UserSession, onOpen: (roomId: String) -> Unit, onClose: () -> Unit) {
     var page by rememberSaveable { mutableStateOf(Page.CHATS) }
+    // Прочитанная ссылка — текстом, чтобы пережить поворот; страница читает её заново.
+    var scanned by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(onBack = { if (page == Page.CHATS) onClose() else page = Page.CHATS })
     val back = { if (page == Page.CHATS) onClose() else page = Page.CHATS }
     val conversations = session.conversations
     when (page) {
+        Page.SCAN -> Screen(R.string.qr_scan, back) {
+            // Вместо сканера, а не поверх него: «назад» со страницы человека ведёт в «Новый чат», а не к камере, что прочла бы его снова.
+            QrScanner(onFound = { link ->
+                scanned = link.deepLink
+                page = Page.LINK
+            })
+        }
+        Page.LINK -> {
+            val link = scanned?.let(MatrixLink::parse)
+            if (link == null) page = Page.CHATS else MatrixLinkScreen(conversations, link, onOpen, onBack = { page = Page.CHATS })
+        }
         Page.CHATS -> Chats(session, conversations, onOpen, onBack = back, onNavigate = { page = it })
         Page.NEW_ROOM -> NewRoom(conversations, onCreated = onOpen, onBack = back)
         Page.PUBLIC_ROOMS -> PublicRooms(session, conversations, onOpen, onBack = back)
@@ -107,7 +123,7 @@ fun NewConversationScreen(session: UserSession, onOpen: (roomId: String) -> Unit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun Screen(title: Int, onBack: () -> Unit, action: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
+internal fun Screen(title: Int, onBack: () -> Unit, action: @Composable () -> Unit = {}, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         TopAppBar(
             title = { Text(stringResource(title)) },
@@ -123,7 +139,7 @@ private fun Screen(title: Int, onBack: () -> Unit, action: @Composable () -> Uni
 
 /** То, что не вышло, — словами из ядра; одна кнопка, потому что решать тут нечего. */
 @Composable
-private fun FailureDialog(failure: ConversationFailure?, onDismiss: () -> Unit) {
+internal fun FailureDialog(failure: ConversationFailure?, onDismiss: () -> Unit) {
     if (failure == null) return
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -133,7 +149,7 @@ private fun FailureDialog(failure: ConversationFailure?, onDismiss: () -> Unit) 
 }
 
 /** Выполняет [block] и отдаёт сбой разговора, если он был; отмена идёт дальше. */
-private suspend fun attempt(block: suspend () -> Unit): ConversationFailure? = try {
+internal suspend fun attempt(block: suspend () -> Unit): ConversationFailure? = try {
     block()
     null
 } catch (error: ConversationException) {
@@ -211,6 +227,7 @@ private fun Chats(
                 item(key = "actions") {
                     Column(Modifier.padding(top = Theme.Spacing.close)) {
                         Group(
+                            { ActionRow(R.string.qr_scan, Icons.Outlined.QrCodeScanner) { onNavigate(Page.SCAN) } },
                             { ActionRow(R.string.room_list_new_create_room, Icons.Outlined.Groups) { onNavigate(Page.NEW_ROOM) } },
                             { ActionRow(R.string.room_list_new_public_rooms, Icons.Outlined.Language) { onNavigate(Page.PUBLIC_ROOMS) } },
                             { ActionRow(R.string.room_list_new_join_by_address, Icons.Outlined.Link) { onNavigate(Page.JOIN_BY_ADDRESS) } },
@@ -529,7 +546,7 @@ private fun JoinByAddress(conversations: Conversations, onJoined: (String) -> Un
 
 /** Крутилка в строке или на кнопке: по размеру значка, тонкая — не заслоняет то, что рядом. */
 @Composable
-private fun Busy(modifier: Modifier = Modifier) {
+internal fun Busy(modifier: Modifier = Modifier) {
     CircularProgressIndicator(modifier.size(Theme.Size.voiceButton), color = LocalAccent.current.control, strokeWidth = Theme.Size.waveformBar)
 }
 
