@@ -92,14 +92,11 @@ fun Avatar(
     val image = rememberAvatarImage(url.takeUnless { faces.creatures && faces.forced && seed != null }, size)
     val outline = shape.shape(size)
     val drawsCreature = faces.creatures && seed != null && image == null
-    // Подложка под буквами — один из трёх тональных контейнеров схемы, по человеку, а не по порядку:
-    // как в Google Messages, соседние лица различимы, а один и тот же человек всегда одного цвета.
+    // Подложка под буквами одна для всех, как серые диски на iOS: цвет по человеку делал одного
+    // красным, а другого серым — без смысла, который читался бы в списке.
     val scheme = MaterialTheme.colorScheme
-    val (fill, ink) = when (Math.floorMod((seed ?: name).hashCode(), 3)) {
-        0 -> scheme.primaryContainer to scheme.onPrimaryContainer
-        1 -> scheme.secondaryContainer to scheme.onSecondaryContainer
-        else -> scheme.tertiaryContainer to scheme.onTertiaryContainer
-    }
+    val fill = scheme.secondaryContainer
+    val ink = scheme.onSecondaryContainer
     Box(
         modifier
             .size(size)

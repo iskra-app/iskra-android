@@ -74,6 +74,8 @@ enum class RoomDetailsFailure(val message: Int) {
     ADDRESS_TAKEN(R.string.room_action_address_taken),
     DIRECTORY(R.string.room_action_directory_failed),
     LEAVE(R.string.room_action_leave_failed),
+    RULES(R.string.room_action_rules_failed),
+    VISIBILITY(R.string.room_action_visibility_failed),
 }
 
 /**
@@ -85,6 +87,8 @@ data class RoomPermissions(
     val canRename: Boolean = false,
     val canChangeTopic: Boolean = false,
     val canChangePicture: Boolean = false,
+    /** Входит ли любой, кто нашёл комнату, — правила входа (`m.room.join_rules`). */
+    val canChangeVisibility: Boolean = false,
     val canInvite: Boolean = false,
     val canRemove: Boolean = false,
     val canBan: Boolean = false,
@@ -94,7 +98,8 @@ data class RoomPermissions(
     /** Адрес комнаты `#имя:сервер` и список ли её сервер в каталоге. */
     val canChangeAddress: Boolean = false,
 ) {
-    val canEditAnything: Boolean get() = canRename || canChangeTopic || canChangePicture
+    val canEditAnything: Boolean
+        get() = canRename || canChangeTopic || canChangePicture || canChangeVisibility || canChangeRoles || canChangeHistory || canChangeAddress
 }
 
 data class RoomDetailsState(
@@ -116,6 +121,8 @@ data class RoomDetailsState(
     /** Прозвище на этом устройстве (только личный чат). */
     val localName: String? = null,
     val permissions: RoomPermissions = RoomPermissions(),
+    /** Кто что может по ролям — таблица за [permissions], для экрана, что её меняет. Null, пока не прочитаны power levels. */
+    val rules: RoomRules? = null,
     /** Заблокированные — для тех, кто может их вернуть ([RoomDetailsStore.unban]). */
     val banned: List<RoomMemberSummary> = emptyList(),
     /** Входит ли любой, кто нашёл комнату, или по приглашению. Читается из правил входа; `false`, пока их нет. */
@@ -168,6 +175,13 @@ class RoomDetailsStore internal constructor(
 
     /** Прочие адреса комнаты: смена главного не должна их ронять. */
     private var alternativeAliases: List<String> = emptyList()
+
+    /**
+     * Правила, которые мы только что поставили и о которых кэш комнаты ещё не знает: уровень и когда поставлен. Снимок
+     * комнаты, пришедший раньше синхронизации с нашей переменой, несёт *старое* число и стёр бы поставленное с экрана на
+     * глазах; поэтому пока снимок не согласится (или не пройдёт [PENDING_RULE_MS]), поверх него лежит поставленное.
+     */
+    private val pendingRules = HashMap<RoomRule, Pair<Long, Long>>()
 
     /** Какой прогон: [stop] увеличивает, и пережившее await сверяет. */
     private var generation = 0
@@ -368,6 +382,81 @@ class RoomDetailsStore internal constructor(
         }
     }
 
+    /** Снимок комнаты с поверх положенными правилами, которых он ещё не знает; согласившиеся и просроченные — снимаются. */
+    private fun withPendingRules(read: RoomRules): RoomRules {
+        val now = System.currentTimeMillis()
+        val levels = read.levels.toMutableMap()
+        val iterator = pendingRules.entries.iterator()
+        while (iterator.hasNext()) {
+            val (rule, held) = iterator.next()
+            val (level, since) = held
+            if (levels[rule] == level || now - since > PENDING_RULE_MS) iterator.remove() else levels[rule] = level
+        }
+        return RoomRules(levels)
+    }
+
+    /** Люди, что ведут комнату, — администраторы и модераторы, в порядке списка. */
+    val staff: List<RoomMemberSummary> get() = mutableState.value.members.filter { it.role != RoomMemberSummary.Role.MEMBER }
+
+    /** Роли, в которые этот аккаунт может поставить правило, — ни одной, если оно ему не по плечу. */
+    fun rolesFor(rule: RoomRule): List<RoomMemberSummary.Role> {
+        val state = mutableState.value
+        val rules = state.rules ?: return emptyList()
+        if (!state.permissions.canChangeRoles) return emptyList()
+        return RoomModeration.rolesForRule(rules.levels[rule] ?: 0, ownAuthority, ::authorityOf)
+    }
+
+    /** Самая низкая роль, которой правило разрешено. */
+    fun roleFor(rule: RoomRule): RoomMemberSummary.Role =
+        mutableState.value.rules?.role(rule, ::authorityOf) ?: RoomMemberSummary.Role.MEMBER
+
+    /**
+     * Меняет, кто может одно. Сразу на экране, и обратно, если комната откажет. Не перечитывается: кэш комнаты о
+     * перемене до следующей синхронизации не знает, и перечтение вернуло бы на экран старый ответ; эхо комнаты придёт через
+     * [adopt].
+     */
+    suspend fun setRule(rule: RoomRule, role: RoomMemberSummary.Role) {
+        if (role !in rolesFor(rule)) return
+        val before = mutableState.value.rules ?: return
+        val level = (authorityOf(role) as? Authority.Level)?.value ?: return
+        if (roleFor(rule) == role) return
+        pendingRules[rule] = level to System.currentTimeMillis()
+        mutableState.update { it.copy(rules = RoomRules(before.levels + (rule to level))) }
+        try {
+            withTimeLimit(LIMIT) { room.applyPowerLevelChanges(rule.change(level)) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "rule change refused: ${Log.describe(error)}")
+            pendingRules.remove(rule)
+            mutableState.update { state ->
+                val rolled = if (state.rules?.levels?.get(rule) == level) state.copy(rules = before) else state
+                rolled.copy(failure = RoomDetailsFailure.RULES)
+            }
+        }
+    }
+
+    /**
+     * Входит ли любой, кто нашёл комнату, или по приглашению. У Matrix правил входа больше (стук, ограниченное
+     * пространством), и приложение нарочно не предлагает ни то, ни другое: они объяснимы только словами протокола, а
+     * комната с таким правилом не искажена, потому что переключатель показывается только там, где его можно *поставить*.
+     */
+    suspend fun setPublic(open: Boolean) {
+        if (open == mutableState.value.isPublic) return
+        val previous = mutableState.value.isPublic
+        mutableState.update { it.copy(isPublic = open) }
+        try {
+            withTimeLimit(LIMIT) { room.updateJoinRules(if (open) JoinRule.Public else JoinRule.Invite) }
+        } catch (error: Throwable) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.ROOMS, "join rule refused: ${Log.describe(error)}")
+            // Откат — «поставить, если там всё ещё то, что мы поставили»: иначе поздний отказ стирал бы более новое решение.
+            mutableState.update { state ->
+                val rolled = if (state.isPublic == open) state.copy(isPublic = previous) else state
+                rolled.copy(failure = RoomDetailsFailure.VISIBILITY)
+            }
+        }
+    }
+
     // MARK: Кто здесь
 
     /**
@@ -563,6 +652,7 @@ class RoomDetailsStore internal constructor(
         val server = info.serverTitle(ownUserId, strings)
         val kind = info.kind
         val levels = info.powerLevels
+        val rules = levels?.let { runCatching { RoomRules(it.values()) }.getOrNull() }?.let(::withPendingRules)
         // Права приходят не всегда; без них — прежние, а не «ничего нельзя».
         val permissions = levels?.let {
             runCatching {
@@ -570,6 +660,7 @@ class RoomDetailsStore internal constructor(
                     canRename = it.canOwnUserSendState(StateEventType.RoomName),
                     canChangeTopic = it.canOwnUserSendState(StateEventType.RoomTopic),
                     canChangePicture = it.canOwnUserSendState(StateEventType.RoomAvatar),
+                    canChangeVisibility = it.canOwnUserSendState(StateEventType.RoomJoinRules),
                     canInvite = it.canOwnUserInvite(),
                     canRemove = it.canOwnUserKick(),
                     canBan = it.canOwnUserBan(),
@@ -593,6 +684,7 @@ class RoomDetailsStore internal constructor(
                 memberCount = info.joinedMembersCount.toInt(),
                 localName = localNames?.name(roomId),
                 permissions = permissions ?: it.permissions,
+                rules = rules ?: it.rules,
                 isPublic = info.joinRule is JoinRule.Public,
                 history = historyAccess(info.historyVisibility),
                 canonicalAlias = info.canonicalAlias?.takeIf { alias -> alias.isNotBlank() },
@@ -736,6 +828,7 @@ class RoomDetailsStore internal constructor(
         }
 
         private const val SETTLE_ATTEMPTS = 10
+        private const val PENDING_RULE_MS = 30_000L
         private val SETTLE_PAUSE = 400.milliseconds
         private val LIMIT = 15.seconds
         /** Картинка до 1024 px — сотни килобайт; на медленной сети это не пятнадцать секунд. */

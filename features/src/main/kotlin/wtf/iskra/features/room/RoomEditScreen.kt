@@ -1,6 +1,14 @@
 package wtf.iskra.features.room
 
 import androidx.activity.compose.BackHandler
+import wtf.iskra.features.settings.rowColors
+import wtf.iskra.features.settings.Toggle
+import wtf.iskra.features.settings.Group
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material3.ListItem
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -56,7 +64,7 @@ import wtf.iskra.features.support.rememberAvatarPicker
  *
  * Кнопки «Сохранить» нет: поле уходит, когда его *оставили*, и уход с экрана — тоже «оставили».
  * Без сети поля выключены: имя, набранное в никуда, выглядело бы принятым, а потом тихо пропало бы.
- * Адрес, доступ и роли — следующими пунктами этапа 8.
+ * Здесь же — настройки комнаты, что не про слова: открыта ли она, кто читает прошлое, адрес и «Роли и права».
  */
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,6 +101,12 @@ internal fun RoomEdit(store: RoomDetailsStore, isOffline: Boolean, onBack: () ->
         onUnreadable = store::failPicture,
     )
 
+    var showingRules by rememberSaveable(store.roomId) { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    if (showingRules) {
+        RoomRulesScreen(store, isOffline, onBack = { showingRules = false })
+        return
+    }
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         TopAppBar(
             title = { Text(stringResource(R.string.room_manage_edit_title)) },
@@ -160,6 +174,33 @@ internal fun RoomEdit(store: RoomDetailsStore, isOffline: Boolean, onBack: () ->
                             describing = field.isFocused
                         },
                 )
+            }
+
+            // Входит ли любой, кто нашёл комнату. Настройка комнаты, как её имя, — поэтому здесь, а не на экране, который читают.
+            if (state.kind != RoomKind.DIRECT && state.permissions.canChangeVisibility) {
+                Group({
+                    Toggle(R.string.room_manage_open_to_anyone, R.string.room_manage_open_to_anyone_help, state.isPublic, { open ->
+                        scope.launch { store.setPublic(open) }
+                    }, enabled = !isOffline)
+                })
+            }
+
+            if (state.kind != RoomKind.DIRECT) {
+                HistorySection(store, state, isOffline)
+                AddressSection(store, state, isOffline)
+            }
+
+            // Кто ведёт комнату и что можно остальным — для того, кто может менять её уровни: в первую очередь для
+            // администраторов. Своим экраном: это два списка, а не поле.
+            if (state.kind != RoomKind.DIRECT && state.permissions.canChangeRoles) {
+                Group({
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.room_rules_title)) },
+                        trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null) },
+                        modifier = Modifier.clickable { showingRules = true },
+                        colors = rowColors(),
+                    )
+                })
             }
 
             if (isOffline) Footer(R.string.room_manage_offline)

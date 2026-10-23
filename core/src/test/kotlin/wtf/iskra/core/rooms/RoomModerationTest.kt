@@ -72,4 +72,35 @@ class RoomModerationTest {
         assertEquals(4, HistoryAccess.choices(isPublic = true).size)
         assertEquals(listOf(HistoryAccess.SHARED, HistoryAccess.INVITED, HistoryAccess.JOINED), HistoryAccess.choices(isPublic = false))
     }
+
+    @Test
+    fun aThresholdIsReadAsTheLowestRoleThatClearsIt() {
+        assertEquals(RoomMemberSummary.Role.MEMBER, RoomModeration.roleClearing(0, ::level))
+        assertEquals(RoomMemberSummary.Role.MODERATOR, RoomModeration.roleClearing(50, ::level))
+        assertEquals(RoomMemberSummary.Role.ADMINISTRATOR, RoomModeration.roleClearing(100, ::level))
+    }
+
+    @Test
+    fun aThresholdBetweenRungsIsReadAsTheHigherOne() {
+        // «Выгнать» на 75: модератору (50) нельзя, и говорить «модераторы» значило бы обещать то, в чём сервер откажет.
+        assertEquals(RoomMemberSummary.Role.ADMINISTRATOR, RoomModeration.roleClearing(75, ::level))
+        assertEquals(RoomMemberSummary.Role.MODERATOR, RoomModeration.roleClearing(25, ::level))
+    }
+
+    @Test
+    fun aThresholdAboveEveryRungFallsBackToAdministrators() {
+        assertEquals(RoomMemberSummary.Role.ADMINISTRATOR, RoomModeration.roleClearing(1000, ::level))
+    }
+
+    @Test
+    fun anAdministratorMovesAnyRuleAndAModeratorOnlyThoseBelow() {
+        assertEquals(3, RoomModeration.rolesForRule(100, admin, ::level).size)
+        // Блокировка на 50 — модератору по плечу, а выше, на 100, нет.
+        assertEquals(
+            listOf(RoomMemberSummary.Role.MODERATOR, RoomMemberSummary.Role.MEMBER),
+            RoomModeration.rolesForRule(50, moderator, ::level),
+        )
+        assertEquals(emptyList(), RoomModeration.rolesForRule(100, moderator, ::level))
+        assertEquals(emptyList(), RoomModeration.rolesForRule(50, member, ::level))
+    }
 }

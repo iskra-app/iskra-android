@@ -40,6 +40,26 @@ internal object RoomModeration {
     fun rolesGrantableBy(own: Authority, levelOf: (RoomMemberSummary.Role) -> Authority): List<RoomMemberSummary.Role> =
         RoomMemberSummary.Role.entries.filter { levelOf(it) <= own }
 
+    /**
+     * Самая низкая роль, которой этот порог по плечу. Порог — число, роль — ступень: комната с «выгнать» на 75, между 50
+     * модераторов и 100 администраторов, читается *администраторами* — первая ступень, что порог берёт. «Модераторы»
+     * там были бы словами экрана о том, что модератору позволено то, в чём сервер откажет.
+     */
+    fun roleClearing(level: Long, levelOf: (RoomMemberSummary.Role) -> Authority): RoomMemberSummary.Role =
+        RoomMemberSummary.Role.entries.sortedByDescending { it.ordinal }.firstOrNull { levelOf(it) >= Authority.Level(level) }
+            ?: RoomMemberSummary.Role.ADMINISTRATOR
+
+    /**
+     * Роли, в которые этот аккаунт может поставить правило, — ни одной, если правило ему не по плечу. Два правила сервера
+     * снова, но для порогов, а не людей: порог, что стоит выше тебя, не сдвинуть, и выше себя его не поднять. Администратор
+     * поэтому может отдать блокировку модераторам и забрать обратно, а модератор не тронет её вовсе.
+     */
+    fun rolesForRule(
+        ruleLevel: Long,
+        own: Authority,
+        levelOf: (RoomMemberSummary.Role) -> Authority,
+    ): List<RoomMemberSummary.Role> = if (Authority.Level(ruleLevel) <= own) rolesGrantableBy(own, levelOf) else emptyList()
+
     /** «@boris:matrix.org» и ничего другого. Проверяется здесь, а не сервером: на кривой ID он отвечает так же, как на неизвестный. */
     fun isMatrixId(text: String): Boolean {
         val candidate = text.trim()

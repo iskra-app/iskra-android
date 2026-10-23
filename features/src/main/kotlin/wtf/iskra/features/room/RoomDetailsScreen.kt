@@ -172,8 +172,6 @@ fun RoomDetailsScreen(
             }
             if (!state.isDirect) {
                 BannedSection(store, state, isOffline)
-                HistorySection(store, state, isOffline)
-                AddressSection(store, state, isOffline)
             }
 
             Group({
