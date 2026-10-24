@@ -142,7 +142,8 @@ class MediaSendService : Service() {
             }
         }
 
-        private fun createChannel(context: Context) {
+        /** Канал «Фоновые задачи»: отправка медиа и скачивание обновления делят его — оба тихие и идут, пока кто-то ждёт. */
+        internal fun createChannel(context: Context) {
             val channel = NotificationChannelCompat.Builder(CHANNEL, NotificationManagerCompat.IMPORTANCE_LOW)
                 .setName(context.getString(R.string.notification_channel_background))
                 .setShowBadge(false)

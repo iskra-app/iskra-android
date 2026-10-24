@@ -110,6 +110,12 @@
             android:name="wtf.iskra.features.update.UpdateInstallReceiver"
             android:exported="false" />
 
+        <!-- Скачивание обновления, когда ушли из приложения (UpdateService). -->
+        <service
+            android:name="wtf.iskra.features.update.UpdateService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!-- Загрузка видео, альбома и файла, пока человек ушёл из чата (MediaSendService). -->
         <service
             android:name="wtf.iskra.features.media.MediaSendService"

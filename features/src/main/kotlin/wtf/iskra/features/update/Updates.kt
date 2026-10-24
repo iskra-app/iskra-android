@@ -48,6 +48,11 @@ class Updates(
 
     private val context = context.applicationContext
 
+    init {
+        // Один на процесс: `UpdateService` читает отсюда, что скачивается, и живёт ровно столько же.
+        current = this
+    }
+
     /** Где установка сейчас — для листа обновления. */
     sealed interface Install {
         data object Idle : Install
@@ -114,6 +119,8 @@ class Updates(
         val file = File(folder, SAFE_NAME)
         try {
             mutableInstall.value = Install.Downloading(0f)
+            // Ушли из приложения — процесс не должен умереть посреди скачивания (docs/PROMPT.md, 19.1).
+            UpdateService.start(context)
             source.download(offer.asset.name, file) { done ->
                 mutableInstall.value = Install.Downloading((done.toFloat() / offer.asset.size.coerceAtLeast(1)).coerceIn(0f, 1f))
             }
@@ -198,8 +205,13 @@ class Updates(
         }
     }
 
-    private companion object {
-        const val FOLDER = "update"
-        const val SAFE_NAME = "iskra-update.apk"
+    companion object {
+        /** Обновление процесса — для `UpdateService`. Null до создания графа. */
+        @Volatile
+        internal var current: Updates? = null
+            private set
+
+        private const val FOLDER = "update"
+        private const val SAFE_NAME = "iskra-update.apk"
     }
 }
