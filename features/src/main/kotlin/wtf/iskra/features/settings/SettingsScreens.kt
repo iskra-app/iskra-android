@@ -31,6 +31,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
@@ -41,7 +43,6 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Storage
@@ -159,6 +160,9 @@ fun SettingsScreen(
         SettingsPage.MAIN -> null
         SettingsPage.LIBRARIES -> SettingsPage.ABOUT
         SettingsPage.BLOCKED -> SettingsPage.PRIVACY
+        // Устройства и приватность — внутри «Безопасности», как на iOS.
+        SettingsPage.DEVICES, SettingsPage.PRIVACY -> SettingsPage.SECURITY
+        SettingsPage.BETA -> SettingsPage.ABOUT
         else -> SettingsPage.MAIN
     }
     BackHandler { onNavigate(up) }
@@ -204,7 +208,7 @@ fun SettingsScreen(
                 SettingsPage.CHATS -> Chats(settings)
                 SettingsPage.REACTIONS -> ReactionsPage(settings)
                 SettingsPage.FOLDERS -> FoldersPage(session)
-                SettingsPage.SECURITY -> Security(session)
+                SettingsPage.SECURITY -> Security(session, onNavigate)
                 SettingsPage.DEVICES -> DevicesPage(session)
                 SettingsPage.PRIVACY -> PrivacyPage(settings) { onNavigate(SettingsPage.BLOCKED) }
                 SettingsPage.BLOCKED -> BlockedPage(session)
@@ -212,7 +216,7 @@ fun SettingsScreen(
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
                 SettingsPage.LIBRARIES -> Libraries(librariesResource)
-                SettingsPage.ABOUT -> About(appVersion) {
+                SettingsPage.ABOUT -> About(appVersion, onBeta = { onNavigate(SettingsPage.BETA) }) {
                     // Выше длинных текстов лицензий: под ними их никто не нашёл бы.
                     if (updates != null && updates.checker.isInBuild) UpdateChecks(settings, updates) { showingUpdate = true }
                     if (librariesResource != 0) {
@@ -310,21 +314,17 @@ private fun Main(
     } else {
         stringResource(R.string.account_sign_out)
     }
+    // Порядок — как в `SettingsView` на iOS. «Бета» здесь строкой нет: туда ведёт тройное нажатие на значок в «О приложении».
     Group(
-        { Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) } },
-        { Link(Icons.Outlined.Devices, R.string.devices_title) { onNavigate(SettingsPage.DEVICES) } },
-        { Link(Icons.Outlined.Lock, R.string.privacy_title) { onNavigate(SettingsPage.PRIVACY) } },
-        { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
         { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
-        { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
+        *languageRow(),
         { Link(Icons.Outlined.EmojiEmotions, R.string.settings_reactions) { onNavigate(SettingsPage.REACTIONS) } },
+        { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
         { Link(Icons.Outlined.Folder, R.string.folders_title) { onNavigate(SettingsPage.FOLDERS) } },
+        { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
+        { Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) } },
         { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
         { Link(Icons.Outlined.Storage, R.string.settings_storage) { onNavigate(SettingsPage.STORAGE) } },
-        *languageRow(),
-    )
-    Group(
-        { Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) } },
         { Link(Icons.Outlined.Info, R.string.settings_about) { onNavigate(SettingsPage.ABOUT) } },
     )
     Group({
@@ -629,7 +629,7 @@ internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) 
  * Google Sans (SIL OFL) — с ним. Проверка обновлений — [UpdateChecks] под ним.
  */
 @Composable
-private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {}) {
+private fun About(appVersion: String, onBeta: () -> Unit, beforeLicences: @Composable () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val build = remember {
         runCatching { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0)).toString() }.getOrDefault("")
@@ -643,7 +643,7 @@ private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {
         androidx.compose.foundation.Image(
             androidx.compose.ui.res.painterResource(AppIcon.current(context).preview),
             contentDescription = null,
-            modifier = Modifier.size(Theme.Size.avatarProfile).clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.appIcon(Theme.Size.avatarProfile.value).let { androidx.compose.ui.unit.Dp(it) })),
+            modifier = Modifier.size(Theme.Size.avatarProfile).tripleTap(onBeta).clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.appIcon(Theme.Size.avatarProfile.value).let { androidx.compose.ui.unit.Dp(it) })),
         )
         Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
         Text(
@@ -690,7 +690,7 @@ private fun Licence(resource: Int) {
  * который закрывается единственной кнопкой «Я сохранил код».
  */
 @Composable
-private fun Security(session: UserSession) {
+private fun Security(session: UserSession, onNavigate: (SettingsPage?) -> Unit) {
     val recovery = session.recovery
     val protection by recovery.protection.collectAsStateWithLifecycle()
     val verified by recovery.isDeviceVerified.collectAsStateWithLifecycle()
@@ -776,6 +776,10 @@ private fun Security(session: UserSession) {
             text = { Text(stringResource(it.explanation)) },
         )
     }
+    Group(
+        { Link(Icons.Outlined.Devices, R.string.devices_title) { onNavigate(SettingsPage.DEVICES) } },
+        { Link(Icons.Outlined.Lock, R.string.privacy_title) { onNavigate(SettingsPage.PRIVACY) } },
+    )
 }
 
 /**
@@ -855,3 +859,20 @@ private fun AboutLink(title: Int, address: String, url: String) {
         },
     )
 }
+
+/** Три нажатия подряд на значок — скрытый вход в «Бету» (`onTapGesture(count: 3)` на iOS). Одно и два ничего не делают. */
+private fun Modifier.tripleTap(action: () -> Unit): Modifier = this.pointerInput(Unit) {
+    var taps = 0
+    var last = 0L
+    detectTapGestures {
+        val now = System.currentTimeMillis()
+        taps = if (now - last <= TRIPLE_TAP_WINDOW_MS) taps + 1 else 1
+        last = now
+        if (taps >= 3) {
+            taps = 0
+            action()
+        }
+    }
+}
+
+private const val TRIPLE_TAP_WINDOW_MS = 500L
