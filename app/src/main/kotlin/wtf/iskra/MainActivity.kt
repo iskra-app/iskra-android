@@ -2,7 +2,8 @@ package wtf.iskra
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import wtf.iskra.features.lock.LockHooks
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
@@ -16,7 +17,7 @@ import wtf.iskra.features.push.PushIntents
 import wtf.iskra.features.signin.CustomTabsAuthentication
 import wtf.iskra.features.signin.MockSignIn
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
     /** Корень переживает поворот экрана: сеанс не пересобирается из-за смены конфигурации. */
     class RootHolder(application: IskraApplication, demo: Boolean, mockSignIn: String?) : ViewModel() {
         val root = application.graph.rootModel(viewModelScope, demo, mockSignIn)
@@ -38,7 +39,8 @@ class MainActivity : ComponentActivity() {
             ) as T
         })[RootHolder::class.java]
         browser = CustomTabsAuthentication(this, this)
-        setContent { IskraRoot(holder.root, browser, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})") }
+        val lock = LockHooks.of(this, app.graph.appLock)
+        setContent { IskraRoot(holder.root, browser, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.FLAVOR})", lock = lock) }
         // Пересозданная активити получает тот же интент снова; нажатие уже забрано тогда.
         if (savedInstanceState == null) handle(intent)
     }
@@ -47,11 +49,13 @@ class MainActivity : ComponentActivity() {
     // поверх или разделённый экран не повод её гасить.
     override fun onStart() {
         super.onStart()
+        (application as IskraApplication).graph.appLock.enteredForeground()
         holder.root.setForeground(true)
     }
 
     override fun onStop() {
         super.onStop()
+        (application as IskraApplication).graph.appLock.enteredBackground()
         holder.root.setForeground(false)
     }
 

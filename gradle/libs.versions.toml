@@ -36,6 +36,8 @@ composeBom = "2026.09.00"
 media3 = "1.11.1"
 # Запись кружочков (docs/PROMPT.md, 11.4): CameraX поверх Camera2, без сервисов Google. Apache 2.0.
 camerax = "1.6.1"
+# Блокировка приложения (docs/PROMPT.md, раздел 12): BiometricPrompt с откатом на пин устройства. Apache 2.0.
+biometric = "1.1.0"
 # Чтение QR (docs/PROMPT.md, 5): только декодер ZXing, без ML Kit и сервисов Google. Apache 2.0.
 zxing = "3.5.3"
 # Тональные палитры Material 3 из цвета акцента (HCT, схемы TonalSpot/Monochrome). Порт на Kotlin
@@ -81,6 +83,7 @@ media3-ui-compose = { module = "androidx.media3:media3-ui-compose", version.ref 
 media3-transformer = { module = "androidx.media3:media3-transformer", version.ref = "media3" }
 media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 
+androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
 androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }

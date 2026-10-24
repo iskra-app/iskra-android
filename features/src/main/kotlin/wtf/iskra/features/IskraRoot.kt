@@ -65,6 +65,8 @@ fun IskraRoot(
     browser: WebAuthentication,
     /** Версия для «О приложении»: `BuildConfig` живёт в `:app`. */
     appVersion: String = "",
+    /** Замок приложения от `MainActivity`. Null — без замка (проба). */
+    lock: wtf.iskra.features.lock.LockHooks? = null,
 ) {
     val phase by model.phase.collectAsStateWithLifecycle()
     val accentName by (model.settings?.accent ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
@@ -73,6 +75,8 @@ fun IskraRoot(
         accent = AccentTheme.fromStorage(accentName),
         appearance = AppearanceMode.fromStorage(modeName),
     ) {
+        Box(Modifier.fillMaxSize()) {
+        CompositionLocalProvider(wtf.iskra.features.lock.LocalLock provides lock) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (val current = phase) {
                 RootModel.Phase.Starting -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -109,6 +113,13 @@ fun IskraRoot(
                     SignedIn(current.session, model, browser, appVersion)
                 }
             }
+        }
+        }
+        // Щит над всем, в том числе над входом: заперто — значит, не видно ничего.
+        if (lock != null) {
+            val locked by lock.appLock.isLocked.collectAsStateWithLifecycle()
+            if (locked) wtf.iskra.features.lock.LockScreen(lock)
+        }
         }
     }
 }

@@ -50,6 +50,8 @@ dependencies {
     implementation(libs.androidx.camera.view)
     // Чтение QR: только декодер, без сервисов Google (docs/PROMPT.md, 5 — «не ML Kit»).
     implementation(libs.zxing.core)
+    // Блокировка приложения: BiometricPrompt, откат на пин устройства. `api`: окну нужен `FragmentActivity`, а он приходит отсюда.
+    api(libs.androidx.biometric)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.collections.immutable)
     debugImplementation(libs.compose.ui.tooling)

@@ -27,6 +27,8 @@ class Push(
     /** Транспорт этого flavor'а — из `:app`. */
     val transport: PushTransport,
     smallIcon: Int,
+    /** Замок приложения: пока оно заперто, уведомление без имён и слов — «Новое сообщение». Null — без замка. */
+    private val appLock: wtf.iskra.core.security.AppLock? = null,
 ) {
     private val presenter = PushPresenter(context.applicationContext, settings, smallIcon)
 
@@ -48,7 +50,10 @@ class Push(
         when (val outcome = decoder.notification(roomId, eventId, payload.accountId, budget)) {
             is PushOutcome.Show -> {
                 val notification = outcome.notification
-                if (router.shouldPresent(notification.roomId, notification.accountId)) {
+                if (appLock?.isLockedNow() == true) {
+                    // Заперто: ни имени, ни слов, ни лица — то, что уведомление знает, знает только открытое приложение.
+                    if (!isRetry && router.shouldPresent(notification.roomId, notification.accountId)) presenter.showFallback(roomId, payload.accountId)
+                } else if (router.shouldPresent(notification.roomId, notification.accountId)) {
                     // Повтор встаёт на место заглушки, которая уже прозвенела: второй раз — молча.
                     presenter.show(notification, payload.unread, decoder.accountLabel(notification.accountId), alert = !isRetry)
                 }

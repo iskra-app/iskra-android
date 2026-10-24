@@ -703,6 +703,8 @@ private fun Security(session: UserSession) {
         }
     }
 
+    wtf.iskra.features.lock.LocalLock.current?.let { LockSection(it) }
+
     if (confirmingNew) {
         AlertDialog(
             onDismissRequest = { confirmingNew = false },
@@ -722,6 +724,44 @@ private fun Security(session: UserSession) {
             onDismissRequest = { failure = null },
             confirmButton = { TextButton(onClick = { failure = null }) { Text(stringResource(android.R.string.ok)) } },
             text = { Text(stringResource(it.explanation)) },
+        )
+    }
+}
+
+/**
+ * Замок приложения: включить и как скоро он закрывается после ухода. Не предлагает замок, которому устройство нечем открыть, — тот
+ * запер бы человека снаружи собственных сообщений.
+ */
+@Composable
+private fun LockSection(lock: wtf.iskra.features.lock.LockHooks) {
+    val enabled by lock.appLock.isEnabled.collectAsStateWithLifecycle()
+    val timeout by lock.appLock.timeout.collectAsStateWithLifecycle()
+    val available = remember { lock.canAuthenticate() }
+    SectionTitle(R.string.settings_lock)
+    Group({ Toggle(R.string.settings_lock_enable, R.string.settings_lock_explanation, enabled, lock.appLock::setEnabled, enabled = available || enabled) })
+    if (!available) {
+        Text(
+            stringResource(R.string.settings_lock_unavailable),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = Theme.Spacing.generous + Theme.Spacing.close),
+        )
+    }
+    if (enabled) {
+        SectionTitle(R.string.settings_lock_timeout)
+        Group(
+            *wtf.iskra.core.security.AppLockTimeout.entries.map { option ->
+                @Composable {
+                    Choice(
+                        title = when (option) {
+                            wtf.iskra.core.security.AppLockTimeout.IMMEDIATELY -> R.string.settings_lock_timeout_immediately
+                            wtf.iskra.core.security.AppLockTimeout.AFTER_MINUTE -> R.string.settings_lock_timeout_after_minute
+                            wtf.iskra.core.security.AppLockTimeout.AFTER_FIVE_MINUTES -> R.string.settings_lock_timeout_after_five_minutes
+                        },
+                        selected = option == timeout,
+                    ) { lock.appLock.setTimeout(option) }
+                }
+            }.toTypedArray(),
         )
     }
 }

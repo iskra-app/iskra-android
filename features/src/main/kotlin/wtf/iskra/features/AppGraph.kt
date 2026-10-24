@@ -50,6 +50,9 @@ class AppGraph(
     val secrets = KeystoreSecrets(environment.secretsDir)
     val settings = AppSettings(context)
 
+    /** Замок приложения: щит над экранами и «Искра заперта» в уведомлениях. */
+    val appLock = wtf.iskra.core.security.AppLock(context)
+
     init {
         // Открытые и игравшие прошлым запуском файлы — открытый текст на диске, и он больше никому не нужен.
         wtf.iskra.features.support.FileOpener.sweepOnLaunch(context)
@@ -83,6 +86,7 @@ class AppGraph(
         settings = settings,
         transport = pushTransport,
         smallIcon = notificationIcon,
+        appLock = appLock,
     )
 
     /** Проверка и установка обновлений (docs/PROMPT.md, 19.1). */
