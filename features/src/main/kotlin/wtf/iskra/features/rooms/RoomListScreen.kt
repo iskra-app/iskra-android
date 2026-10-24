@@ -18,6 +18,14 @@ import wtf.iskra.features.support.SwipeActions
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.Icons
+import wtf.iskra.core.rooms.PrivacyStatus
+import wtf.iskra.core.rooms.LastMessageMark
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
@@ -405,29 +413,47 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
     ) {
         Face(room)
         Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    room.name,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    // Непрочитанный чат — жирнее, как в Google Messages: видно и без цвета.
-                    fontWeight = if (room.hasUnread) FontWeight.Bold else null,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
+                // Имя и замок занимают всё, что осталось слева; время и отметки — у правого края.
+                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
+                    Text(
+                        room.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        // Как `RoomRow` на iOS: имя всегда полужирное, непрочитанность говорит значок, не шрифт.
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // Закрытый замок — единственный словарь шифрования на этом экране.
+                    if (room.privacy == PrivacyStatus.PROTECTED) {
+                        Icon(
+                            Icons.Filled.Lock,
+                            contentDescription = stringResource(R.string.room_list_private_chat),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(Theme.Size.rowMark),
+                        )
+                    }
+                }
+                if (room.isPinned) {
+                    Icon(
+                        Icons.Filled.PushPin,
+                        contentDescription = stringResource(R.string.room_list_pinned),
+                        tint = LocalAccent.current.control,
+                        modifier = Modifier.size(Theme.Size.rowMark),
+                    )
+                }
+                if (!typing) room.lastMessageMark?.let { LastMark(it) }
                 room.lastActivity?.let { at ->
                     Text(
                         RoomTime.label(at, now, ZoneId.systemDefault(), locale),
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (room.hasUnread) {
-                            LocalAccent.current.control
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Сверху, а не по центру: превью в две строки, значок в одну — иначе он съезжал бы к середине фразы.
+            Row(verticalAlignment = Alignment.Top) {
                 Preview(room, typing, Modifier.weight(1f))
                 Spacer(Modifier.width(Theme.Spacing.close))
                 Badge(room)
@@ -506,7 +532,7 @@ private fun Preview(room: RoomSummary, typing: Boolean, modifier: Modifier) {
 /** Значок непрочитанного: число, или точка, когда считать нечего (беззвучный, помеченный вручную). */
 @Composable
 private fun Badge(room: RoomSummary) {
-    if (!room.hasUnread && !room.isMentioned) return
+    if (!room.hasUnread && !room.isMentioned && !room.hasUnreadReactions) return
     val accent = LocalAccent.current
     val fill = when (room.unreadEmphasis) {
         UnreadEmphasis.ORDINARY -> accent.control
@@ -520,6 +546,15 @@ private fun Badge(room: RoomSummary) {
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Отреагировали: сердечко само по себе и никогда не число — реакция отвечает на уже прочитанное.
+        if (room.hasUnreadReactions) {
+            Box(
+                Modifier.size(Theme.Size.unreadBadge).clip(CircleShape).background(if (room.unreadEmphasis == UnreadEmphasis.MUTED) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.onError, modifier = Modifier.size(Theme.Size.rowMark - Theme.Spacing.tight))
+            }
+        }
         if (room.isMentioned) {
             Box(
                 Modifier.size(Theme.Size.unreadBadge).clip(CircleShape).background(fill),
@@ -556,7 +591,8 @@ private fun Face(room: RoomSummary) {
         url = room.avatarUrl,
         size = Theme.Size.roomAvatar,
         shape = if (room.isSpace) AvatarShape.ROUNDED_SQUARE else AvatarShape.CIRCLE,
-        seed = room.avatarSeed,
+        // Пространство — полка комнат, а не тот, на кого смотрят: у него нет существа, только квадрат и буквы.
+        seed = if (room.isSpace) null else room.avatarSeed,
         faces = room.faces,
     )
 }
@@ -708,4 +744,16 @@ private fun FolderMembership(room: RoomSummary, all: List<ChatFolder>, folders: 
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.folders_done)) } },
     )
+}
+
+/** Докуда дошло своё последнее сообщение — рядом со временем, как место Telegram (`DeliveryTick`). */
+@Composable
+private fun LastMark(mark: LastMessageMark) {
+    val (icon, label, tint) = when (mark) {
+        LastMessageMark.SENDING -> Triple(Icons.Outlined.Schedule, R.string.message_delivery_sending, MaterialTheme.colorScheme.onSurfaceVariant)
+        LastMessageMark.SENT -> Triple(Icons.Filled.Check, R.string.message_delivery_sent, LocalAccent.current.control)
+        LastMessageMark.READ -> Triple(Icons.Filled.Visibility, R.string.message_delivery_read, LocalAccent.current.control)
+        LastMessageMark.FAILED -> Triple(Icons.Filled.ErrorOutline, R.string.message_delivery_failed, MaterialTheme.colorScheme.error)
+    }
+    Icon(icon, contentDescription = stringResource(label), tint = tint, modifier = Modifier.size(Theme.Size.rowMark))
 }
