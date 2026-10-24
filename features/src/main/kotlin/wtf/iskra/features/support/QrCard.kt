@@ -5,6 +5,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Path
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
@@ -38,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.FileProvider
+import androidx.core.graphics.PathParser
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -47,9 +50,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import wtf.iskra.core.rooms.MatrixLink
 import wtf.iskra.design.PrimaryActionButton
+import wtf.iskra.design.SparkShape
 import wtf.iskra.design.Theme
 import wtf.iskra.features.R
 import java.io.File
+import kotlin.math.roundToInt
 
 /**
  * Код, на который наводят камеру: чей он, сам код и адрес под ним — свой из настроек, комнаты из «О чате». Порт `QRCodeSheet`
@@ -95,13 +100,70 @@ internal object QrCard {
     private const val SUBTITLE_SIZE = 36f
     private const val GAP = 32
     private const val DIRECTORY = "shared"
+    private const val CENTRE_SHARE = 0.28
 
-    /** QR как матрица яркости: тёмные модули на белом, с полем в два модуля — меньше камера читает хуже. */
+    /**
+     * Модули кода с чистым квадратом посередине под искру. Коррекция `H`, и искра — тому причина: середина закрыта нарочно, а
+     * `H` восстанавливает до 30 % кода по остальному (`QRCode` нативной Искры, `qr.ts` веба).
+     *
+     * Квадрат — нечётного числа модулей: код всегда нечётной ширины, и нечётный квадрат по центру начинается и кончается на
+     * границе модуля, а не посередине. Полмодуля, торчащие у края подложки, — то, из-за чего логотип на QR выглядит наклеенным.
+     */
+    class Modules(val size: Int, private val dark: BooleanArray) {
+        fun isDark(x: Int, y: Int) = dark[y * size + x]
+
+        /** Сколько модулей в чистом квадрате: чуть больше четверти, нечётное. */
+        val centre: Int = (size * CENTRE_SHARE).roundToInt().let { if (it % 2 == 0) it + 1 else it }
+
+        /** Искра — доля стороны: чистый квадрат минус модуль белого с каждой стороны, чтобы она не касалась модулей. */
+        val sparkFraction: Float get() = (centre - 2).toFloat() / size
+    }
+
+    fun modules(text: String): Modules {
+        val hints = mapOf(EncodeHintType.MARGIN to 0, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.H, EncodeHintType.CHARACTER_SET to "UTF-8")
+        // Ширина 0 — самая малая: один пиксель на модуль, без полей.
+        val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, hints)
+        val size = matrix.width
+        val centre = Modules(size, BooleanArray(size * size)).centre
+        val from = (size - centre) / 2
+        val dark = BooleanArray(size * size) { index ->
+            val x = index % size
+            val y = index / size
+            matrix.get(x, y) && !(x in from until from + centre && y in from until from + centre)
+        }
+        return Modules(size, dark)
+    }
+
+    /** Код чёрным по белому, целыми пикселями на модуль, и чёрная искра в чистой середине — как на нативной и в вебе. */
     fun code(text: String, side: Int): Bitmap {
-        val hints = mapOf(EncodeHintType.MARGIN to 2, EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M, EncodeHintType.CHARACTER_SET to "UTF-8")
-        val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, side, side, hints)
-        val pixels = IntArray(side * side) { index -> if (matrix.get(index % side, index / side)) Color.BLACK else Color.WHITE }
-        return Bitmap.createBitmap(pixels, side, side, Bitmap.Config.ARGB_8888)
+        val modules = modules(text)
+        val unit = side / modules.size
+        val drawn = unit * modules.size
+        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.WHITE)
+        val paint = Paint().apply { color = Color.BLACK }
+        val offset = (side - drawn) / 2f
+        for (y in 0 until modules.size) {
+            for (x in 0 until modules.size) {
+                if (modules.isDark(x, y)) {
+                    canvas.drawRect(offset + x * unit, offset + y * unit, offset + (x + 1) * unit, offset + (y + 1) * unit, paint)
+                }
+            }
+        }
+        val spark = PathParser.createPathFromPathData(SparkShape.PATH)
+        if (spark != null) {
+            spark.fillType = Path.FillType.EVEN_ODD
+            val box = drawn * modules.sparkFraction
+            val scale = minOf(box / SparkShape.WIDTH, box / SparkShape.HEIGHT)
+            val matrix = Matrix().apply {
+                postScale(scale, scale)
+                postTranslate(side / 2f - SparkShape.WIDTH * scale / 2f, side / 2f - SparkShape.HEIGHT * scale / 2f)
+            }
+            spark.transform(matrix)
+            canvas.drawPath(spark, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK })
+        }
+        return bitmap
     }
 
     /** Лицо карточки: имя, код, адрес. Белая при любой теме и прозрачная за скруглёнными углами. */

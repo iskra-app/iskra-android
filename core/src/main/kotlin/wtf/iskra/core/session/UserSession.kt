@@ -100,6 +100,31 @@ class UserSession internal constructor(
         scope = scope,
     )
 
+    /**
+     * Сессии аккаунта для экрана «Устройства». Заново на каждый вход на экран: список — правда сервера в этот момент.
+     * Вошли через OAuth — сессии заканчиваются на странице самого сервера (`accountUrl`), и экран её откроет.
+     */
+    fun devices(): DevicesStore {
+        val requests = AuthorisedRequests(client)
+        val managed = runCatching { client.session().oauthData != null }.getOrDefault(false)
+        return DevicesStore(
+            AccountDevices(
+                userId = userId,
+                currentDeviceId = client.deviceId(),
+                isManagedByServer = managed,
+                send = requests::send,
+                serverPage = { deviceId ->
+                    val action = if (deviceId != null) {
+                        org.matrix.rustcomponents.sdk.AccountManagementAction.DeviceDelete(deviceId)
+                    } else {
+                        org.matrix.rustcomponents.sdk.AccountManagementAction.DevicesList
+                    }
+                    runCatching { withTimeLimit(PROFILE_LIMIT) { client.accountUrl(action) } }.getOrNull()
+                },
+            ),
+        )
+    }
+
     /** Папки чатов: правила в account data, общие для устройств аккаунта (`ChatFolders`). */
     val folders = wtf.iskra.core.rooms.ChatFolders(
         readAccountData = { type -> client.accountData(type) },

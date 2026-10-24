@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.QrCode2
@@ -106,7 +107,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, PROFILE, SECURITY, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -166,6 +167,7 @@ fun SettingsScreen(
                 SettingsPage.CHATS -> R.string.settings_chats
                 SettingsPage.FOLDERS -> R.string.folders_title
                 SettingsPage.SECURITY -> R.string.settings_security
+                SettingsPage.DEVICES -> R.string.devices_title
                 SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
@@ -190,6 +192,7 @@ fun SettingsScreen(
                 SettingsPage.CHATS -> Chats(settings)
                 SettingsPage.FOLDERS -> FoldersPage(session)
                 SettingsPage.SECURITY -> Security(session)
+                SettingsPage.DEVICES -> DevicesPage(session)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
                 SettingsPage.LIBRARIES -> Libraries(librariesResource)
@@ -293,6 +296,7 @@ private fun Main(
     }
     Group(
         { Link(Icons.Outlined.Shield, R.string.settings_security) { onNavigate(SettingsPage.SECURITY) } },
+        { Link(Icons.Outlined.Devices, R.string.devices_title) { onNavigate(SettingsPage.DEVICES) } },
         { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
         { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
         { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
