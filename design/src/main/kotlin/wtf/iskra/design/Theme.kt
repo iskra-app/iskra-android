@@ -264,6 +264,15 @@ object Theme {
         /** Лицо в виджете избранного. */
         val widgetFace = 48.dp
 
+        /** Плитка виджета: лицо с запасом на точку непрочитанного и имя под ним. */
+        val widgetTile = 56.dp
+        val widgetDot = 12.dp
+
+        /** Размеры виджета «Избранные чаты», при которых он показывает четыре лица и восемь с именами. */
+        val widgetMinWidth = 160.dp
+        val widgetSmallHeight = 80.dp
+        val widgetMediumHeight = 180.dp
+
         /** Лицо в постоянном уведомлении (аналог Live Activity). */
         val activityFace = 44.dp
 

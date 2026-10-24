@@ -57,6 +57,8 @@ class RootModel(
     val shares: ShareRouter? = null,
     /** Ярлыки недавних чатов. Null — без них. */
     private val shortcuts: wtf.iskra.features.push.ChatShortcuts? = null,
+    /** Виджет «Избранные чаты». Null — без него. */
+    private val widgets: wtf.iskra.features.widget.WidgetPublisher? = null,
     private val mediaJobsChanged: ((String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit)? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
@@ -229,6 +231,7 @@ class RootModel(
             try {
                 authentication.signOutInBackground(sessionId)
                 pushes?.signedOut(sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
+                widgets?.forget()
             } finally {
                 mutableAccounts.value = mutableAccounts.value.copy(signingOut = mutableAccounts.value.signingOut - sessionId)
                 reloadAccounts()
@@ -308,7 +311,10 @@ class RootModel(
             session.rooms.state.map { state -> state.rooms.filter { it.id.isNotEmpty() }.take(SHORTCUT_ROOMS) }
                 .distinctUntilChanged()
                 .debounce(SHORTCUT_QUIET_MS)
-                .collect { shortcuts.publish(session.sessionId, it, session.media) }
+                .collect {
+                    shortcuts.publish(session.sessionId, it, session.media)
+                    widgets?.publish(session.sessionId, session.rooms.state.value.rooms, session.media)
+                }
         }
         mediaJobsChanged?.let { changed ->
             if (!session.isDemo) {
@@ -389,6 +395,7 @@ class RootModel(
             pushRegistration?.cancel()
             session.signOut()
             if (!session.isDemo) pushes?.signedOut(session.sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
+            widgets?.forget()
             mutablePhase.value = Phase.SignedOut()
             reloadAccounts()
             // Если на устройстве есть ещё аккаунты — открыть следующий, а не показывать вход.

@@ -2,6 +2,9 @@ package wtf.iskra.features
 
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import wtf.iskra.features.push.Push
 import wtf.iskra.features.push.PushRouter
 import wtf.iskra.features.push.PushTransport
@@ -116,6 +119,17 @@ class AppGraph(
     /** Ярлыки недавних чатов: лаунчер и Direct Share. */
     val chatShortcuts = wtf.iskra.features.push.ChatShortcuts(context)
 
+    /** Виджет «Избранные чаты»; перерисовывается и когда приложение запирается или отпирается: заперто — без лиц и имён. */
+    val widgets = wtf.iskra.features.widget.WidgetPublisher(context)
+
+    init {
+        val scope = CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+        scope.launch {
+            kotlinx.coroutines.flow.combine(appLock.isEnabled, appLock.isLocked) { enabled, locked -> enabled && locked }
+                .distinctUntilChanged().drop(1).collect { widgets.redraw() }
+        }
+    }
+
     /** Задачи отправки медиа → хаб и сервис с уведомлением (`MediaSendService`). */
     private val mediaJobsChanged: (String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit = { account, jobs ->
         wtf.iskra.features.media.MediaSendHub.update(account, jobs)
@@ -125,7 +139,7 @@ class AppGraph(
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts, widgets = widgets)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

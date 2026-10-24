@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.zxing.core)
     // Блокировка приложения: BiometricPrompt, откат на пин устройства. `api`: окну нужен `FragmentActivity`, а он приходит отсюда.
     api(libs.androidx.biometric)
+    implementation(libs.androidx.glance)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.collections.immutable)
     debugImplementation(libs.compose.ui.tooling)
