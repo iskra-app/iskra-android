@@ -243,13 +243,24 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     model.shares?.let { shares ->
         val incoming by shares.request.collectAsStateWithLifecycle()
         LaunchedEffect(incoming, session.sessionId) {
+            val wanted = incoming ?: return@LaunchedEffect
+            val account = wanted.accountId
+            // Direct Share в чат другого аккаунта: сначала переключиться, содержимое подождёт в роутере.
+            if (account != null && account != session.sessionId && !session.isDemo) {
+                if (model.switchForNotification(account)) return@LaunchedEffect
+            }
             val content = shares.take() ?: return@LaunchedEffect
             settingsPage = null
             creating = false
             linked = null
-            openRoom = null
             openEvent = null
-            sharing = content
+            if (content.roomId != null) {
+                shareIntoRoom = content
+                openRoom = content.roomId
+            } else {
+                openRoom = null
+                sharing = content
+            }
         }
     }
 

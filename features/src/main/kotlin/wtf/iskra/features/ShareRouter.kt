@@ -7,7 +7,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.getAndUpdate
 
 /** Что отдало другое приложение: слова и/или адреса `content://`. Байты не читаются, пока человек не выбрал чат и не нажал «отправить». */
-data class SharedContent(val text: String?, val uris: List<Uri>) {
+data class SharedContent(
+    val text: String?,
+    val uris: List<Uri>,
+    /** Direct Share: человек уже выбрал чат в системном меню — выбирать не надо. */
+    val roomId: String? = null,
+    val accountId: String? = null,
+) {
     val isEmpty: Boolean get() = text.isNullOrBlank() && uris.isEmpty()
 }
 

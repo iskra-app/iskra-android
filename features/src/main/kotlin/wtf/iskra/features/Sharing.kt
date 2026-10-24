@@ -3,6 +3,7 @@ package wtf.iskra.features
 import android.content.Intent
 import android.net.Uri
 import androidx.core.content.IntentCompat
+import wtf.iskra.features.push.ShortcutIds
 
 /** Читает то, что прислало общее меню Android, в [SharedContent]. */
 object Sharing {
@@ -14,7 +15,9 @@ object Sharing {
         // Ссылка из браузера приходит словами с заголовком отдельно: слова важнее, заголовок — только когда слов нет.
         val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
             ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)?.trim()?.takeIf { it.isNotEmpty() && uris.isEmpty() }
-        return SharedContent(text, uris.take(MAX))
+        // Direct Share называет ярлык, на который нажали: это чат (`ShortcutIds`), и выбирать его снова незачем.
+        val target = ShortcutIds.parse(intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID))
+        return SharedContent(text, uris.take(MAX), target?.second, target?.first)
     }
 
     /** Столько же, сколько в композере (`MAX_ATTACHMENTS`). */

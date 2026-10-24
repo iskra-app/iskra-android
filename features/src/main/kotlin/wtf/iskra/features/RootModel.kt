@@ -4,6 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -25,6 +28,7 @@ import wtf.iskra.features.signin.WebAuthentication
  * Восстановление и вход — явные вызовы модели, а не побочный эффект composable, который кто-нибудь
  * разумно удалит (та же ошибка, что опустошила ленты на iOS, раздел 4.2).
  */
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class RootModel(
     private val authentication: AuthenticationService,
     private val scope: CoroutineScope,
@@ -51,6 +55,8 @@ class RootModel(
     val links: LinkRouter? = null,
     /** Содержимое из общего меню Android, ждущее выбора чата. Null — без него. */
     val shares: ShareRouter? = null,
+    /** Ярлыки недавних чатов. Null — без них. */
+    private val shortcuts: wtf.iskra.features.push.ChatShortcuts? = null,
     private val mediaJobsChanged: ((String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit)? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
@@ -272,6 +278,7 @@ class RootModel(
 
     /** Присутствие аккаунта следует за переключателем «Скрыть, когда был(а) в сети»; у следующего сеанса — своё. */
     private var presenceJob: kotlinx.coroutines.Job? = null
+    private var shortcutsJob: kotlinx.coroutines.Job? = null
 
     /**
      * Сеанс открыт — и синхронизация запускается *здесь*, явным вызовом, а не `LaunchedEffect` на
@@ -295,6 +302,14 @@ class RootModel(
         session.blocked.start()
         presenceJob?.cancel()
         presenceJob = if (session.isDemo) null else settings?.let { s -> scope.launch { s.privacy.collect { session.applyPresence(it) } } }
+        shortcutsJob?.cancel()
+        shortcutsJob = if (session.isDemo || shortcuts == null) null else scope.launch {
+            // Список успокаивается — потом ярлыки: ресайзер лиц не нужен на каждое входящее.
+            session.rooms.state.map { state -> state.rooms.filter { it.id.isNotEmpty() }.take(SHORTCUT_ROOMS) }
+                .distinctUntilChanged()
+                .debounce(SHORTCUT_QUIET_MS)
+                .collect { shortcuts.publish(session.sessionId, it, session.media) }
+        }
         mediaJobsChanged?.let { changed ->
             if (!session.isDemo) {
                 wtf.iskra.features.media.MediaSendHub.cancel = { id -> scope.launch { session.mediaJobs.cancel(id) } }
@@ -425,5 +440,11 @@ class RootModel(
             }
         }
         mutablePhase.value = Phase.SignedOut(endedRemotely = ended)
+    }
+
+    private companion object {
+        /** Сколько верхних чатов уходит в ярлыки и как долго список должен молчать, прежде чем их обновлять. */
+        const val SHORTCUT_ROOMS = 4
+        const val SHORTCUT_QUIET_MS = 2_000L
     }
 }

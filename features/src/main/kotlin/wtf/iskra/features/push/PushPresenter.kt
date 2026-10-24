@@ -120,7 +120,7 @@ internal class PushPresenter(
     /** Вышли из аккаунта: и уведомления, и ярлыки разговоров — чужие чаты не остаются в «Разговорах». */
     fun forget(accountId: String) {
         clearAccount(accountId)
-        val prefix = "$SHORTCUT$SEPARATOR$accountId$SEPARATOR"
+        val prefix = ShortcutIds.prefix(accountId)
         val ids = runCatching { ShortcutManagerCompat.getDynamicShortcuts(context) }.getOrNull().orEmpty()
             .map { it.id }.filter { it.startsWith(prefix) }
         if (ids.isNotEmpty()) runCatching { ShortcutManagerCompat.removeLongLivedShortcuts(context, ids) }
@@ -206,7 +206,7 @@ internal class PushPresenter(
 
     /** Долгоживущий ярлык разговора: без него нет «Разговоров», приоритета и пузырей. */
     private fun pushShortcut(notification: PushNotification, sender: Person): String {
-        val id = listOf(SHORTCUT, notification.accountId ?: NO_ACCOUNT, notification.roomId).joinToString(SEPARATOR)
+        val id = ShortcutIds.room(notification.accountId, notification.roomId)
         val icon = if (notification.isGroup) face(null, notification.roomId) else sender.icon
         val builder = ShortcutInfoCompat.Builder(context, id)
             .setShortLabel(notification.title)
@@ -311,6 +311,24 @@ internal class PushPresenter(
 }
 
 /** Что едет в интентах уведомлений — между [PushPresenter], `MainActivity` и [NotificationActionReceiver]. */
+/** Идентификатор ярлыка разговора: один и тот же у пуша, у «недавних» лаунчера и у Direct Share, чтобы ярлык был один на чат. */
+object ShortcutIds {
+    private const val SEPARATOR = "/"
+    private const val NO_ACCOUNT = "-"
+    private const val ROOM = "room"
+
+    fun prefix(accountId: String) = "$ROOM$SEPARATOR$accountId$SEPARATOR"
+
+    fun room(accountId: String?, roomId: String) = listOf(ROOM, accountId ?: NO_ACCOUNT, roomId).joinToString(SEPARATOR)
+
+    /** Аккаунт (null — не назван) и комната; всё, что не наш ярлык, — null. ID комнаты сам содержит «:» и «!», но не «/». */
+    fun parse(id: String?): Pair<String?, String>? {
+        val parts = id?.split(SEPARATOR, limit = 3) ?: return null
+        if (parts.size != 3 || parts[0] != ROOM || parts[2].isEmpty()) return null
+        return (parts[1].takeIf { it != NO_ACCOUNT }) to parts[2]
+    }
+}
+
 object PushIntents {
     const val EXTRA_ROOM = "room_id"
     const val EXTRA_ACCOUNT = "iskra_account"
