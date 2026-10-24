@@ -71,4 +71,7 @@
     <string name="chats_ctrl_return">Send with Ctrl + Enter</string>
     <string name="chats_ctrl_return_on_help">On a hardware keyboard, Enter starts a new line and Ctrl + Enter sends.</string>
     <string name="chats_ctrl_return_off_help">On a hardware keyboard, Enter sends and Shift + Enter starts a new line.</string>
+    <string name="location_show_map">Show map</string>
+    <string name="location_open_in_maps">Open in maps</string>
+    <string name="map_attribution">Map data © OpenStreetMap contributors, tiles OpenFreeMap</string>
 </resources>

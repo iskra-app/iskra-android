@@ -51,4 +51,7 @@
     <string name="chats_ctrl_return">使用 Ctrl + Enter 发送</string>
     <string name="chats_ctrl_return_on_help">使用实体键盘时，Enter 换行，Ctrl + Enter 发送。</string>
     <string name="chats_ctrl_return_off_help">使用实体键盘时，Enter 发送，Shift + Enter 换行。</string>
+    <string name="location_show_map">显示地图</string>
+    <string name="location_open_in_maps">在地图中打开</string>
+    <string name="map_attribution">地图数据 © OpenStreetMap 贡献者，瓦片由 OpenFreeMap 提供</string>
 </resources>

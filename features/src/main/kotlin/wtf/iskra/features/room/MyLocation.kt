@@ -111,7 +111,7 @@ internal fun MyLocationDialog(
 
 /** «На сколько?» — 15 минут, час, 8 часов. Те же три, что в iOS. */
 @Composable
-private fun LiveDurationDialog(onPick: (Duration) -> Unit, onDismiss: () -> Unit) {
+internal fun LiveDurationDialog(onPick: (Duration) -> Unit, onDismiss: () -> Unit) {
     val options = listOf(
         pluralStringResource(R.plurals.location_live_for_minutes, 15, 15) to 15.minutes,
         pluralStringResource(R.plurals.location_live_for_hours, 1, 1) to 1.hours,
@@ -137,7 +137,7 @@ private fun LiveDurationDialog(onPick: (Duration) -> Unit, onDismiss: () -> Unit
  * ответить никогда, и диалог не должен крутиться вечно.
  */
 @SuppressLint("MissingPermission")
-private suspend fun currentLocation(context: Context): Location? = runCatching {
+internal suspend fun currentLocation(context: Context): Location? = runCatching {
     val manager = context.getSystemService(LocationManager::class.java) ?: return null
     val provider = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
         .firstOrNull { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) } ?: return null

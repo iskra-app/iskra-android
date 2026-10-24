@@ -1,6 +1,18 @@
 package wtf.iskra.features.room
 
 import android.content.ActivityNotFoundException
+import wtf.iskra.features.support.NetworkCost
+import wtf.iskra.features.support.ManualDownloads
+import wtf.iskra.features.support.LocalAppSettings
+import wtf.iskra.features.map.MapSnapshot
+import wtf.iskra.design.LocalAccent
+import wtf.iskra.core.media.MediaAutoDownload
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.fillMaxSize
 import android.content.Intent
 import android.net.Uri
 import android.text.format.DateFormat
@@ -113,6 +125,39 @@ internal fun AttachmentContent(message: Message, ink: Color, fill: Color, onFill
                     context.startActivity(Intent(Intent.ACTION_VIEW, uri))
                 } catch (_: ActivityNotFoundException) {
                     // Карт на телефоне нет — нажатию просто нечего открыть.
+                }
+            }
+            // Карта в пузыре: снимок (`MapSnapshotter`), а не живая карта на каждое сообщение. Грузится, как фото, по правилам автозагрузки
+            // — тайлы видят район, который смотрят, — иначе координаты и «Показать карту». Без первой точки показывать нечего.
+            if (!waiting) {
+                val setting by (LocalAppSettings.current?.autoDownload ?: remember { MutableStateFlow(MediaAutoDownload.DEFAULT) }).collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { NetworkCost.watch(context) }
+                val expensive by NetworkCost.isExpensive.collectAsStateWithLifecycle()
+                val key = "geo:${kind.latitude},${kind.longitude}"
+                val shown = setting.allows(expensive) || ManualDownloads.contains(key)
+                val shape = RoundedCornerShape(Theme.Radius.picture)
+                Box(
+                    Modifier
+                        .size(Theme.Size.picture, Theme.Size.map)
+                        .clip(shape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .clickable(onClickLabel = stringResource(R.string.location_open_in_maps), onClick = openInMaps),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (shown) {
+                        MapSnapshot(kind.latitude, kind.longitude, Theme.Size.picture, Theme.Size.map, stringResource(R.string.location_title), Modifier.fillMaxSize())
+                        Icon(
+                            Icons.Filled.Place,
+                            contentDescription = null,
+                            tint = if (live?.isActive(now) == true) LocalAccent.current.control else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(Theme.Size.menuIcon).offset(y = -Theme.Size.menuIcon / 2),
+                        )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
+                            Text(stringResource(R.string.location_coordinates, kind.latitude, kind.longitude), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            TextButton(onClick = { ManualDownloads.ask(key) }) { Text(stringResource(R.string.location_show_map)) }
+                        }
+                    }
                 }
             }
             Line(

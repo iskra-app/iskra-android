@@ -51,4 +51,7 @@
     <string name="chats_ctrl_return">Ctrl + Enter で送信</string>
     <string name="chats_ctrl_return_on_help">ハードウェアキーボードでは、Enter で改行し、Ctrl + Enter で送信します。</string>
     <string name="chats_ctrl_return_off_help">ハードウェアキーボードでは、Enter で送信し、Shift + Enter で改行します。</string>
+    <string name="location_show_map">地図を表示</string>
+    <string name="location_open_in_maps">地図アプリで開く</string>
+    <string name="map_attribution">地図データ © OpenStreetMap contributors、タイル: OpenFreeMap</string>
 </resources>

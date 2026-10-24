@@ -51,4 +51,7 @@
     <string name="chats_ctrl_return">Envoyer avec Ctrl + Entrée</string>
     <string name="chats_ctrl_return_on_help">Avec un clavier physique, Entrée passe à la ligne et Ctrl + Entrée envoie.</string>
     <string name="chats_ctrl_return_off_help">Avec un clavier physique, Entrée envoie et Maj + Entrée passe à la ligne.</string>
+    <string name="location_show_map">Afficher la carte</string>
+    <string name="location_open_in_maps">Ouvrir dans Plans</string>
+    <string name="map_attribution">Données cartographiques © contributeurs OpenStreetMap, tuiles OpenFreeMap</string>
 </resources>

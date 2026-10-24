@@ -51,4 +51,7 @@
     <string name="chats_ctrl_return">Отправлять по Ctrl + Enter</string>
     <string name="chats_ctrl_return_on_help">С аппаратной клавиатурой Enter переносит строку, а Ctrl + Enter отправляет.</string>
     <string name="chats_ctrl_return_off_help">С аппаратной клавиатурой Enter отправляет, а Shift + Enter переносит строку.</string>
+    <string name="location_show_map">Показать карту</string>
+    <string name="location_open_in_maps">Открыть в картах</string>
+    <string name="map_attribution">Данные карты © участники OpenStreetMap, тайлы OpenFreeMap</string>
 </resources>

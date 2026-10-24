@@ -51,4 +51,7 @@
     <string name="chats_ctrl_return">Enviar con Ctrl + Intro</string>
     <string name="chats_ctrl_return_on_help">Con teclado físico, Intro crea una línea nueva y Ctrl + Intro envía.</string>
     <string name="chats_ctrl_return_off_help">Con teclado físico, Intro envía y Mayús + Intro crea una línea nueva.</string>
+    <string name="location_show_map">Mostrar mapa</string>
+    <string name="location_open_in_maps">Abrir en mapas</string>
+    <string name="map_attribution">Datos del mapa © colaboradores de OpenStreetMap, teselas de OpenFreeMap</string>
 </resources>

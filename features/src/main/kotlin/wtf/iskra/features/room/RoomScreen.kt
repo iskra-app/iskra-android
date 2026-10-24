@@ -415,7 +415,7 @@ fun RoomScreen(
     // «Место»: точка, которую человек видит, прежде чем отправить.
     var locating by remember(store.roomId) { mutableStateOf(false) }
     if (locating) {
-        MyLocationDialog(
+        LocationPicker(
             onShareLive = liveLocation?.takeIf { it.isAvailable && !isThread }?.let { sharer ->
                 { duration ->
                     locating = false

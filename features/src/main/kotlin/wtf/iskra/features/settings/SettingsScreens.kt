@@ -794,6 +794,8 @@ private fun About(appVersion: String, onBeta: () -> Unit, beforeLicences: @Compo
     Column(Modifier.padding(horizontal = Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
         Text(stringResource(R.string.about_copyright), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.about_free_software), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Атрибуция карты обязательна: данные OpenStreetMap (ODbL) и тайлы OpenFreeMap — и на самой карте, и здесь.
+        Text(stringResource(R.string.map_attribution), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     beforeLicences()
     SectionTitle(R.string.about_licences)

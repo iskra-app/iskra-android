@@ -131,7 +131,7 @@ private fun Card(room: RoomSummary, store: TimelineStore, ownUserId: String, onO
         modifier = modifier.fillMaxWidth().heightIn(max = Theme.Size.peekHeight),
     ) {
         Column {
-            // Заголовок — кнопка «открыть»; «останется непрочитанным» — только где это новость.
+            // Заголовок — кнопка «открыть».
             Row(
                 Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpen)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
