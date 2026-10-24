@@ -30,6 +30,12 @@ object PhotoPreparation {
         BitmapFactory.decodeByteArray(original, 0, original.size, bounds)
         val decodable = bounds.outWidth > 0 && bounds.outHeight > 0
 
+        // WebP из галереи — стикер (`MessagePreview.isSticker` узнаёт его по типу): перерисованный в PNG или JPEG он перестал бы им быть,
+        // а то, что у WebP внутри, — прозрачность и анимация — перерисовка и вовсе потеряла бы. Уходит как есть, но только чистый:
+        // метаданных в нём нет по белому списку чанков (`MetadataCheck`), а нечистый идёт обычным путём ниже.
+        if (decodable && MetadataCheck.isWebp(original) && MetadataCheck.isClean(original)) {
+            return untouched(original, filename.substringBeforeLast('.').ifBlank { FALLBACK_STEM } + WEBP_EXTENSION, bounds)
+        }
         if (!settings.stripsMetadata && !settings.compresses) {
             return untouched(original, filename, bounds)
         }
@@ -189,6 +195,7 @@ object PhotoPreparation {
     private const val PNG_MIME = "image/png"
     private const val OCTET_STREAM = "application/octet-stream"
     private const val JPEG_EXTENSION = ".jpg"
+    private const val WEBP_EXTENSION = ".webp"
     private const val PNG_EXTENSION = ".png"
     private const val FALLBACK_STEM = "photo"
 }
