@@ -13,7 +13,7 @@ import androidx.core.view.WindowCompat
  * Корень оформления: Material 3 целиком — схема, типографика и формы (docs/PROMPT.md, 6.1, 6.5).
  *
  * Схема — из акцента ([AccentTheme.resolveHere]): динамическая системная на «Как в системе»,
- * тональная из своего цвета на остальных. Шрифт — выбранный ([AppFont], по умолчанию Google Sans),
+ * тональная из своего цвета на остальных. Шрифт — Google Sans,
  * размеры — шкала Material.
  * Вёрстка и наполнение экранов — как на iOS; внешний вид — Google.
  */
@@ -21,7 +21,6 @@ import androidx.core.view.WindowCompat
 fun IskraTheme(
     accent: AccentTheme = AccentTheme.Default,
     appearance: AppearanceMode = AppearanceMode.Default,
-    font: AppFont = AppFont.Default,
     content: @Composable () -> Unit,
 ) {
     val dark = appearance.isDark(isSystemInDarkTheme())
@@ -42,6 +41,6 @@ fun IskraTheme(
         LocalAccent provides colors,
         LocalReduceMotion provides reduceMotionHere(),
     ) {
-        MaterialTheme(colorScheme = colors.scheme, typography = iskraTypography(font), content = content)
+        MaterialTheme(colorScheme = colors.scheme, typography = iskraTypography(), content = content)
     }
 }

@@ -44,8 +44,4 @@
     <string name="update_check_failed">GitHub に接続できませんでした。後でもう一度お試しください。</string>
     <string name="about_libraries">オープンソースライブラリ</string>
     <string name="about_libraries_help">アプリ内で他の人が書いたものと、そのライセンス。</string>
-    <string name="appearance_font">フォント</string>
-    <string name="appearance_font_google_sans">Google Sans</string>
-    <string name="appearance_font_inter">Inter</string>
-    <string name="appearance_font_system">システム</string>
 </resources>

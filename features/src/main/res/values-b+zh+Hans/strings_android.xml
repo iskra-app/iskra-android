@@ -44,8 +44,4 @@
     <string name="update_check_failed">无法连接 GitHub。请稍后再试。</string>
     <string name="about_libraries">开源库</string>
     <string name="about_libraries_help">应用中由他人编写的所有内容及其许可证。</string>
-    <string name="appearance_font">字体</string>
-    <string name="appearance_font_google_sans">Google Sans</string>
-    <string name="appearance_font_inter">Inter</string>
-    <string name="appearance_font_system">系统</string>
 </resources>

@@ -94,7 +94,7 @@ Matrix и шифрование целиком отданы `matrix-rust-sdk`. П
 |---|---|---|
 | Matrix | `org.matrix.rustcomponents:sdk-android` (из `matrix-org/matrix-rust-components-kotlin`) | Брать релиз **того же коммита SDK**, что Swift-пакет `26.06.06` в `Core/Package.swift`, и проверить, что он есть на Maven Central. Тогда API совпадает почти один в один и сторы переносятся прямо. Обновлять SDK на обеих платформах синхронно. |
 | Асинхронность | kotlinx.coroutines, `StateFlow`/`SharedFlow` | `@MainActor @Observable` превращается в класс со `StateFlow`, мутации на `Dispatchers.Main.immediate` |
-| UI | Jetpack Compose, Material 3 | Material 3 целиком: каркас, схема и формы — стиль Google, шрифт Google Sans (на выбор — Inter или системный); вёрстка и наполнение экранов — как на iOS (раздел 6) |
+| UI | Jetpack Compose, Material 3 | Material 3 целиком: каркас, схема и формы — стиль Google, шрифт Google Sans (один, без выбора); вёрстка и наполнение экранов — как на iOS (раздел 6) |
 | Адаптивность | `androidx.compose.material3.adaptive` (`ListDetailPaneScaffold`, `NavigationSuiteScaffold`) | Планшеты, складные телефоны, ChromeOS: аналог iPad/Mac, где список и чат стоят рядом |
 | Навигация | Navigation 3 (`androidx.navigation3`), если стабильна в выбранной версии; иначе Navigation Compose | Back stack — обычный список в состоянии, это проще для list-detail |
 | Сериализация | kotlinx.serialization | account data (папки, стикеры), JSON моста, payload пушей |
@@ -376,8 +376,8 @@ entitlements `.appex`) исчезает. Но разделение «что об
 внешний вид свой»): Material 3 целиком — `TopAppBar`/`LargeTopAppBar`, нижние листы, заполненные и
 тональные кнопки, поля Material, группы строк настроек как в настройках Android, системный
 back-жест, predictive back. Цвета — роли схемы Material (раздел 6.5); шрифт — Google Sans со
-шкалой Material и нулевым межбуквенным (решение автора 2026-10-23); в «Внешнем виде» его можно сменить на Inter
-(трекинг по динамическим метрикам Inter, плотнее разрядки Roboto) или системный. Свой пузырь — `primaryContainer`, чужой — `surfaceContainerHigh`,
+шкалой Material и нулевым межбуквенным (решение автора 2026-10-23); **выбора шрифта нет** — ни Inter, ни системного
+(автор убрал его 2026-10-24). Свой пузырь — `primaryContainer`, чужой — `surfaceContainerHigh`,
 как в Google Messages.
 
 ### 6.2. `Theme`: все размеры — именованные константы
@@ -1582,7 +1582,7 @@ workflow релиза — их проще завести на пустом пр�
 | Исходный код | Оба репозитория закрыты; автор откроет их вместе, под одной лицензией, **до первого релиза**. Общее вендорится. Релизы — в самом `iskra-app/iskra-android` | 2.3, 19, 19.2 |
 | minSdk | 29 (Android 10) | 2.2 |
 | Material You | Да: акцент `system` («Как в системе») — вся динамическая схема; остальные акценты — тональная схема Material из своего цвета; внешний вид — Material 3/Google (2026-10-19) | 6.1, 6.5 |
-| Шрифт | Google Sans по умолчанию, в APK (OFL, урезан до нужных письменностей); в «Внешнем виде» — Inter или системный (2026-10-23) | 6.1 |
+| Шрифт | Только Google Sans, в APK (OFL, урезан до нужных письменностей); выбора шрифта в «Внешнем виде» нет — Inter и системный убраны (2026-10-24, до того были с 2026-10-23) | 6.1 |
 | `app_id` на шлюзе | `wtf.iskra-android` (отличается от `applicationId` `wtf.iskra`) | 10.2 |
 | Голосовые | Как на iOS: AAC/m4a, 24 кГц, моно, 48 кбит/с | 11.3 |
 

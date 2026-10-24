@@ -20,12 +20,16 @@ import wtf.iskra.core.update.UpdateStore
 class AppSettings(context: Context) : UpdateStore {
     private val preferences: SharedPreferences = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    init {
+        // Выбора шрифта больше нет: что человек выбрал раньше, не должно лежать мёртвым грузом.
+        if (preferences.contains(LEGACY_FONT)) preferences.edit().remove(LEGACY_FONT).apply()
+    }
+
     private fun string(key: String) = MutableStateFlow(preferences.getString(key, null))
     private fun flag(key: String, default: Boolean) = MutableStateFlow(preferences.getBoolean(key, default))
 
     private val mutableAccent = string(ACCENT)
     private val mutableAppearance = string(APPEARANCE)
-    private val mutableFont = string(FONT)
     private val mutableDemo = flag(DEMO, false)
     private val mutableCreatures = flag(CREATURES, CREATURES_BY_DEFAULT)
     private val mutableForceCreatures = flag(FORCE_CREATURES, false)
@@ -40,9 +44,6 @@ class AppSettings(context: Context) : UpdateStore {
     /** Имя акцента для хранения (`AccentTheme.storageName`); null — по умолчанию. */
     val accent: StateFlow<String?> = mutableAccent.asStateFlow()
     val appearance: StateFlow<String?> = mutableAppearance.asStateFlow()
-
-    /** Имя шрифта интерфейса (`AppFont.storageName`); null — по умолчанию. */
-    val font: StateFlow<String?> = mutableFont.asStateFlow()
 
     /** Демо-сервер вместо аккаунта. Настоящий аккаунт не трогается и возвращается, когда выключить. */
     val demoBackend: StateFlow<Boolean> = mutableDemo.asStateFlow()
@@ -101,7 +102,6 @@ class AppSettings(context: Context) : UpdateStore {
 
     fun setAccent(name: String) = save(ACCENT, name, mutableAccent)
     fun setAppearance(name: String) = save(APPEARANCE, name, mutableAppearance)
-    fun setFont(name: String) = save(FONT, name, mutableFont)
     fun setDemoBackend(on: Boolean) = save(DEMO, on, mutableDemo)
 
     private val mutableUpdateChecks = flag(UPDATE_CHECK, true)
@@ -151,7 +151,8 @@ class AppSettings(context: Context) : UpdateStore {
         const val FILE = "iskra.settings"
         const val ACCENT = "appearance.accent"
         const val APPEARANCE = "appearance.mode"
-        const val FONT = "appearance.font"
+        /** Прежний выбор шрифта (Inter или системный): выбора больше нет (2026-10-24), запись убирается. */
+        const val LEGACY_FONT = "appearance.font"
         const val DEMO = "beta.mockBackend"
         const val NOTIFICATIONS_ASKED = "notifications.permissionAsked"
         const val UPDATE_CHECK = "update.check"

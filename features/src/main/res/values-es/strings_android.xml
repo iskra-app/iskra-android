@@ -44,8 +44,4 @@
     <string name="update_check_failed">No se pudo conectar con GitHub. Inténtalo más tarde.</string>
     <string name="about_libraries">Bibliotecas de código abierto</string>
     <string name="about_libraries_help">Todo lo que hay dentro de la app escrito por otros, y bajo qué licencia.</string>
-    <string name="appearance_font">Fuente</string>
-    <string name="appearance_font_google_sans">Google Sans</string>
-    <string name="appearance_font_inter">Inter</string>
-    <string name="appearance_font_system">Del sistema</string>
 </resources>

@@ -44,8 +44,4 @@
     <string name="update_check_failed">Не удалось связаться с GitHub. Попробуйте позже.</string>
     <string name="about_libraries">Открытые библиотеки</string>
     <string name="about_libraries_help">Всё внутри приложения, что написали другие, и под какой лицензией.</string>
-    <string name="appearance_font">Шрифт</string>
-    <string name="appearance_font_google_sans">Google Sans</string>
-    <string name="appearance_font_inter">Inter</string>
-    <string name="appearance_font_system">Системный</string>
 </resources>

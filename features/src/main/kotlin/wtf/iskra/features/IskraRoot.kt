@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import wtf.iskra.design.AccentTheme
-import wtf.iskra.design.AppFont
 import wtf.iskra.design.AppearanceMode
 import wtf.iskra.design.IskraTheme
 import wtf.iskra.design.LocalAccent
@@ -70,11 +69,9 @@ fun IskraRoot(
     val phase by model.phase.collectAsStateWithLifecycle()
     val accentName by (model.settings?.accent ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
     val modeName by (model.settings?.appearance ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
-    val fontName by (model.settings?.font ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
     IskraTheme(
         accent = AccentTheme.fromStorage(accentName),
         appearance = AppearanceMode.fromStorage(modeName),
-        font = AppFont.fromStorage(fontName),
     ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (val current = phase) {
