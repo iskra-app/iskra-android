@@ -219,7 +219,7 @@ fun RoomListScreen(
                                 value = query,
                                 onValueChange = { query = it },
                                 // «Поиск», а не «по сообщениям»: ищутся и названия чатов, и сообщения.
-                                placeholder = stringResource(R.string.profile_search),
+                                placeholder = stringResource(R.string.room_list_search_prompt),
                                 leading = { Icon(Icons.Outlined.Search, contentDescription = null) },
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
                             )
