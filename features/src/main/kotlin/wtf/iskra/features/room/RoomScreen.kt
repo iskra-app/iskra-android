@@ -1,8 +1,18 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.LocalContentColor
+import wtf.iskra.core.timeline.caption
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.NearMe
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Report
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
@@ -204,6 +214,8 @@ fun RoomScreen(
     identityChanges: IdentityChangesStore? = null,
     /** Стикеры аккаунта (`UserSession.stickers`). Null — кнопки стикеров нет. */
     stickers: StickerLibrary? = null,
+    /** Переслать сообщение в другую комнату. Null — пункта нет (тред, демо). */
+    forwarding: Forwarding? = null,
     /** Задачи отправки медиа сеанса (`UserSession.mediaJobs`): видео и альбом идут, пока человек не здесь. Null — не следим. */
     mediaJobs: wtf.iskra.core.media.MediaSendJobs? = null,
     /** Живая геопозиция сеанса: полоса «Вы делитесь…» и пункт «Делиться» в «Месте». Null — без неё (демо). */
@@ -488,6 +500,12 @@ fun RoomScreen(
     // «Бета → JSON сообщения»: событие так, как его прислал сервер.
     val showsSource by (LocalAppSettings.current?.showsSource ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     var sourceOf by remember(store.roomId) { mutableStateOf<String?>(null) }
+    // «Переслать…» и «Пожаловаться»: на каком сообщении открыты.
+    var forwardOf by remember(store.roomId) { mutableStateOf<List<Message>?>(null) }
+    // Выбор нескольких сообщений (`MessageSelection`): id отмеченных; null — не выбираем.
+    var selectedIds by remember(store.roomId) { mutableStateOf<Set<String>?>(null) }
+    var confirmsSelectionDelete by remember(store.roomId) { mutableStateOf(false) }
+    var reportOf by remember(store.roomId) { mutableStateOf<Message?>(null) }
     // Лист «Кто отреагировал»: сообщение и эмодзи, с которого он начинается.
     var reactorsOf by remember(store.roomId) { mutableStateOf<Pair<String, String?>?>(null) }
     // Карточка человека, на чьё лицо или имя нажали. Хранилище участников открывается по первому нажатию и закрывается с экраном.
@@ -499,6 +517,8 @@ fun RoomScreen(
     Box(modifier.fillMaxSize()) {
     ChatWallpaper()
     sourceOf?.let { json -> EventSourceSheet(json, onDismiss = { sourceOf = null }) }
+    forwardOf?.let { messages -> if (forwarding != null) ForwardPicker(messages, forwarding, onDismiss = { forwardOf = null; selectedIds = null }) }
+    reportOf?.let { message -> ReportSheet(onReport = { reason -> scope.launch { store.report(message.id, reason) } }, onDismiss = { reportOf = null }) }
     reactorsOf?.let { (messageId, key) ->
         val shown = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }
         val reactions = shown?.reactions.orEmpty()
@@ -532,6 +552,15 @@ fun RoomScreen(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
         LocalDiscardUpload provides { id -> scope.launch { store.discard(id) } },
+        LocalMessageTools provides MessageTools(
+            offline = isOffline,
+            forward = if (forwarding != null && !isThread) ({ message -> forwardOf = listOf(message) }) else null,
+            select = { message -> selectedIds = setOf(message.id) },
+            report = { message -> reportOf = message },
+            retractVote = { message -> scope.launch { store.vote(message.id, emptyList()) } },
+            stickers = stickers,
+        ),
+        LocalSelection provides selectedIds?.let { ids -> SelectionState(ids) { id -> selectedIds = if (id in ids) ids - id else ids + id } },
         LocalReaderCount provides if (isThread || state.header.isOneToOne) null else { id -> store.readerIds(id).size },
         LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
         LocalCompactLayout provides compactLayout,
@@ -618,7 +647,39 @@ fun RoomScreen(
         // Личный чат с тем, кого заблокировали: плашка вместо поля ввода. В группе один заблокированный не мешает писать остальным.
         val blockedId = state.header.counterpartId?.takeIf { state.header.isOneToOne && blocked != null }
         val blockedState by (blocked?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(wtf.iskra.core.session.BlockStore.State()) }).collectAsStateWithLifecycle()
-        if (blockedId != null && blockedId in blockedState.blockedUserIds) {
+        val picked = selectedIds
+        if (picked != null) {
+            val chosen = state.rows.mapNotNull { (it as? TimelineRow.MessageRow)?.message }.filter { it.id in picked }
+            val transcript = selectionTranscript(chosen)
+            SelectionBar(
+                count = picked.size,
+                canDelete = chosen.isNotEmpty() && !isOffline && chosen.all { it.canDelete },
+                canForward = chosen.isNotEmpty() && !isOffline && forwarding != null && !isThread && chosen.all { it.canForward },
+                canCopy = transcript != null,
+                onCancel = { selectedIds = null },
+                onDelete = { confirmsSelectionDelete = true },
+                onForward = { forwardOf = chosen },
+                onCopy = {
+                    transcript?.let { context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(null, it)) }
+                    selectedIds = null
+                },
+            )
+            if (confirmsSelectionDelete) {
+                ConfirmDialog(
+                    title = R.string.message_selection_delete_title,
+                    text = R.string.message_selection_delete_message,
+                    confirm = R.string.message_menu_delete,
+                    dismiss = R.string.poll_cancel,
+                    onConfirm = {
+                        confirmsSelectionDelete = false
+                        val ids = chosen.flatMap { it.members }.map { it.id }
+                        selectedIds = null
+                        scope.launch { ids.forEach { store.delete(it) } }
+                    },
+                    onDismiss = { confirmsSelectionDelete = false },
+                )
+            }
+        } else if (blockedId != null && blockedId in blockedState.blockedUserIds) {
             BlockedBanner { scope.launch { blocked?.unblock(blockedId) } }
         } else if (state.canPost) {
             val suggestions = mentionQuery?.let { ComposerMentions.matches(it.text, candidates).take(MAX_SUGGESTIONS) }.orEmpty()
@@ -1008,7 +1069,7 @@ private fun Conversation(
         LazyColumn(state = list, reverseLayout = true, modifier = Modifier.fillMaxSize()) {
             items(newestFirst, key = { state.viewKey(it) }) { row ->
                 when (row) {
-                    is TimelineRow.MessageRow -> Bubble(
+                    is TimelineRow.MessageRow -> SelectableRow(row.message) { Bubble(
                         message = row.message,
                         showsSender = !state.header.isOneToOne,
                         onReact = { key -> scope.launch { store.toggleReaction(row.message.id, key) } },
@@ -1032,7 +1093,7 @@ private fun Conversation(
                                 }
                             }
                         },
-                    )
+                    ) }
                     is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()), row.event.people)
                     is TimelineRow.DayDividerRow -> DayLine(row.divider.date)
                     TimelineRow.UnreadDivider -> UnreadLine()
@@ -1698,7 +1759,31 @@ private fun MessageMenu(
                 },
             )
         }
-        if (message.canEdit) add(MenuAction(stringResource(R.string.message_menu_edit), Icons.Filled.Edit) { onEdit(message) })
+        val tools = LocalMessageTools.current
+        val offline = tools?.offline == true
+        if (message.canEdit && !offline) add(MenuAction(stringResource(R.string.message_menu_edit), Icons.Filled.Edit) { onEdit(message) })
+        // Переслать — значит дойти до другой комнаты, а без сети идти некуда; и только то, что пересылка пересоберёт верно.
+        tools?.forward?.takeIf { message.canForward && !offline }?.let { forward ->
+            add(MenuAction(stringResource(R.string.message_menu_forward), Icons.AutoMirrored.Filled.Send) { forward(message) })
+        }
+        // Стикер можно оставить себе: «Мои» указывают на ту же картинку, ничего не загружается. Только открытый — см. `asSticker`.
+        val stickerLibrary = tools?.stickers
+        val sticker = (message.kind as? MessageKind.Sticker)?.attachment?.asSticker
+        if (stickerLibrary != null && sticker != null && !offline) {
+            val mine = sticker.url in stickerLibrary.state.collectAsStateWithLifecycle().value.mine
+            val scope = rememberCoroutineScope()
+            add(
+                MenuAction(
+                    stringResource(if (mine) R.string.stickers_remove else R.string.stickers_add),
+                    if (mine) Icons.Filled.RemoveCircleOutline else Icons.Filled.AddCircleOutline,
+                ) { scope.launch { if (mine) stickerLibrary.remove(sticker) else stickerLibrary.add(sticker) } },
+            )
+        }
+        // Забрать голос назад: ответ без вариантов, который опрос считает отсутствием голоса (MSC3381). Пока открыт и тому, кто голосовал.
+        val poll = (message.kind as? MessageKind.Poll)?.poll
+        if (poll != null && poll.hasVoted && !poll.isEnded && !offline) {
+            add(MenuAction(stringResource(R.string.poll_retract), Icons.AutoMirrored.Filled.Undo) { tools?.retractVote?.invoke(message) })
+        }
         // Закрепить можно то, что есть на сервере, — то же, на что можно ответить.
         if (message.canReply) {
             add(MenuAction(stringResource(if (isPinned) R.string.message_menu_unpin else R.string.message_menu_pin), Icons.Filled.PushPin) { onPin(!isPinned) })
@@ -1723,8 +1808,17 @@ private fun MessageMenu(
             }
             if (title != null) add(0, MenuAction(title, if (seen > 0) Icons.Filled.DoneAll else Icons.Filled.EmojiEmotions) { showReactors(message.id, null) })
         }
+        // Несколько сразу: переслать вместе, скопировать одним текстом, удалить ряд ошибок. «Выбрать» из Telegram, это сообщение уже отмечено.
+        tools?.select?.takeIf { message.delivery !is DeliveryStatus.Failed }?.let { select ->
+            add(MenuAction(stringResource(R.string.message_menu_select), Icons.Filled.CheckCircle) { select(message) })
+        }
         LocalShowSource.current?.let { show -> add(MenuAction(stringResource(R.string.beta_view_source), Icons.Filled.Code) { show(message.id) }) }
-        if (message.canDelete) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
+        if (message.canDelete && !offline) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
+        // Жалуются на чужое и дошедшее до сервера: на своё не жалуются, у удалённого жаловаться не на что, без сети некому.
+        if (!message.isOwn && !message.isDeleted && !offline && message.delivery == null) {
+            tools?.report?.let { report -> add(MenuAction(stringResource(R.string.message_menu_report), Icons.Filled.Report, destructive = true) { report(message) }) }
+        }
+        add(MenuAction(stringResource(R.string.message_menu_sent_at, exactly(message.timestamp)), Icons.Outlined.Schedule, fact = true) {})
     }
     MessageMenuOverlay(
         anchor = anchor,
@@ -2197,6 +2291,108 @@ private const val TYPING_STAGGER_MS = 180
 internal val LocalOpenProfile = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }
 
 /** Долгое нажатие на пилюлю реакции: сообщение и эмодзи, с которого начать лист. Null — листа нет (тред). */
+/** Что отмечено при выборе нескольких сообщений. Null (локаль пуста) — не выбираем. */
+internal class SelectionState(val ids: Set<String>, val toggle: (String) -> Unit)
+
+internal val LocalSelection = androidx.compose.runtime.compositionLocalOf<SelectionState?> { null }
+
+/**
+ * Пока выбираем, нажатие по сообщению отмечает его и ничего больше: под ним строка рисуется как всегда, но касаний не принимает
+ * — ни меню, ни открытия фото, ни ссылки. Порт `messageRow(selection)`.
+ */
+@Composable
+private fun SelectableRow(message: Message, content: @Composable () -> Unit) {
+    val selection = LocalSelection.current
+    if (selection == null) {
+        content()
+        return
+    }
+    val on = message.id in selection.ids
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Checkbox, onClickLabel = message.senderName) { selection.toggle(message.id) },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (on) Icons.Filled.CheckCircle else Icons.Outlined.RadioButtonUnchecked,
+            contentDescription = null,
+            tint = if (on) LocalAccent.current.control else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = Theme.Spacing.close).size(Theme.Size.menuIcon),
+        )
+        Box(Modifier.weight(1f)) {
+            content()
+            // Прозрачная плёнка: всё, что под ней, касаний не получает.
+            Box(Modifier.matchParentSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { selection.toggle(message.id) })
+        }
+    }
+}
+
+/** Слова выбранных сообщений одним текстом: одно — как есть, несколько — с именем и временем над каждым. Порт `MessageSelection.transcript`. */
+internal fun selectionTranscript(messages: List<Message>): String? {
+    val said = messages.mapNotNull { message ->
+        val words = when (val kind = message.kind) {
+            is MessageKind.Text -> kind.body
+            is MessageKind.Notice -> kind.body
+            is MessageKind.Emote -> kind.body
+            else -> message.members.firstNotNullOfOrNull { it.kind.caption }
+        }
+        words?.let { message to it }
+    }
+    if (said.isEmpty()) return null
+    if (said.size == 1) return said[0].second
+    val format = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT)
+    return said.joinToString("\n\n") { (message, words) -> "${message.senderName}, [${format.format(java.util.Date.from(message.timestamp))}]\n$words" }
+}
+
+/** Полоса выбора вместо поля ввода: «Отмена», сколько выбрано, копировать, переслать, удалить. Порт `MessageSelectionBar`. */
+@Composable
+private fun SelectionBar(
+    count: Int,
+    canDelete: Boolean,
+    canForward: Boolean,
+    canCopy: Boolean,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+    onForward: () -> Unit,
+    onCopy: () -> Unit,
+) {
+    val accent = LocalAccent.current
+    Row(
+        Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.close)
+            .clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh).padding(horizontal = Theme.Spacing.roomy),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.message_selection_cancel), color = accent.control) }
+        Text(
+            stringResource(R.string.message_selection_count, count),
+            style = MaterialTheme.typography.titleSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = onCopy, enabled = canCopy && count > 0) { Icon(Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.message_menu_copy)) }
+        IconButton(onClick = onForward, enabled = canForward && count > 0) { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.message_menu_forward)) }
+        IconButton(onClick = onDelete, enabled = canDelete && count > 0) {
+            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.message_menu_delete), tint = if (canDelete && count > 0) MaterialTheme.colorScheme.error else LocalContentColor.current)
+        }
+    }
+}
+
+/** Что меню сообщения может, помимо своего: переслать, пожаловаться, оставить стикер, забрать голос; и без сети ли комната. */
+internal class MessageTools(
+    val offline: Boolean,
+    /** «Выбрать»: начать отмечать несколько сообщений, это — уже отмеченным. */
+    val select: ((Message) -> Unit)?,
+    val forward: ((Message) -> Unit)?,
+    val report: ((Message) -> Unit)?,
+    val retractVote: (Message) -> Unit,
+    val stickers: StickerLibrary?,
+)
+
+internal val LocalMessageTools = androidx.compose.runtime.compositionLocalOf<MessageTools?> { null }
+
+/** Время во всех подробностях, как в `Message.Menu.sentAt`: «24 окт. 2026 г., 16:49:05». */
+private fun exactly(at: java.time.Instant): String =
+    java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT, java.time.format.FormatStyle.MEDIUM).format(at.atZone(java.time.ZoneId.systemDefault()))
+
 /** Сколько человек прочли сообщение (`TimelineStore.readerIds`). Null — не спрашиваем: личный чат, тред. */
 internal val LocalReaderCount = androidx.compose.runtime.compositionLocalOf<((String) -> Int)?> { null }
 internal val LocalShowReactors = androidx.compose.runtime.compositionLocalOf<((String, String?) -> Unit)?> { null }

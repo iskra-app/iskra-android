@@ -164,6 +164,9 @@ enum class TimelineFailure(val message: Int) {
 
     /** Стикер не ушёл: нет сети, комнату не удалось спросить или картинка не чиста. */
     STICKER(R.string.timeline_sticker_failed),
+
+    /** Жалоба не дошла до сервера. */
+    REPORT(R.string.timeline_report_failed),
 }
 
 /**
@@ -926,6 +929,23 @@ class TimelineStore internal constructor(
         val name = runCatching { withTimeLimit(SDK_LIMIT) { room.memberDisplayName(userId) } }.getOrNull() ?: userId
         val avatar = runCatching { withTimeLimit(SDK_LIMIT) { room.memberAvatarUrl(userId) } }.getOrNull()
         Reader(userId, name, avatar, readAt)
+    }
+
+    /**
+     * Пожаловаться на сообщение модераторам сервера. Только то, что дошло до сервера: жалоба называет событие, а у стоящего
+     * в очереди его ещё нет — тогда ничего не уходит, а не жалоба на не то. Порт `report(messageID:reason:)`.
+     */
+    suspend fun report(messageId: String, reason: String): Boolean {
+        val id = eventId(messageId) ?: return false
+        return try {
+            withTimeLimit(SDK_LIMIT) { room.reportContent(id, reason.ifEmpty { null }) }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "жалоба не ушла: ${Log.describe(error)}")
+            fail(TimelineFailure.REPORT)
+            false
+        }
     }
 
     suspend fun sendPoll(draft: PollDraft): Boolean {

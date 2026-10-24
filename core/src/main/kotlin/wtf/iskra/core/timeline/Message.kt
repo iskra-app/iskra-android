@@ -57,6 +57,20 @@ class Attachment internal constructor(
     /** Сколько байт, как сказал отправитель. Только чтобы показать: качать решает человек. */
     val size: Long? = null,
 ) {
+    /**
+     * Стикер, которым эта картинка является, — чтобы положить в пак: та же картинка, с тем же описанием и размером. Null для
+     * зашифрованного вложения (`file` вместо `url` в событии): его адрес указывает на шифртекст, ключ от которого ехал в одном
+     * этом событии, и стикер в паке не нарисовал бы никто, включая этот аккаунт на следующем устройстве. Порт `asSticker`.
+     */
+    val asSticker: wtf.iskra.core.stickers.Sticker?
+        get() {
+            val json = runCatching { source.toJson() }.getOrNull() ?: return null
+            if (json.contains("\"file\"")) return null
+            val url = runCatching { source.url() }.getOrNull() ?: return null
+            if (!url.startsWith("mxc://")) return null
+            return wtf.iskra.core.stickers.Sticker(url = url, shortcode = "", body = caption ?: "", width = width, height = height, mimeType = mimeType)
+        }
+
     /** Что опознаёт байты: `mxc://`, на который указывает событие. Имя файла — нет: у всех стикеров «sticker». */
     val mediaId: String = runCatching { source.url() }.getOrDefault("")
 
@@ -198,6 +212,16 @@ data class Message(
     val isDeleted: Boolean get() = kind == MessageKind.Deleted
 
     private val isOnServer: Boolean get() = delivery == null || delivery == DeliveryStatus.Sent || delivery == DeliveryStatus.Read
+
+    /**
+     * Можно ли переслать. Слова и три вложения, байты которых можно скачать и отправить снова через шифрующий путь; голосовое,
+     * кружок, место и стикер потребовали бы каждое вывести свои метаданные заново, и их никто не пересылает.
+     */
+    val canForward: Boolean
+        get() = !isDeleted && delivery != DeliveryStatus.Sending && when (members.first().kind) {
+            is MessageKind.Text, is MessageKind.Notice, is MessageKind.Emote, is MessageKind.Image, is MessageKind.Video, is MessageKind.File -> true
+            else -> false
+        }
 
     /** Не на удалённое (👍 под «сообщение удалено») и не на неотправленное — у него нет ID события. */
     val canReact: Boolean get() = !isDeleted && isOnServer

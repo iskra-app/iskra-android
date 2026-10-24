@@ -291,6 +291,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
 
     // Широкий экран (планшет, ChromeOS, развёрнутый складной): список — колонка слева, комната — справа.
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    val forwarding = remember(session) { wtf.iskra.features.room.Forwarding(session, appContext) }
     val detailsPane: @Composable (wtf.iskra.core.rooms.RoomDetailsStore) -> Unit = { details ->
     wtf.iskra.features.room.RoomDetailsScreen(
                     store = details,
@@ -320,6 +322,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                     onOpenDetails = { showingDetails = true },
                     identityChanges = identityChanges,
                     stickers = session.stickers,
+                    forwarding = forwarding,
                     mediaJobs = session.mediaJobs,
                     liveLocation = session.liveLocation.takeIf { !session.isDemo },
                     blocked = session.blocked,

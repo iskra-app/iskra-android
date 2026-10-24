@@ -69,7 +69,7 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 /** Одно действие в колонке меню: слово, значок и опасное ли оно (красным). */
-internal class MenuAction(val title: String, val icon: ImageVector, val destructive: Boolean = false, val run: () -> Unit)
+internal class MenuAction(val title: String, val icon: ImageVector, val destructive: Boolean = false, val fact: Boolean = false, val run: () -> Unit)
 
 /** Пять, что предлагаются первыми (`QuickReaction`): то, что люди правда ставят, за одно нажатие. */
 internal val QUICK_REACTIONS = listOf("❤️", "👍", "😂", "😮", "😢")
@@ -206,15 +206,16 @@ private fun Actions(actions: List<MenuAction>, onDismiss: () -> Unit) {
         Column {
             actions.forEachIndexed { index, action ->
                 if (index > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                val ink = if (action.destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                val ink = if (action.destructive) MaterialTheme.colorScheme.error else if (action.fact) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .height(Theme.Size.menuRow)
-                        .clickable(role = Role.Button) {
+                        // Факт — не действие: время отправки читают, а не нажимают.
+                        .then(if (action.fact) Modifier else Modifier.clickable(role = Role.Button) {
                             onDismiss()
                             action.run()
-                        }
+                        })
                         .padding(horizontal = Theme.Spacing.roomy),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
