@@ -49,6 +49,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -133,6 +134,8 @@ fun RoomListScreen(
     onEditFolders: () -> Unit = {},
     /** «Новый чат» (карандаш в шапке): личный чат, комната, каталог. Null — кнопки нет. */
     onNewConversation: (() -> Unit)? = null,
+    /** Открытая рядом комната (широкий экран, список — колонка): её строка выделена. Null — список во весь экран. */
+    selectedId: String? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -244,7 +247,7 @@ fun RoomListScreen(
                                 onDecline = { scope.launch { store.decline(room.id) } },
                             )
                         } else {
-                            RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, onOpen = { onOpen(room.id) })
+                            RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, selected = room.id == selectedId, onOpen = { onOpen(room.id) })
                         }
                     }
                     // Сообщения — под названиями: сначала «где», потом «что сказано».
@@ -373,7 +376,7 @@ private fun Empty(title: Int, message: Int?) {
 }
 
 @Composable
-private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, onOpen: () -> Unit) {
+private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
@@ -406,6 +409,7 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (selected) scheme.secondaryContainer else Color.Transparent)
             .combinedClickable(onClick = onOpen, onClickLabel = room.name, onLongClick = { menu = true })
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),

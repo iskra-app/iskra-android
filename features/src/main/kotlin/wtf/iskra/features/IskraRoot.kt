@@ -3,6 +3,11 @@ package wtf.iskra.features
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.VerticalDivider
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,6 +39,7 @@ import wtf.iskra.design.IskraTheme
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.PrimaryActionButton
 import wtf.iskra.design.Theme
+import wtf.iskra.features.R
 import wtf.iskra.core.session.UserSession
 import wtf.iskra.features.push.NotificationPermission
 import wtf.iskra.features.room.RoomScreen
@@ -283,6 +289,96 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val offer by (model.updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
     val updateWaiting = offer is wtf.iskra.core.update.UpdateOffer.Available
 
+    // Широкий экран (планшет, ChromeOS, развёрнутый складной): список — колонка слева, комната — справа.
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
+    val detailsPane: @Composable (wtf.iskra.core.rooms.RoomDetailsStore) -> Unit = { details ->
+    wtf.iskra.features.room.RoomDetailsScreen(
+                    store = details,
+                    blocked = session.blocked,
+                    isOffline = rooms.isUnreachable,
+                    onBack = { showingDetails = false },
+                    onSearch = { showingDetails = false; searchOnOpen = true },
+                    onLeave = {
+                        val leaving = details.roomId
+                        showingDetails = false
+                        openRoom = null
+                        rootScope.launch { session.rooms.leave(leaving) }
+                    },
+                )
+    }
+    val roomPane: @Composable (wtf.iskra.core.timeline.TimelineStore) -> Unit = { timeline ->
+    RoomScreen(
+                    timeline,
+                    onBack = {
+                        openRoom = null
+                        openEvent = null
+                    },
+                    showsBack = !wide,
+                    mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
+                    initialJump = openEvent,
+                    openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
+                    onOpenDetails = { showingDetails = true },
+                    identityChanges = identityChanges,
+                    stickers = session.stickers,
+                    mediaJobs = session.mediaJobs,
+                    liveLocation = session.liveLocation.takeIf { !session.isDemo },
+                    blocked = session.blocked,
+                    share = shareIntoRoom.takeIf { roomId != null },
+                    onShareTaken = { shareIntoRoom = null },
+                    isOffline = rooms.isOffline,
+                    isUpdating = rooms.isUpdating,
+                    members = session::details.takeIf { !session.isDemo || true },
+                    onMessagePerson = { person -> rootScope.launch { runCatching { session.conversations.openDirectChat(person) }.onSuccess { openRoom = it } } },
+                    startSearching = searchOnOpen,
+                    onSearchStarted = { searchOnOpen = false },
+                )
+    }
+    val creatingPane: @Composable () -> Unit = {
+    wtf.iskra.features.rooms.NewConversationScreen(
+                    session,
+                    onOpen = {
+                        creating = false
+                        openRoom = it
+                    },
+                    onClose = { creating = false },
+                )
+    }
+    val listPane: @Composable (Modifier) -> Unit = { listModifier ->
+    RoomListScreen(
+                    session.rooms,
+                    modifier = listModifier,
+                    selectedId = roomId.takeIf { wide },
+                    onOpen = { id ->
+                        // Пространство открывается не перепиской, а своим экраном — комнаты внутри него.
+                        val space = (rooms.rooms + rooms.archivedRooms).firstOrNull { it.id == id && it.isSpace }
+                        if (space != null) openSpace = space.id to space.name else openRoom = id
+                    },
+                    onNewConversation = { creating = true },
+                    search = session.search,
+                    onOpenAt = { room, event ->
+                        openEvent = event
+                        openRoom = room
+                    },
+                    onSettings = { settingsPage = SettingsPage.MAIN },
+                    settingsDot = updateWaiting,
+                    folders = session.folders,
+                    onEditFolders = { settingsPage = SettingsPage.FOLDERS },
+                    banner = {
+                        Column {
+                            RecoveryBanner(session) { unlocking = true }
+                            session.newSignIns?.let { wtf.iskra.features.rooms.NewSignIns(it) }
+                        }
+                    },
+                    accountMenu = if (accounts.isAvailable) {
+                        { expanded, onDismiss ->
+                            AccountMenu(expanded, accounts, onDismiss, onSwitch = model::switchTo, onAdd = model::addAccount)
+                        }
+                    } else {
+                        null
+                    },
+                )
+    }
+
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
         when {
@@ -343,84 +439,30 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 afterFailedUpdate = { model.reopenAfterUpdate() },
                 librariesResource = model.librariesResource,
             )
-            details != null -> wtf.iskra.features.room.RoomDetailsScreen(
-                store = details,
-                blocked = session.blocked,
-                isOffline = rooms.isUnreachable,
-                onBack = { showingDetails = false },
-                onSearch = { showingDetails = false; searchOnOpen = true },
-                onLeave = {
-                    val leaving = details.roomId
-                    showingDetails = false
-                    openRoom = null
-                    rootScope.launch { session.rooms.leave(leaving) }
-                },
-            )
-            timeline != null -> RoomScreen(
-                timeline,
-                onBack = {
-                    openRoom = null
-                    openEvent = null
-                },
-                mediaSettings = { settings?.media?.value ?: wtf.iskra.core.media.MediaSettings.DEFAULT },
-                initialJump = openEvent,
-                openThread = { root -> roomId?.let { session.threadTimeline(it, root) } },
-                onOpenDetails = { showingDetails = true },
-                identityChanges = identityChanges,
-                stickers = session.stickers,
-                mediaJobs = session.mediaJobs,
-                liveLocation = session.liveLocation.takeIf { !session.isDemo },
-                blocked = session.blocked,
-                share = shareIntoRoom.takeIf { roomId != null },
-                onShareTaken = { shareIntoRoom = null },
-                isOffline = rooms.isOffline,
-                isUpdating = rooms.isUpdating,
-                members = session::details.takeIf { !session.isDemo || true },
-                onMessagePerson = { person -> rootScope.launch { runCatching { session.conversations.openDirectChat(person) }.onSuccess { openRoom = it } } },
-                startSearching = searchOnOpen,
-                onSearchStarted = { searchOnOpen = false },
-            )
-            creating -> wtf.iskra.features.rooms.NewConversationScreen(
-                session,
-                onOpen = {
-                    creating = false
-                    openRoom = it
-                },
-                onClose = { creating = false },
-            )
-            else -> RoomListScreen(
-                session.rooms,
-                onOpen = { id ->
-                    // Пространство открывается не перепиской, а своим экраном — комнаты внутри него.
-                    val space = (rooms.rooms + rooms.archivedRooms).firstOrNull { it.id == id && it.isSpace }
-                    if (space != null) openSpace = space.id to space.name else openRoom = id
-                },
-                onNewConversation = { creating = true },
-                search = session.search,
-                onOpenAt = { room, event ->
-                    openEvent = event
-                    openRoom = room
-                },
-                onSettings = { settingsPage = SettingsPage.MAIN },
-                settingsDot = updateWaiting,
-                folders = session.folders,
-                onEditFolders = { settingsPage = SettingsPage.FOLDERS },
-                banner = {
-                    Column {
-                        RecoveryBanner(session) { unlocking = true }
-                        session.newSignIns?.let { wtf.iskra.features.rooms.NewSignIns(it) }
+            // Список и комната рядом; всё, что занимает экран целиком (настройки, ссылка, пространство), выше.
+            wide -> Row(Modifier.fillMaxSize()) {
+                Box(Modifier.width(Theme.Size.sidebarWidth).fillMaxHeight()) { listPane(Modifier) }
+                VerticalDivider()
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    when {
+                        details != null -> detailsPane(details)
+                        timeline != null -> roomPane(timeline)
+                        creating -> creatingPane()
+                        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
-                },
-                accountMenu = if (accounts.isAvailable) {
-                    { expanded, onDismiss ->
-                        AccountMenu(expanded, accounts, onDismiss, onSwitch = model::switchTo, onAdd = model::addAccount)
-                    }
-                } else {
-                    null
-                },
-            )
+                }
+            }
+            details != null -> detailsPane(details)
+            timeline != null -> roomPane(timeline)
+            creating -> creatingPane()
+            else -> listPane(Modifier)
         }
         // Своё другое устройство спрашивает «это ты?» — где бы человек ни был.
         if (!unlocking) VerificationDialog(session.verification)
     }
 }
+
+/** Ширина, с которой список и комната встают рядом (dp): планшет и развёрнутый складной, не телефон. */
+private const val WIDE_SCREEN_DP = 720

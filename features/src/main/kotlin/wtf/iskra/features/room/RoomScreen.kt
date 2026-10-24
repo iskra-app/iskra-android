@@ -190,6 +190,8 @@ import wtf.iskra.core.R as CoreR
 fun RoomScreen(
     store: TimelineStore,
     onBack: () -> Unit,
+    /** Стрелка «назад» в шапке. Скрыта, когда комната — правая колонка рядом со списком: возвращаться некуда. */
+    showsBack: Boolean = true,
     modifier: Modifier = Modifier,
     mediaSettings: () -> MediaSettings = { MediaSettings.DEFAULT },
     /** Событие, к которому вести сразу после открытия: найденное поиском. */
@@ -534,7 +536,7 @@ fun RoomScreen(
         LocalShowSource provides if (showsSource) ({ id -> sourceOf = store.sourceJson(id) }) else null,
     ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
+        Header(state, isThread, onBack, showsBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
         identityChanges?.let { identity ->
             val waiting by identity.changes.collectAsStateWithLifecycle()
@@ -845,12 +847,14 @@ fun RoomScreen(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit, onOpenDetails: (() -> Unit)? = null, isOffline: Boolean = false, isUpdating: Boolean = false) {
+private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, showsBack: Boolean, onSearch: () -> Unit, onOpenDetails: (() -> Unit)? = null, isOffline: Boolean = false, isUpdating: Boolean = false) {
     val header = state.header
     TopAppBar(
         navigationIcon = {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+            if (showsBack) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                }
             }
         },
         title = {
@@ -1192,7 +1196,7 @@ private fun Bubble(
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var revealed by remember(message.id) { mutableStateOf(false) }
     var noteTaps by remember(message.id) { mutableIntStateOf(0) }
-    val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
+    val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt().coerceAtMost(Theme.Size.BUBBLE_MAX_DP)
     val ownUserId = LocalOwnUserId.current
     // «Компактный вид»: все строкой слева направо, без пузырей и без деления на своё и чужое (`CompactMessageRow`).
     val compact = LocalCompactLayout.current
@@ -1415,7 +1419,7 @@ private fun BubbleBody(
 ) {
     val accent = LocalAccent.current
     val own = message.isOwn && !plain
-    val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
+    val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt().coerceAtMost(Theme.Size.BUBBLE_MAX_DP)
     val ownUserId = LocalOwnUserId.current
     val picture = message.kind.picture
     val album = message.album
