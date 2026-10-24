@@ -20,13 +20,16 @@ iOS-репозиторий `iskra-app/iskra` (локально `../iskra`, ве�
 ./gradlew assembleFossDebug         # APK для телефона без сервисов Google
 ./gradlew assembleFossRelease       # релиз без подписи: R8 ломает uniffi/JNA только здесь
 ./gradlew :core:testDebugUnitTest --tests '*TimeoutTest*'   # один класс
-./gradlew :core:connectedDebugAndroidTest                   # SDK на эмуляторе/телефоне
+./gradlew :core:connectedDebugAndroidTest                   # SDK на эмуляторе/телефоне (BlindRouteSdkTest)
+./gradlew :tunnel:cargoTest                                 # cargo test крейта моста и proto
 ./android.sh [--release] [-- <extras>]                      # собрать, поставить, запустить
 
 scripts/sync-from-ios.sh ../iskra   # привезти общее из iOS (строки, фикстуры, протокол, иконку)
 ```
 
-JDK 21. `local.properties` (`sdk.dir=…`) не коммитится.
+JDK 21. `local.properties` (`sdk.dir=…`) не коммитится. Для `:tunnel` (крейт клиента моста) нужны
+Rust с целями `aarch64-linux-android` и `x86_64-linux-android`, `cargo install cargo-ndk` и NDK
+`ndk` из `libs.versions.toml`; `check` гоняет и `cargo test` крейта, и вендоренного proto.
 
 ## Модули и одно правило
 
@@ -48,7 +51,7 @@ JDK 21. `local.properties` (`sdk.dir=…`) не коммитится.
 (не рабочее дерево) и кладёт рядом `UPSTREAM` с его хэшем:
 
 - строки семи языков → `{core,features,app}/src/main/res/values*/strings.xml`;
-- golden-фикстура blobatar → `design/src/test/resources/`; векторы NIP-44 → `core/src/test/resources/`;
+- golden-фикстура blobatar → `design/src/test/resources/`; векторы NIP-44 → `tunnel/src/test/resources/`;
 - крейт `iskra-tunnel-proto` из `../iskra-bridge` → `third_party/iskra-tunnel-proto/` (MIT);
 - знак Искры → adaptive icon (`app/src/main/res/drawable/ic_launcher_*.xml`).
 

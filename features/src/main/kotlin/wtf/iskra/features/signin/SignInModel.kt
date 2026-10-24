@@ -11,7 +11,9 @@ import wtf.iskra.core.session.AuthenticationError
 import wtf.iskra.core.session.SignInFlow
 import wtf.iskra.core.session.SignInOptions
 import wtf.iskra.core.support.Log
+import wtf.iskra.core.transport.TunnelSettings
 import wtf.iskra.features.R
+import wtf.iskra.features.support.words
 
 /**
  * Поход в браузер и обратно. Возвращает callback URL или null, если человек закрыл браузер сам —
@@ -34,6 +36,8 @@ class SignInModel<S>(
     private val scope: CoroutineScope,
     private val onSignedIn: (S) -> Unit,
     address: String = "",
+    /** Переключатель моста — для «Включить мост и попробовать ещё раз». Null — мост не предлагается (демо-вход). */
+    private val bridge: TunnelSettings? = null,
 ) {
     sealed interface Step {
         /** Первый экран: адрес сервера и «Далее». */
@@ -56,6 +60,13 @@ class SignInModel<S>(
         val pending: Intent? = null,
         /** Всегда предложение и всегда о том, что делать дальше. */
         @StringRes val problem: Int? = null,
+        /** Аргумент [problem], если в нём есть место: слово моста в «мост оборвал соединение: %s». */
+        val problemArgument: String? = null,
+        /**
+         * Сервер не ответил, а мост выключен: обход блокировки — в одно касание под полем, а не в трёх
+         * экранах настроек, куда человек без аккаунта и не подумал бы заглянуть.
+         */
+        val canTryBridge: Boolean = false,
         val username: String = "",
         val password: String = "",
     ) {
@@ -171,26 +182,55 @@ class SignInModel<S>(
         }
     }
 
+    /**
+     * «Включить мост и попробовать ещё раз»: переключатель из «Настройки → Подключение», нажатый
+     * отсюда, и тот же поиск заново. Это переключатель устройства, а не разовая поблажка: аккаунт,
+     * найденный через мост, и дальше должен ходить через него.
+     */
+    fun tryThroughBridge() {
+        val bridge = bridge ?: return
+        if (!state.value.canTryBridge || state.value.isBusy) return
+        bridge.setEnabled(true)
+        bridge.announceChange()
+        mutableState.update { it.copy(canTryBridge = false) }
+        findServer()
+    }
+
     private suspend fun lookUp(): SignInOptions? {
-        mutableState.update { it.copy(isBusy = true, problem = null) }
+        mutableState.update { it.copy(isBusy = true, problem = null, problemArgument = null, canTryBridge = false) }
+        // Мост предлагается там, где виновата дорога, а не адрес или сервер, — и только если он ещё выключен.
+        val bridgeOff = bridge?.isEnabled == false
+        var offerBridge = false
+        var argument: String? = null
         val problem = try {
             return flow.startSignIn(state.value.address.trim())
         } catch (_: AuthenticationError.HomeserverNotFound) {
+            offerBridge = bridgeOff
             R.string.sign_in_problem_not_found
         } catch (_: AuthenticationError.HomeserverUnreachable) {
+            offerBridge = bridgeOff
             R.string.sign_in_problem_unreachable
         } catch (_: AuthenticationError.NoSupportedSignInMethod) {
             R.string.sign_in_problem_unsupported_method
         } catch (_: AuthenticationError.StorageUnavailable) {
             // К напечатанному отношения не имеет — не отправлять человека искать опечатку, которой нет.
             R.string.sign_in_problem_storage_unavailable
+        } catch (error: AuthenticationError.BridgeRefused) {
+            // По той же причине: адрес в порядке, мост туда не повезёт. SDK назвал бы это «не найден» и
+            // отправил бы искать опечатку.
+            val words = error.refusal.words()
+            argument = words.argument as String?
+            words.text
+        } catch (_: AuthenticationError.BridgeUnavailable) {
+            R.string.sign_in_problem_bridge_unavailable
         } catch (error: Exception) {
             Log.info(Log.Category.SESSION, "поиск сервера: ${Log.describe(error)}")
+            offerBridge = bridgeOff
             R.string.sign_in_problem_unreachable
         } finally {
             mutableState.update { it.copy(isBusy = false) }
         }
-        mutableState.update { it.copy(problem = problem) }
+        mutableState.update { it.copy(problem = problem, problemArgument = argument, canTryBridge = offerBridge) }
         return null
     }
 

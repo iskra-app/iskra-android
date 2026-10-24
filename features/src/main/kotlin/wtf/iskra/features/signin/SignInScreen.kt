@@ -134,7 +134,8 @@ private fun Address(model: SignInModel<*>, state: SignInModel.State) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
             keyboardActions = KeyboardActions(onNext = { model.findServer() }),
         )
-        state.problem?.let { Problem(it) }
+        state.problem?.let { Problem(it, state.problemArgument) }
+        if (state.canTryBridge) BridgeOffer(enabled = !state.isBusy, onTry = model::tryThroughBridge)
         PrimaryActionButton(onClick = model::findServer, enabled = state.canContinue, modifier = Modifier.fillMaxWidth()) {
             BusyLabel(R.string.sign_in_next, spinning = state.isBusy)
         }
@@ -223,9 +224,9 @@ private fun Form(model: SignInModel<*>, state: SignInModel.State) {
 
 /** Красная панель с предложением, которое говорит, что делать дальше. Объявляется вслух (live region). */
 @Composable
-private fun Problem(text: Int) {
+private fun Problem(text: Int, argument: String? = null) {
     Text(
-        stringResource(text),
+        if (argument != null) stringResource(text, argument) else stringResource(text),
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(Theme.Radius.card))
@@ -272,4 +273,23 @@ private fun AppIcon() {
         }.getOrNull()
     } ?: return
     Image(icon, contentDescription = null, modifier = Modifier.size(Theme.Size.signInLogo))
+}
+
+/**
+ * Под сервером, который не ответил, при выключенном мосте: обход блокировки в одно касание, а не в
+ * трёх экранах настроек — человек без аккаунта, застрявший здесь, туда бы не заглянул. Это не баннер
+ * поверх формы, а часть её, про поле прямо над ним (`bridgeOffer` на iOS).
+ */
+@Composable
+private fun BridgeOffer(enabled: Boolean, onTry: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+        Text(
+            stringResource(R.string.sign_in_bridge_offer),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SecondaryActionButton(onClick = onTry, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.sign_in_try_through_bridge))
+        }
+    }
 }

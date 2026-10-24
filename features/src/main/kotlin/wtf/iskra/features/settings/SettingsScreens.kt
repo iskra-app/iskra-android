@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Hub
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Storage
@@ -116,7 +117,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, STORAGE, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES, REACTIONS }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, CONNECTION, STORAGE, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES, REACTIONS }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -151,6 +152,8 @@ fun SettingsScreen(
     afterFailedUpdate: suspend () -> Unit = {},
     /** Список библиотек (`R.raw.aboutlibraries` из `:app`); 0 — его нет. */
     librariesResource: Int = 0,
+    /** Мост — «Безопасность → Подключение». Null — без него (демо-вход). */
+    connection: ConnectionHooks? = null,
 ) {
     val offer by (updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
     var showingUpdate by remember { mutableStateOf(false) }
@@ -163,8 +166,8 @@ fun SettingsScreen(
         SettingsPage.MAIN -> null
         SettingsPage.LIBRARIES -> SettingsPage.ABOUT
         SettingsPage.BLOCKED -> SettingsPage.PRIVACY
-        // Устройства и приватность — внутри «Безопасности», как на iOS.
-        SettingsPage.DEVICES, SettingsPage.PRIVACY -> SettingsPage.SECURITY
+        // Устройства, приватность и мост — внутри «Безопасности», как на iOS.
+        SettingsPage.DEVICES, SettingsPage.PRIVACY, SettingsPage.CONNECTION -> SettingsPage.SECURITY
         SettingsPage.BETA -> SettingsPage.ABOUT
         else -> SettingsPage.MAIN
     }
@@ -186,6 +189,7 @@ fun SettingsScreen(
                 SettingsPage.DEVICES -> R.string.devices_title
                 SettingsPage.PRIVACY -> R.string.privacy_title
                 SettingsPage.BLOCKED -> R.string.settings_blocked
+                SettingsPage.CONNECTION -> R.string.connection_title
                 SettingsPage.STORAGE -> R.string.storage_title
                 SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
@@ -211,10 +215,11 @@ fun SettingsScreen(
                 SettingsPage.CHATS -> Chats(settings, accounts)
                 SettingsPage.REACTIONS -> ReactionsPage(settings, session.stickers.takeIf { !session.isDemo })
                 SettingsPage.FOLDERS -> FoldersPage(session)
-                SettingsPage.SECURITY -> Security(session, onNavigate)
+                SettingsPage.SECURITY -> Security(session, onNavigate, hasConnection = connection != null && !session.isDemo)
                 SettingsPage.DEVICES -> DevicesPage(session)
                 SettingsPage.PRIVACY -> PrivacyPage(settings) { onNavigate(SettingsPage.BLOCKED) }
                 SettingsPage.BLOCKED -> BlockedPage(session)
+                SettingsPage.CONNECTION -> connection?.let { ConnectionPage(it, session.homeserver) }
                 SettingsPage.STORAGE -> StoragePage(session, onStorageCleared)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion, session.homeserver)
@@ -821,7 +826,7 @@ private fun Licence(resource: Int) {
  * который закрывается единственной кнопкой «Я сохранил код».
  */
 @Composable
-private fun Security(session: UserSession, onNavigate: (SettingsPage?) -> Unit) {
+private fun Security(session: UserSession, onNavigate: (SettingsPage?) -> Unit, hasConnection: Boolean = false) {
     val recovery = session.recovery
     val protection by recovery.protection.collectAsStateWithLifecycle()
     val verified by recovery.isDeviceVerified.collectAsStateWithLifecycle()
@@ -907,10 +912,14 @@ private fun Security(session: UserSession, onNavigate: (SettingsPage?) -> Unit) 
             text = { Text(stringResource(it.explanation)) },
         )
     }
-    Group(
-        { Link(Icons.Outlined.Devices, R.string.devices_title) { onNavigate(SettingsPage.DEVICES) } },
-        { Link(Icons.Outlined.Lock, R.string.privacy_title) { onNavigate(SettingsPage.PRIVACY) } },
-    )
+    // Мост — здесь, а не в корне настроек: две из четырёх секций его экрана о том, кто видит трафик и
+    // докуда доходит защита. Это вопрос безопасности под словом «подключение» (`SecurityView.bridge`).
+    val rows = buildList<@Composable () -> Unit> {
+        add { Link(Icons.Outlined.Devices, R.string.devices_title) { onNavigate(SettingsPage.DEVICES) } }
+        add { Link(Icons.Outlined.Lock, R.string.privacy_title) { onNavigate(SettingsPage.PRIVACY) } }
+        if (hasConnection) add { Link(Icons.Outlined.Hub, R.string.settings_connection) { onNavigate(SettingsPage.CONNECTION) } }
+    }
+    Group(*rows.toTypedArray())
 }
 
 /**

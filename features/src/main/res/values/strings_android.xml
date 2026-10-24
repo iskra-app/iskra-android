@@ -61,6 +61,10 @@
     <string name="update_checking">Checking…</string>
     <string name="update_up_to_date">You have the latest version</string>
     <string name="update_check_failed">Couldn’t reach GitHub. Try again later.</string>
+    <string name="update_check_bridge_help">While the bridge is on, updates aren’t checked automatically.</string>
+    <string name="update_check_direct_title">Check directly, past the bridge?</string>
+    <string name="update_check_direct_body">GitHub will see your address.</string>
+    <string name="update_check_direct_confirm">Check directly</string>
     <!-- Список зависимостей в «О приложении» (aboutlibraries). На iOS его показывает Settings bundle. -->
     <string name="about_libraries">Open-source libraries</string>
     <string name="about_libraries_help">Everything inside the app that someone else wrote, and the licence it comes under.</string>

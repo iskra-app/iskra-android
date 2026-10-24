@@ -41,7 +41,7 @@ class UpdateChecker(
     private val store: UpdateStore,
     private val build: InstalledBuild,
     private val language: () -> String,
-    /** Указан ли мост (этап 9). Пока моста нет — никогда. */
+    /** Указан ли мост: тогда фоновая проверка не ходит вовсе, а «Проверить сейчас» сначала спрашивает. */
     val bridgeEnabled: () -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {

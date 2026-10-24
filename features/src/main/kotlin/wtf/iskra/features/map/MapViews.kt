@@ -34,9 +34,26 @@ import org.maplibre.android.snapshotter.MapSnapshotter
 import wtf.iskra.core.support.Log
 import kotlin.coroutines.resume
 
+/**
+ * Каким клиентом MapLibre ходит за стилем и тайлами. Ставит граф приложения: тем же маршрутом, что всё
+ * остальное (`AuthenticationService.outsideHttp`) — с мостом через мост, без моста при включённом
+ * переключателе никуда (docs/PROMPT.md, 11.6). Спрашивается на каждый запрос: мост поднимается и
+ * опускается, пока процесс жив.
+ */
+object MapNetwork {
+    @Volatile
+    var client: () -> okhttp3.OkHttpClient = { okhttp3.OkHttpClient() }
+}
+
+private var networkSet = false
+
 private fun ensureInitialised(context: Context) {
     // Один раз за процесс; без ключа — тайлы OpenFreeMap его не просят.
     MapLibre.getInstance(context.applicationContext)
+    if (!networkSet) {
+        networkSet = true
+        org.maplibre.android.module.http.HttpRequestUtil.setOkHttpClient(okhttp3.Call.Factory { MapNetwork.client().newCall(it) })
+    }
 }
 
 /**

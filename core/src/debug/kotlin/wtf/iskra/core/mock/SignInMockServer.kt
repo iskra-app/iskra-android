@@ -102,6 +102,14 @@ class SignInMockServer(val configuration: Configuration = Configuration()) {
         return base
     }
 
+    /**
+     * Называть себя этим адресом: сервер стоит за TLS-фронтом (`BlindRouteSdkTest`), и ссылки на себя —
+     * `.well-known`, OIDC — должны вести через фронт, а не мимо него.
+     */
+    fun advertiseAs(address: String) {
+        base = address
+    }
+
     @Synchronized
     fun stop() {
         listener?.stop()

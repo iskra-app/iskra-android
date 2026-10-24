@@ -29,10 +29,20 @@ jobs:
           java-version: 21
       - uses: android-actions/setup-android@v4
         with:
-          packages: "platforms;android-37.0 build-tools;36.1.0"
+          packages: "platforms;android-37.0 build-tools;36.1.0 ndk;29.0.14206865"
       - uses: gradle/actions/setup-gradle@v6
-      # check: юнит-тесты, lint (MissingTranslation и MissingQuantity — ошибки), правило модулей и
-      # foss без Google (checkModuleRules). Релизная сборка — потому что keep-правила R8 для
+      # Крейт клиента моста (:tunnel, docs/PROMPT.md, 9.3): Rust с целями Android и cargo-ndk;
+      # NDK — та же версия, что `ndk` в libs.versions.toml.
+      - name: Rust для :tunnel
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add aarch64-linux-android x86_64-linux-android
+          cargo install cargo-ndk --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tunnel
+      # check: юнит-тесты, lint (MissingTranslation и MissingQuantity — ошибки), правило модулей,
+      # foss без Google (checkModuleRules) и cargo test крейта моста вместе с вендоренным proto. Релизная сборка — потому что keep-правила R8 для
       # uniffi/JNA ломаются только в ней.
       - run: ./gradlew check assembleFossRelease --no-daemon
       - name: Размер APK

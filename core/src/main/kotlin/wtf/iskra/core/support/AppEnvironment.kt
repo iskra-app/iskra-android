@@ -42,6 +42,14 @@ class AppEnvironment(
     /** Зашифрованные записи секретов (`KeystoreSecrets`). */
     val secretsDir: File get() = File(filesDir, "secrets")
 
+    /**
+     * Ключ nostr устройства — обратный адрес туннеля моста. Отдельно от [secretsDir], и это решение:
+     * выход опустошает секреты сеансов, и ключ рядом с ними пересоздался бы, а закрытый мост
+     * перестал бы пускать устройство — сказать мосту о новом ключе можно только через мост
+     * (docs/PROMPT.md, 9.4).
+     */
+    val transportSecretsDir: File get() = File(filesDir, "transport")
+
     /** Кольцевые файлы журнала SDK. */
     val logsDir: File get() = File(filesDir, "logs")
 

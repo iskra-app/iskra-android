@@ -13,6 +13,7 @@ import wtf.iskra.core.support.Log
  * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe signin --es address matrix.org
  * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe verify-storage
  * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe push --es room '!id' --es event '\$id'
+ * adb shell am start -n wtf.iskra.dev/wtf.iskra.MainActivity --es probe bridge --es npub npub1… --es homeserver matrix.org
  * adb logcat -s Iskra:*
  * ```
  *
@@ -64,6 +65,24 @@ object Probes {
                 } catch (error: Exception) {
                     if (error is kotlinx.coroutines.CancellationException) throw error
                     Log.error(Log.Category.PROBE, "релиз не прочитался: ${Log.describe(error)}")
+                }
+            }
+
+            // Один настоящий запрос через мост и диагноз — та же функция, что кнопка «Проверить мост» в
+            // «Подключении» (docs/PROMPT.md, 9.8). Без `npub` — мост из настроек; без `homeserver` — matrix.org.
+            "bridge" -> {
+                val settings = graph.tunnelSettings
+                val address = extras["npub"] ?: settings.address.value
+                val key = wtf.iskra.core.transport.TunnelSettings.bridgeKeyOf(address)
+                    ?: return Log.error(Log.Category.PROBE, "это не адрес моста: нужен --es npub npub1…")
+                val homeserver = wtf.iskra.core.transport.TunnelSettings.upstreamUrl(extras["homeserver"] ?: "matrix.org")!!
+                val relays = extras["relays"]?.let(wtf.iskra.core.transport.TunnelSettings::parseRelays)?.ifEmpty { null } ?: settings.relays
+                Log.info(Log.Category.PROBE, "мост ${relays.size} relay'ями, сервер $homeserver; ключ устройства ${graph.tunnelIdentity.npub()}")
+                val outcome = wtf.iskra.core.transport.BridgeCheck.run(key, relays, homeserver, graph.tunnelIdentity.secretKey())
+                if (outcome is wtf.iskra.core.transport.BridgeCheck.Outcome.Reachable) {
+                    Log.info(Log.Category.PROBE, "мост: $outcome")
+                } else {
+                    Log.error(Log.Category.PROBE, "мост: $outcome")
                 }
             }
 

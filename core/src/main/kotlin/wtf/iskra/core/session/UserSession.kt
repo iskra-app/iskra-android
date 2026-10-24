@@ -60,7 +60,9 @@ class UserSession internal constructor(
     val localNames: wtf.iskra.core.rooms.LocalNames.Account? = authentication.localNamesOf(sessionId)
 
     /** Список чатов и цикл синхронизации под ним. Запускает его тот, кто показывает список. */
-    val rooms = RoomListStore(client, strings, scope, localNames, authentication.networkWatch)
+    val rooms = RoomListStore(client, strings, scope, localNames, authentication.networkWatch).also { rooms ->
+        if (!isDemo) rooms.beforeRecovery = { authentication.wakeTunnels() }
+    }
 
     private val strings = strings
 
@@ -119,7 +121,7 @@ class UserSession internal constructor(
     fun devices(): DevicesStore = DevicesStore(accountDevices())
 
     private fun accountDevices(): AccountDevices {
-        val requests = AuthorisedRequests(client)
+        val requests = AuthorisedRequests(client, authentication)
         val managed = runCatching { client.session().oauthData != null }.getOrDefault(false)
         return AccountDevices(
             userId = userId,
@@ -172,12 +174,12 @@ class UserSession internal constructor(
     suspend fun applyPresence(privacy: PrivacySettings) {
         if (isDemo || closed) return
         val body = """{"presence":"${if (privacy.hidesPresence) "offline" else "online"}"}"""
-        runCatching { AuthorisedRequests(client).send(HomeserverRequest("PUT", "/_matrix/client/v3/presence/${pathSegment(userId)}/status", body)) }
+        runCatching { AuthorisedRequests(client, authentication).send(HomeserverRequest("PUT", "/_matrix/client/v3/presence/${pathSegment(userId)}/status", body)) }
     }
 
     /** Что сервер говорит о том, где человек. Null — сказать нечего; [PresenceDeclined] — сервер молчит, спрашивать дальше незачем. */
     private suspend fun presenceOf(userId: String): Presence? {
-        val response = AuthorisedRequests(client).send(HomeserverRequest("GET", "/_matrix/client/v3/presence/${pathSegment(userId)}/status"))
+        val response = AuthorisedRequests(client, authentication).send(HomeserverRequest("GET", "/_matrix/client/v3/presence/${pathSegment(userId)}/status"))
         if (response.status != 200) throw PresenceDeclined(response.status)
         return Presence.parse(response.body)?.takeIf { it.isWorthShowing }
     }

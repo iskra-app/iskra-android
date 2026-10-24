@@ -46,6 +46,21 @@ sealed class AuthenticationError(cause: Throwable? = null) : Exception(cause) {
     /** Сервер не предлагает ни одного способа войти, который мы умеем. */
     class NoSupportedSignInMethod : AuthenticationError()
 
+    /**
+     * Мост включён, адрес указан, а туннель не поднялся. Отказ, и нарочно не откат: пока за
+     * переключателем ничего не было, прямое соединение ничего не стоило. Теперь включённый мост — это
+     * решение о том, кто видит трафик, и тихо пойти напрямую значило бы сказать человеку, что он
+     * защищён, когда это не так (docs/PROMPT.md, 9.5).
+     */
+    class BridgeUnavailable(cause: Throwable?) : AuthenticationError(cause)
+
+    /**
+     * Мост на месте и ответил, и не повезёт это устройство к этому серверу: нет в списке, не Matrix, не
+     * 443, не в публичном интернете. Отдельный случай, потому что SDK назвал бы это «сервер не найден», и
+     * совет проверить адрес был бы неверен.
+     */
+    class BridgeRefused(val refusal: wtf.iskra.core.transport.nostr.BridgeRefusal) : AuthenticationError()
+
     /** `startSignIn` не вызывали, или попытку бросили. */
     class NoSignInInProgress : AuthenticationError()
 

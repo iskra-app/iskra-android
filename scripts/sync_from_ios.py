@@ -12,7 +12,7 @@
 Что привозится:
   * строки семи языков: `.strings`/`.stringsdict` → `values*/strings.xml` трёх модулей;
   * golden-фикстура blobatar → ресурсы тестов `:design`;
-  * векторы NIP-44 → ресурсы тестов `:core` (до появления `:tunnel`, раздел 9.3);
+  * векторы NIP-44 → ресурсы тестов `:tunnel` (их гоняют и Rust, и биндинги, раздел 9.3);
   * исходники крейта `iskra-tunnel-proto` из `iskra-bridge` → `third_party/`;
   * знак Искры (spark) → adaptive icon лаунчера;
   * стикеры «Искорки» (PNG) → Java-ресурсы `:core` (демо-мир и, на этапе 6, свой набор стикеров).
@@ -346,7 +346,7 @@ def sync_fixtures(iskra: Repo, rev: str) -> None:
     # Нотис blobatar обязателен в «О приложении» (MIT): тот же файл, что у iOS.
     write(ROOT / "features/src/main/res/raw/licence_blobatar.txt", iskra.read("Licenses/blobatar.txt"))
 
-    target = ROOT / "core/src/test/resources"
+    target = ROOT / "tunnel/src/test/resources"
     write(target / "nip44.vectors.json", iskra.read("Tests/IskraCoreTests/Resources/nip44.vectors.json"))
     write(target / "UPSTREAM", upstream_note("iskra", rev, "Tests/IskraCoreTests/Resources/nip44.vectors.json"))
 

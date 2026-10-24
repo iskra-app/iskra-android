@@ -18,6 +18,13 @@ import wtf.iskra.core.support.Log
 import wtf.iskra.core.support.Strings
 import wtf.iskra.core.support.TimeoutError
 import wtf.iskra.core.support.withTimeLimit
+import wtf.iskra.core.transport.LocalConnectProxy
+import wtf.iskra.core.transport.TunnelIdentity
+import wtf.iskra.core.transport.TunnelSettings
+import wtf.iskra.core.transport.TunnelStatus
+import wtf.iskra.core.transport.nostr.Heard
+import wtf.iskra.core.transport.nostr.NostrStreamTunnel
+import okhttp3.OkHttpClient
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.ClientBuildException
 import org.matrix.rustcomponents.sdk.ClientBuilder
@@ -48,9 +55,8 @@ import kotlin.time.Duration.Companion.seconds
  * сборки несколько (вход, восстановление, позже — пуш), и настройка безопасности не должна быть
  * забыта ни на одном.
  *
- * Мост (docs/PROMPT.md, 9) приходит на этапе 9: тогда [route] начнёт ставить рядом с адресом
- * прокси `LocalConnectProxy` и **отказывать**, если мост указан, а туннель не поднялся. Пока мостов
- * нет, маршрут один — напрямую.
+ * Здесь же живёт мост (docs/PROMPT.md, 9): [route] ставит рядом с адресом сервера прокси
+ * [LocalConnectProxy] и **отказывает**, если мост указан, а туннель не поднялся.
  */
 class AuthenticationService(
     private val environment: AppEnvironment,
@@ -73,6 +79,10 @@ class AuthenticationService(
     internal val locationSource: wtf.iskra.core.rooms.LocationSource? = null,
     /** Что показывает лист стикеров — «Настройки → Реакции» (`StickerSettings`). */
     internal val stickerSources: () -> wtf.iskra.core.stickers.StickerLibrary.Sources = { wtf.iskra.core.stickers.StickerLibrary.Sources() },
+    /** Мост: включён ли, куда, через какие relay'и. Null — моста в этой сборке нет (тесты, демо-вход). */
+    private val tunnelSettings: TunnelSettings? = null,
+    /** Ключ nostr устройства — обратный адрес туннеля. */
+    private val tunnelIdentity: TunnelIdentity? = null,
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
     /** Где на диске лежит то, что хранит этот сеанс, — для экрана «Хранилище». */
@@ -283,22 +293,29 @@ class AuthenticationService(
         pendingSessionId = sessionId
 
         val route = route(address)
+        // Где стояла запись моста до этого поиска: отказ прошлой попытки — другой адрес, другой
+        // список моста — не вешается на эту.
+        val heard = currentHeard()
+        val mark = heard?.mark ?: 0
+        // SDK, получив соединение, которое сбросил мост, говорит «сервер не найден», и совет, что из
+        // этого следует, — проверить адрес — неверен: адрес в порядке, менять нужно мост или его список.
+        fun refused(): AuthenticationError? = heard?.refusal(since = mark)?.takeIf { it.isRefusal }?.let { AuthenticationError.BridgeRefused(it) }
         val client = try {
             withTimeLimit(LOOKUP_TIMEOUT) {
                 through(route, builder).serverNameOrHomeserverUrl(route.homeserver).build()
             }
         } catch (_: TimeoutError) {
-            throw AuthenticationError.HomeserverUnreachable()
+            throw refused() ?: AuthenticationError.HomeserverUnreachable()
         } catch (error: Exception) {
             Log.info(Log.Category.SESSION, "сервер не нашёлся: ${Log.describe(error)}")
-            throw AuthenticationError.HomeserverNotFound()
+            throw refused() ?: AuthenticationError.HomeserverNotFound()
         }
 
         val details = try {
             withTimeLimit(LOOKUP_TIMEOUT) { client.homeserverLoginDetails() }
         } catch (_: Exception) {
             client.close()
-            throw AuthenticationError.HomeserverUnreachable()
+            throw refused() ?: AuthenticationError.HomeserverUnreachable()
         }
 
         pendingClient = client
@@ -508,13 +525,199 @@ class AuthenticationService(
         return UserSession(client, this, sessionId, strings)
     }
 
-    /** Куда направить клиент: адрес и — с мостом, на этапе 9, — прокси рядом с ним. */
+    // ---------------------------------------------------------------------------- мост
+
+    /** Куда направить клиент: адрес, который дать `ClientBuilder`, и прокси, через который его пустить, если есть. */
     internal data class ClientRoute(val homeserver: String, val proxy: String? = null)
 
-    private fun route(address: String): ClientRoute = ClientRoute(address)
+    /**
+     * Мост, пока переключатель включён и адрес заполнен: листенер `CONNECT`, который SDK получает как
+     * прокси, и потоки nostr за ним. Живёт здесь, потому что должен пережить сборку клиента на всю жизнь
+     * сеанса: он *и есть* соединение.
+     *
+     * Один на приложение, не на аккаунт. Прокси везёт соединение к любому хосту, о котором попросят,
+     * поэтому все аккаунты — на каких угодно серверах — идут через один, и аккаунт, добавленный, пока
+     * открыт другой, берёт тот же, а не выдёргивает его из-под первого.
+     */
+    private class Tunnel(
+        val connect: LocalConnectProxy,
+        val streams: NostrStreamTunnel,
+        val bridgeKey: String,
+        val relays: List<String>,
+    )
 
-    private fun through(route: ClientRoute, builder: ClientBuilder): ClientBuilder =
-        route.proxy?.let { builder.proxy(it) } ?: builder
+    private var tunnel: Tunnel? = null
+    private var tunnelState: TunnelStatus = TunnelStatus.Off
+    private val tunnelLock = Mutex()
+
+    /**
+     * Для тестов: каждый клиент, собранный здесь, идёт через этот прокси и доверяет этим корням, что бы
+     * ни говорили настройки моста. Так `BlindRouteTest` доказывает, что SDK шлёт через прокси `CONNECT`
+     * *всё* — вход, sliding sync, медиа, клиент пушей — к серверу с сертификатом, которому не доверяет
+     * никакая система.
+     */
+    internal class FixedRoute(val proxy: String, val rootCertificates: List<ByteArray>, val heard: Heard? = null)
+
+    @Volatile
+    internal var fixedRoute: FixedRoute? = null
+
+    private fun currentHeard(): Heard? = tunnel?.streams?.heard ?: fixedRoute?.heard
+
+    /**
+     * Куда направить SDK при таком переключателе моста.
+     *
+     * Адрес — всегда самого сервера. Меняется одно: стоит ли рядом прокси, — и зависит от одного:
+     * заполнен ли адрес моста.
+     *
+     * - **С адресом** мост поднимается, его листенер `CONNECT` — прокси, а отказ здесь **бросает**. Тихого
+     *   отката на прямое соединения нет: переключатель — решение о том, кто видит этот трафик, и тихо
+     *   пойти напрямую значило бы ответить на него за спиной человека (docs/PROMPT.md, 9.5). Откатываться
+     *   и не на что: первый протокол моста, читавший запросы, удалён с обеих сторон.
+     * - **Без адреса** на пути ничего нет. Ни прокси, и статус говорит [TunnelStatus.Off].
+     *
+     * @throws AuthenticationError.BridgeUnavailable мост просили, а он не поднялся.
+     */
+    internal suspend fun route(address: String): ClientRoute = tunnelLock.withLock {
+        fixedRoute?.let { return@withLock ClientRoute(address, it.proxy) }
+        val settings = tunnelSettings
+        if (settings == null || !settings.isEnabled) {
+            stopTunnelLocked()
+            return@withLock ClientRoute(address)
+        }
+        // В поле что-то написано, и это не ключ — опечатка в `npub`, вставленный `nsec`. Это мост,
+        // которым хотели пользоваться и не могут, и это отказ: прочитанный как «адреса нет», он пошёл бы
+        // к серверу напрямую при включённом переключателе.
+        val bridgeKey = settings.bridgeKey
+        if (bridgeKey == null) {
+            stopTunnelLocked()
+            if (settings.asksForBridge) {
+                tunnelState = TunnelStatus.Failed("bad bridge address")
+                throw AuthenticationError.BridgeUnavailable(null)
+            }
+            return@withLock ClientRoute(address)
+        }
+
+        val relays = settings.relays
+        val current = tunnel
+        if (current != null && current.bridgeKey == bridgeKey && current.relays == relays) {
+            val proxy = current.connect.proxyUrl
+            if (proxy != null) {
+                if (tunnelState !is TunnelStatus.Connecting) tunnelState = TunnelStatus.Connecting(current.streams.connectedRelays)
+                return@withLock ClientRoute(address, proxy)
+            }
+        }
+        stopTunnelLocked()
+
+        var raised: NostrStreamTunnel? = null
+        try {
+            val identity = tunnelIdentity ?: throw IllegalStateException("нет ключа устройства для моста")
+            val streams = NostrStreamTunnel(bridgeKey, relays, identity.secretKey())
+            raised = streams
+            // До листенера: сокеты к relay'ям уже открываются, пока SDK ещё собирается, — иначе первое
+            // соединение через холодный туннель ждало бы трёх TLS-рукопожатий с relay'ями.
+            streams.start()
+            val connect = LocalConnectProxy(streams)
+            connect.start()
+            val proxy = connect.proxyUrl ?: throw java.io.IOException("листенер не поднялся")
+            tunnel = Tunnel(connect, streams, bridgeKey, relays)
+            tunnelState = TunnelStatus.Connecting(streams.connectedRelays)
+            Log.info(Log.Category.BRIDGE, "трафик идёт через мост")
+            ClientRoute(address, proxy)
+        } catch (error: Exception) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
+            raised?.stop()
+            tunnelState = TunnelStatus.Failed(Log.describe(error))
+            Log.error(Log.Category.BRIDGE, "мост не поднялся: ${Log.describe(error)}")
+            throw AuthenticationError.BridgeUnavailable(error)
+        }
+    }
+
+    private suspend fun stopTunnelLocked() {
+        tunnel?.let {
+            it.connect.stop()
+            it.streams.stop()
+        }
+        tunnel = null
+        tunnelState = TunnelStatus.Off
+    }
+
+    /**
+     * Что делает транспорт — для экрана настроек. Число relay'ев спрашивается, а не запоминается: relay'и
+     * приходят и уходят сами, и число, записанное при подъёме туннеля, было бы числом из другого часа.
+     */
+    fun tunnelStatus(): TunnelStatus {
+        val current = tunnel
+        if (tunnelState !is TunnelStatus.Connecting || current == null) return tunnelState
+        return TunnelStatus.of(current.streams.heard, current.streams.connectedRelays)
+    }
+
+    /**
+     * Ключ nostr устройства, `npub1…`, — для экрана настроек: его тот, кто держит закрытый мост,
+     * добавляет в `ALLOWED_PUBKEYS`, прежде чем мост станет обслуживать это устройство.
+     */
+    fun tunnelPublicKey(): String? = tunnelIdentity?.let { runCatching { it.npub() }.getOrNull() }
+
+    /** Секретный ключ устройства — для [wtf.iskra.core.transport.BridgeCheck], который поднимает свой туннель. */
+    fun tunnelSecretKey(): ByteArray? = tunnelIdentity?.let { runCatching { it.secretKey() }.getOrNull() }
+
+    /**
+     * Возвращение с фона: листенер поднят снова, если его потеряли, и relay'и проверены — прежде, чем
+     * SDK узнает об этом на собственном опыте (docs/PROMPT.md, 9.5). Обе половины ломались от поездки
+     * в кармане, и обе выглядели одинаково — «нет сети», — пока мост на том конце отвечал исправно.
+     */
+    suspend fun wakeTunnels() {
+        val current = tunnel ?: return
+        current.connect.ensureListening()
+        current.streams.wake()
+    }
+
+    /**
+     * HTTP-клиент для своих запросов приложения к серверу — *тем же путём*, что запросы SDK
+     * (docs/PROMPT.md, 9.6): через листенер моста, когда он поднят. Адрес loopback — встроенный сервер
+     * (демо, сервер входа): к нему напрямую, как и SDK.
+     *
+     * @throws AuthenticationError.BridgeUnavailable переключатель включён, а моста, через который
+     *   пустить запрос, нет: отказ, как у запросов самого SDK, а не обход.
+     */
+    fun homeserverHttp(homeserver: String): OkHttpClient {
+        if (TunnelSettings.isLoopback(homeserver)) return directHttp
+        fixedRoute?.let { return directHttp }
+        tunnel?.let { return it.connect.httpClient(directHttp) }
+        if (tunnelSettings?.asksForBridge == true) throw AuthenticationError.BridgeUnavailable(null)
+        return directHttp
+    }
+
+    /**
+     * HTTP-клиент для чужих серверов, которых нет в SDK, — тайлов карты (docs/PROMPT.md, 11.6): тем же
+     * маршрутом, что всё остальное. С мостом — через его листенер; мост просили, а его нет — клиент без
+     * выхода наружу: карты нет, и это честнее, чем тихо сходить напрямую.
+     */
+    fun outsideHttp(): OkHttpClient {
+        tunnel?.let { return it.connect.httpClient(directHttp) }
+        if (tunnelSettings?.asksForBridge == true) return nowhereHttp
+        return directHttp
+    }
+
+    private val nowhereHttp: OkHttpClient by lazy {
+        directHttp.newBuilder().proxy(java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress("127.0.0.1", 9))).build()
+    }
+
+    private val directHttp: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
+            .cache(null)
+            .build()
+    }
+
+    private fun through(route: ClientRoute, builder: ClientBuilder): ClientBuilder {
+        // Прокси — *единственное*, что мост меняет в клиенте: адрес остаётся адресом сервера, TLS — SDK,
+        // и сертификат проверяется по настоящему. Ни `disableSslVerification`, ни своих корней — кроме
+        // тестовых, у которых сервер, которому никто больше не доверяет.
+        var routed = route.proxy?.let { builder.proxy(it) } ?: builder
+        fixedRoute?.rootCertificates?.takeIf { it.isNotEmpty() }?.let { routed = routed.addRootCertificates(it) }
+        return routed
+    }
 
     /**
      * Единственное место, где настраивается `ClientBuilder` (docs/PROMPT.md, 4.5).

@@ -42,6 +42,10 @@
     <string name="update_checking">Wird geprüft …</string>
     <string name="update_up_to_date">Du hast die neueste Version</string>
     <string name="update_check_failed">GitHub ist nicht erreichbar. Versuche es später noch einmal.</string>
+    <string name="update_check_bridge_help">Solange die Bridge an ist, wird nicht automatisch nach Updates gesucht.</string>
+    <string name="update_check_direct_title">Direkt prüfen, an der Bridge vorbei?</string>
+    <string name="update_check_direct_body">GitHub sieht deine Adresse.</string>
+    <string name="update_check_direct_confirm">Direkt prüfen</string>
     <string name="about_libraries">Open-Source-Bibliotheken</string>
     <string name="about_libraries_help">Alles in der App, was andere geschrieben haben, und unter welcher Lizenz.</string>
     <string name="notification_channel_background">Hintergrundaufgaben</string>

@@ -37,6 +37,18 @@ internal fun UpdateChecks(settings: AppSettings, updates: Updates, onOpenUpdate:
     val offer by updates.checker.offer.collectAsStateWithLifecycle()
     var checking by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
+    // С мостом проверка спрашивает, а не идёт: прямой запрос к GitHub — обход моста, и решать его в
+    // момент нажатия человеку (docs/PROMPT.md, 19.1).
+    var askingDirect by remember { mutableStateOf(false) }
+    val throughBridge = updates.checker.bridgeEnabled()
+    val checkNow = {
+        checking = true
+        failed = false
+        scope.launch {
+            failed = runCatching { updates.checker.checkNow() }.isFailure
+            checking = false
+        }
+    }
 
     val status: String? = when {
         checking -> stringResource(R.string.update_checking)
@@ -48,10 +60,27 @@ internal fun UpdateChecks(settings: AppSettings, updates: Updates, onOpenUpdate:
         }
     }
 
+    if (askingDirect) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { askingDirect = false },
+            title = { Text(stringResource(R.string.update_check_direct_title)) },
+            text = { Text(stringResource(R.string.update_check_direct_body)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    askingDirect = false
+                    checkNow()
+                }) { Text(stringResource(R.string.update_check_direct_confirm)) }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { askingDirect = false }) { Text(stringResource(R.string.room_list_swipe_cancel)) }
+            },
+        )
+    }
+
     SectionTitle(R.string.update_check)
     Group(
         *buildList<@Composable () -> Unit> {
-            add { Toggle(R.string.update_check, R.string.update_check_help, enabled, settings::setUpdateChecks) }
+            add { Toggle(R.string.update_check, if (throughBridge) R.string.update_check_bridge_help else R.string.update_check_help, enabled, settings::setUpdateChecks) }
             add {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.update_check_now)) },
@@ -61,14 +90,8 @@ internal fun UpdateChecks(settings: AppSettings, updates: Updates, onOpenUpdate:
                             onOpenUpdate()
                             return@clickable
                         }
-                        // Ручная проверка — решение человека в момент нажатия; при мосте (этап 9) здесь
-                        // будет вопрос «проверить напрямую?».
-                        checking = true
-                        failed = false
-                        scope.launch {
-                            failed = runCatching { updates.checker.checkNow() }.isFailure
-                            checking = false
-                        }
+                        // Ручная проверка — решение человека в момент нажатия; при мосте — вопрос «напрямую?».
+                        if (throughBridge) askingDirect = true else checkNow()
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent, headlineColor = LocalAccent.current.control),
                 )

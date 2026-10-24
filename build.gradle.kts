@@ -66,6 +66,11 @@ fun ResolvedComponentResult.everything(): List<String> {
 
 /** Правила: модуль → (варианты, запрещённое, почему). */
 val moduleRules = mapOf(
+    ":tunnel" to Triple(
+        listOf("releaseCompileClasspath", "releaseRuntimeClasspath"),
+        listOf("androidx.compose", "org.matrix.rustcomponents:", "project :core", "project :design", "project :features"),
+        ":tunnel — только крейт клиента моста: ни Matrix, ни Compose, ни модулей приложения.",
+    ),
     ":core" to Triple(
         listOf("releaseCompileClasspath", "releaseRuntimeClasspath"),
         listOf("androidx.compose"),

@@ -42,6 +42,10 @@
     <string name="update_checking">Vérification…</string>
     <string name="update_up_to_date">Vous avez la dernière version</string>
     <string name="update_check_failed">Impossible de joindre GitHub. Réessayez plus tard.</string>
+    <string name="update_check_bridge_help">Tant que le pont est activé, les mises à jour ne sont pas vérifiées automatiquement.</string>
+    <string name="update_check_direct_title">Vérifier directement, sans passer par le pont ?</string>
+    <string name="update_check_direct_body">GitHub verra votre adresse.</string>
+    <string name="update_check_direct_confirm">Vérifier directement</string>
     <string name="about_libraries">Bibliothèques open source</string>
     <string name="about_libraries_help">Tout ce que d’autres ont écrit dans l’app, et sous quelle licence.</string>
     <string name="notification_channel_background">Tâches en arrière-plan</string>

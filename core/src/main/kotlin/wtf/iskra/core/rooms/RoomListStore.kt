@@ -144,6 +144,13 @@ class RoomListStore(
     private var sendQueueHandle: TaskHandle? = null
     private var sendQueueErrorHandle: TaskHandle? = null
 
+    /**
+     * Что разбудить перед перезапуском синхронизации — транспорт моста (`AuthenticationService.wakeTunnels`):
+     * листенер и relay'и, потом цикл, тот же порядок, что при возвращении из кармана. Иначе первым, кто
+     * узнает о мёртвых сокетах к relay'ям, был бы сам перезапуск.
+     */
+    internal var beforeRecovery: (suspend () -> Unit)? = null
+
     /** Перезапуск синхронизации, который ждёт своей паузы, пока сервер не отвечает (`scheduleRecovery`). */
     private var recovery: Job? = null
     private var recoveryAttempts = 0
@@ -510,6 +517,7 @@ class RoomListStore(
 
     /** Через ту же очередь переходов, что пауза и возобновление: перезапуск не пересекает ни ту, ни другую. */
     private suspend fun recoverSync() {
+        beforeRecovery?.let { wake -> runCatching { wake() } }
         transitions.withLock {
             val service = syncService ?: return
             if (hasStopped || isPaused) return

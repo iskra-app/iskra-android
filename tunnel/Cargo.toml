@@ -1,0 +1,46 @@
+# Клиент моста для Android (docs/PROMPT.md, 9.3): тот же код кадров, окна и сборки, что у моста, —
+# через вендоренный iskra-tunnel-proto, — и uniffi, чтобы Kotlin его вызывал. Ввода-вывода здесь
+# нет: сокеты, relay'и и таймеры живут в :core/transport.
+
+[package]
+name = "iskra-tunnel-client"
+description = "The Iskra nostr tunnel, client side, for Android: frames, windows, keys, no I/O"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+name = "iskra_tunnel_client"
+path = "rust/lib.rs"
+crate-type = ["cdylib", "lib"]
+
+# Генератор Kotlin-биндингов — из той же версии uniffi, что в библиотеке: разные версии
+# расходятся в контрольных суммах, и биндинги отказываются грузить .so.
+[[bin]]
+name = "uniffi-bindgen"
+path = "rust/uniffi_bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+iskra-tunnel-proto = { path = "../third_party/iskra-tunnel-proto" }
+# Та же версия, что у моста и у proto (там она и выбрана): только типы, ключи, подпись и NIP-44.
+# Пул relay'ев nostr-sdk не вызывается нигде — он ждёт OK от всех relay'ев (раздел 9.3), — и LTO
+# выбрасывает его из .so.
+nostr-sdk = { version = "0.44", features = ["nip44"] }
+serde_json = "1"
+thiserror = "2"
+uniffi = "0.32"
+
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+strip = true
+panic = "abort"

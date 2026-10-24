@@ -42,6 +42,10 @@
     <string name="update_checking">Проверяем…</string>
     <string name="update_up_to_date">У вас последняя версия</string>
     <string name="update_check_failed">Не удалось связаться с GitHub. Попробуйте позже.</string>
+    <string name="update_check_bridge_help">Пока включён мост, обновления не проверяются автоматически.</string>
+    <string name="update_check_direct_title">Проверить напрямую, мимо моста?</string>
+    <string name="update_check_direct_body">GitHub увидит ваш адрес.</string>
+    <string name="update_check_direct_confirm">Проверить напрямую</string>
     <string name="about_libraries">Открытые библиотеки</string>
     <string name="about_libraries_help">Всё внутри приложения, что написали другие, и под какой лицензией.</string>
     <string name="notification_channel_background">Фоновые задачи</string>

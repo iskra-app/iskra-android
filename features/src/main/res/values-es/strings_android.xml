@@ -42,6 +42,10 @@
     <string name="update_checking">Comprobando…</string>
     <string name="update_up_to_date">Tienes la última versión</string>
     <string name="update_check_failed">No se pudo conectar con GitHub. Inténtalo más tarde.</string>
+    <string name="update_check_bridge_help">Mientras el puente esté activado, las actualizaciones no se comprueban automáticamente.</string>
+    <string name="update_check_direct_title">¿Comprobar directamente, sin pasar por el puente?</string>
+    <string name="update_check_direct_body">GitHub verá tu dirección.</string>
+    <string name="update_check_direct_confirm">Comprobar directamente</string>
     <string name="about_libraries">Bibliotecas de código abierto</string>
     <string name="about_libraries_help">Todo lo que hay dentro de la app escrito por otros, y bajo qué licencia.</string>
     <string name="notification_channel_background">Tareas en segundo plano</string>

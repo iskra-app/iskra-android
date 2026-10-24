@@ -62,6 +62,17 @@ class AppGraph(
     }
     val sessionStore = SessionStore(secrets)
 
+    /** Мост: переключатель, адрес, relay'и (docs/PROMPT.md, 9.4). Переживает выход из аккаунта. */
+    val tunnelSettings = wtf.iskra.core.transport.TunnelSettings(context)
+
+    /**
+     * Ключ nostr устройства — в своём каталоге и под своим ключом Keystore, отдельно от секретов
+     * сеансов: выход их опустошает, а ключ, пересозданный после выхода, закрытый мост больше не узнал бы.
+     */
+    val tunnelIdentity = wtf.iskra.core.transport.TunnelIdentity(
+        KeystoreSecrets(environment.transportSecretsDir, alias = "wtf.iskra.transport"),
+    )
+
     /** Куда едут пуши этого телефона: выдаёт транспорт flavor'а, помнится для выхода. */
     val pushTargets = PushTargets(context)
 
@@ -77,6 +88,8 @@ class AppGraph(
         knownDevices = wtf.iskra.core.session.KnownDevices(context),
         locationSource = wtf.iskra.features.location.DeviceLocationSource(context),
         stickerSources = { settings.stickerSources() },
+        tunnelSettings = tunnelSettings,
+        tunnelIdentity = tunnelIdentity,
     )
 
     /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */
@@ -98,12 +111,15 @@ class AppGraph(
     /** Проверка и установка обновлений (docs/PROMPT.md, 19.1). */
     val updates = Updates(
         context = context,
-        checker = UpdateChecker(GitHubUpdateSource(), settings, installed, language = { appLanguage(context) }),
+        // С указанным мостом фоновая проверка не ходит вовсе: прямой запрос к GitHub — тот самый тихий
+        // обход, а через мост GitHub не пройдёт (docs/PROMPT.md, 19.1).
+        checker = UpdateChecker(GitHubUpdateSource(), settings, installed, language = { appLanguage(context) }, bridgeEnabled = { tunnelSettings.asksForBridge }),
         source = GitHubUpdateSource(),
     )
 
     init {
         SdkLogging.start(environment.logsDir)
+        wtf.iskra.features.map.MapNetwork.client = authentication::outsideHttp
         wtf.iskra.features.media.MediaSendHub.smallIcon = notificationIcon
         wtf.iskra.features.location.LiveLocationHub.smallIcon = notificationIcon
     }
@@ -150,7 +166,7 @@ class AppGraph(
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, liveLocationChanged = liveLocationChanged, liveLocationStopper = liveLocationStopper, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts, widgets = widgets)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, liveLocationChanged = liveLocationChanged, liveLocationStopper = liveLocationStopper, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts, widgets = widgets, tunnel = tunnelSettings)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

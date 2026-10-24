@@ -458,6 +458,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 beforeUpdate = model::closeForUpdate,
                 afterFailedUpdate = { model.reopenAfterUpdate() },
                 librariesResource = model.librariesResource,
+                connection = model.connection(),
             )
             // Список и комната рядом; всё, что занимает экран целиком (настройки, ссылка, пространство), выше.
             wide -> Row(Modifier.fillMaxSize()) {

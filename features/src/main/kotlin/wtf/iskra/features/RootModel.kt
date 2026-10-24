@@ -64,6 +64,8 @@ class RootModel(
     private val liveLocationChanged: ((String, wtf.iskra.features.location.LiveLocationShare?) -> Unit)? = null,
     /** «Остановить» из уведомления: ставится, пока сеанс жив. */
     private val liveLocationStopper: ((() -> Unit)?) -> Unit = {},
+    /** Мост (docs/PROMPT.md, 9): настройки «Подключения» и их изменения. Null — без моста (демо-вход, тесты). */
+    private val tunnel: wtf.iskra.core.transport.TunnelSettings? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""
@@ -109,6 +111,50 @@ class RootModel(
         val demoAvailable = authentication.canStartDemo
         if (demo && demoAvailable) settings?.setDemoBackend(true)
         if (signInAddress == null && demoAvailable && (demo || settings?.demoBackend?.value == true)) startDemo() else restore()
+        // Настройки моста поменялись так, что сеанс нужно пересобрать: клиент построен вокруг соединения.
+        tunnel?.let { settings -> scope.launch { settings.changed.collect { reconnect() } } }
+    }
+
+    /**
+     * Ответ на `TunnelSettings.changed`: сеанс закрывается и восстанавливается — то, ради чего раньше
+     * требовался перезапуск. Демо через мост не ходило никогда, пересобирать нечего; экран «нет сети»
+     * пробует снова — может быть, мост и был тем, чего не хватало.
+     */
+    private fun reconnect() {
+        when (mutablePhase.value) {
+            is Phase.SignedIn, is Phase.SettingUp -> {
+                val session = sessionNow ?: return
+                if (session.isDemo) return
+                mutablePhase.value = Phase.Starting
+                scope.launch {
+                    session.shutDown()
+                    restore()
+                }
+            }
+            Phase.Offline -> {
+                mutablePhase.value = Phase.Starting
+                restore()
+            }
+            else -> Unit
+        }
+    }
+
+    /** Что экрану «Подключение» нужно от корня. Null — моста в этом запуске нет. */
+    fun connection(): wtf.iskra.features.settings.ConnectionHooks? {
+        val settings = tunnel ?: return null
+        return wtf.iskra.features.settings.ConnectionHooks(
+            settings = settings,
+            status = authentication::tunnelStatus,
+            deviceKey = authentication::tunnelPublicKey,
+            check = { key, relays, homeserver ->
+                val secret = authentication.tunnelSecretKey()
+                if (secret == null) {
+                    wtf.iskra.core.transport.BridgeCheck.Outcome.Failed("no device key")
+                } else {
+                    wtf.iskra.core.transport.BridgeCheck.run(key, relays, homeserver, secret)
+                }
+            },
+        )
     }
 
     /**
@@ -216,7 +262,7 @@ class RootModel(
 
     /** Модель входа для ещё одного аккаунта: тот же экран, что при первом входе. */
     fun addAccountModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = ::added, address = address)
+        SignInModel(authentication, browser, scope, onSignedIn = ::added, address = address, bridge = tunnel)
 
     /** Вошли ещё в один. Он — на экран; тот, что был, закрыт и остаётся вошедшим, в одно касание. */
     private fun added(session: UserSession) {
@@ -245,7 +291,7 @@ class RootModel(
 
     /** Модель экрана входа: живёт столько, сколько фаза «никого нет». */
     fun signInModel(browser: WebAuthentication): SignInModel<UserSession> =
-        SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) }, address = address)
+        SignInModel(authentication, browser, scope, onSignedIn = { signedIn(it, settingUp = true) }, address = address, bridge = tunnel)
 
     /** На экране ли приложение. Вне экрана синхронизация спит — сообщения приносят пуши (этап 7). */
     private var isForeground = true
@@ -260,7 +306,17 @@ class RootModel(
         if (foreground && !session.isDemo) updates?.let { scope.launch { it.checker.checkInBackground() } }
         // Сервер, что считает sync за «в сети», уже вернул статус: на возвращении он говорится заново (`applyPresence`).
         if (foreground && !session.isDemo) settings?.let { scope.launch { session.applyPresence(it.privacy.value) } }
-        scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
+        scope.launch {
+            if (foreground) {
+                // Транспорт — первым, потом синхронизация (docs/PROMPT.md, 9.5). В обратном порядке первый
+                // запрос после пробуждения и узнаёт, что листенер потерян или relay'и повесили трубку, и SDK
+                // говорит «нет сети», пока не дойдёт до собственного повтора.
+                if (!session.isDemo) authentication.wakeTunnels()
+                session.rooms.resume()
+            } else {
+                session.rooms.pause()
+            }
+        }
     }
 
     /** Чат, открытый на экране сейчас, — от экрана. Null — список, настройки, ничего. */
@@ -463,6 +519,11 @@ class RootModel(
                 return@launch
             } catch (_: AuthenticationError.NetworkUnavailable) {
                 // Никогда не экран входа. Сеть одна на все аккаунты, следующего пробовать незачем.
+                mutablePhase.value = Phase.Offline
+                return@launch
+            } catch (_: AuthenticationError.BridgeUnavailable) {
+                // То же, на шаг дальше: мост не поднялся, а с заполненным адресом приложение напрямую не
+                // идёт (`AuthenticationService.route`). Аккаунты целы, и мост один на всех.
                 mutablePhase.value = Phase.Offline
                 return@launch
             } catch (_: AuthenticationError.SessionEnded) {

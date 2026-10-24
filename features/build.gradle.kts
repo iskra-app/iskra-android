@@ -54,6 +54,8 @@ dependencies {
     api(libs.androidx.biometric)
     api(libs.androidx.fragment)
     implementation(libs.maplibre)
+    // Тайлы карты — тем же маршрутом, что всё остальное: клиент MapLibre от `AuthenticationService.outsideHttp`.
+    implementation(libs.okhttp)
     implementation(libs.androidx.glance)
     implementation(libs.androidx.exifinterface)
     implementation(libs.kotlinx.coroutines.core)
