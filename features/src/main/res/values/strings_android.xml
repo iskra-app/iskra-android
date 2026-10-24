@@ -67,4 +67,8 @@
     <string name="notification_channel_background">Background tasks</string>
     <string name="app_icon_note">Your launcher may flicker for a moment while the icon changes, and a shortcut on the home screen may disappear — that is how Android works.</string>
     <string name="about_tagline_android">An open-source Matrix client for Android, written in Kotlin.</string>
+    <string name="chats_ctrl_return_section">Keyboard</string>
+    <string name="chats_ctrl_return">Send with Ctrl + Enter</string>
+    <string name="chats_ctrl_return_on_help">On a hardware keyboard, Enter starts a new line and Ctrl + Enter sends.</string>
+    <string name="chats_ctrl_return_off_help">On a hardware keyboard, Enter sends and Shift + Enter starts a new line.</string>
 </resources>

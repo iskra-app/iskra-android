@@ -47,4 +47,8 @@
     <string name="notification_channel_background">バックグラウンドの処理</string>
     <string name="app_icon_note">アイコンの変更中はランチャーが一瞬ちらつくことがあり、ホーム画面のショートカットが消える場合があります。これはAndroidの仕様です。</string>
     <string name="about_tagline_android">Kotlin で書かれた、Android 向けのオープンソースの Matrix クライアント。</string>
+    <string name="chats_ctrl_return_section">キーボード</string>
+    <string name="chats_ctrl_return">Ctrl + Enter で送信</string>
+    <string name="chats_ctrl_return_on_help">ハードウェアキーボードでは、Enter で改行し、Ctrl + Enter で送信します。</string>
+    <string name="chats_ctrl_return_off_help">ハードウェアキーボードでは、Enter で送信し、Shift + Enter で改行します。</string>
 </resources>

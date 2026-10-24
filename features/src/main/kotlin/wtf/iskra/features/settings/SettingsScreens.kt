@@ -545,6 +545,12 @@ private fun Chats(settings: AppSettings) {
         )
     })
 
+    // Клавиатура — только если к устройству подключена аппаратная (`ComposerReturnKey.isOffered`).
+    if (androidx.compose.ui.platform.LocalConfiguration.current.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS) {
+        val ctrl by settings.sendsWithCtrlReturn.collectAsStateWithLifecycle()
+        SectionTitle(R.string.chats_ctrl_return_section)
+        Group({ Toggle(R.string.chats_ctrl_return, if (ctrl) R.string.chats_ctrl_return_on_help else R.string.chats_ctrl_return_off_help, ctrl, settings::setSendsWithCtrlReturn) })
+    }
     val service by settings.serviceEvents.collectAsStateWithLifecycle()
     SectionTitle(R.string.chats_service_section)
     Group(

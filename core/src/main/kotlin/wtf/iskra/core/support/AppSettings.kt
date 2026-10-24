@@ -128,6 +128,16 @@ class AppSettings(context: Context) : UpdateStore {
 
     fun setTintsInterface(on: Boolean) = save(TINTS_INTERFACE, on, mutableTints)
 
+    private val mutableCtrlReturn = flag(SENDS_WITH_CTRL_RETURN, false)
+
+    /**
+     * Аппаратная клавиатура: выключено — Enter отправляет, Shift+Enter — новая строка; включено — Enter переносит строку, а отправляет Ctrl+Enter
+     * (`composer.sendsWithCommandReturn` у iOS: там ⌘, здесь Ctrl). Экранная клавиатура не затронута.
+     */
+    val sendsWithCtrlReturn: StateFlow<Boolean> = mutableCtrlReturn.asStateFlow()
+
+    fun setSendsWithCtrlReturn(on: Boolean) = save(SENDS_WITH_CTRL_RETURN, on, mutableCtrlReturn)
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -269,6 +279,7 @@ class AppSettings(context: Context) : UpdateStore {
         const val RECENT_REACTIONS = "reactions.recent"
         const val AUTO_DOWNLOAD = "media.autoDownload"
         const val TINTS_INTERFACE = "appearance.tintsInterface"
+        const val SENDS_WITH_CTRL_RETURN = "composer.sendsWithCommandReturn"
         const val SHOWS_ALL_EVENTS = "beta.showsAllEvents"
         const val SHOWS_SOURCE = "beta.showsSource"
         const val HIDES_NAME_CHANGES = "chats.hidesNameChanges"

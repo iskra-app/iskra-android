@@ -47,4 +47,8 @@
     <string name="notification_channel_background">Tareas en segundo plano</string>
     <string name="app_icon_note">El launcher puede parpadear un momento al cambiar el icono, y un acceso directo del escritorio puede desaparecer: así funciona Android.</string>
     <string name="about_tagline_android">Un cliente Matrix de código abierto para Android, escrito en Kotlin.</string>
+    <string name="chats_ctrl_return_section">Teclado</string>
+    <string name="chats_ctrl_return">Enviar con Ctrl + Intro</string>
+    <string name="chats_ctrl_return_on_help">Con teclado físico, Intro crea una línea nueva y Ctrl + Intro envía.</string>
+    <string name="chats_ctrl_return_off_help">Con teclado físico, Intro envía y Mayús + Intro crea una línea nueva.</string>
 </resources>

@@ -108,6 +108,13 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.ui.semantics.Role
@@ -1384,7 +1391,15 @@ private fun BubbleBody(
         Modifier
             .widthIn(max = Dp(maxWidth.toFloat()))
             .clip(RoundedCornerShape(Theme.Radius.bubble))
-            .background(if (own) accent.bubble else accent.incomingBubble)
+            // Удалённое — без заливки, пунктирным контуром (`deletedBubble` на iOS): заливка весила бы, как всё, что в чате ещё есть,
+            // а пунктир — старейший способ нарисовать то, чего нет. Контур тише слов внутри.
+            .then(
+                if (message.kind is MessageKind.Deleted) {
+                    Modifier.deletedOutline(MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Modifier.background(if (own) accent.bubble else accent.incomingBubble)
+                },
+            )
             .bubbleGestures(
 interactive = interactive,
                 onClick = onReveal,
@@ -1393,7 +1408,7 @@ interactive = interactive,
             )
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close + Theme.Spacing.withinRun),
     ) {
-        val ink = if (own) accent.onBubble else accent.onIncomingBubble
+        val ink = if (message.kind is MessageKind.Deleted) MaterialTheme.colorScheme.onSurfaceVariant else if (own) accent.onBubble else accent.onIncomingBubble
         message.replyTo?.let { reply ->
             Row(
                 Modifier
@@ -1757,6 +1772,7 @@ private fun Composer(
     val accent = LocalAccent.current
     val text = field.text
     val canSend = text.isNotBlank() || (editing == null && attachments.isNotEmpty())
+    val sendsWithCtrl by (LocalAppSettings.current?.sendsWithCtrlReturn ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight)) {
         if (attachments.isNotEmpty() && editing == null) PendingAttachments(attachments, onRemoveAttachment)
         val context = replyingTo ?: editing
@@ -1839,7 +1855,10 @@ private fun Composer(
                 // Пилюля без рамки, как в Google Messages: поле — поверхность, а не обведённая форма.
                 value = field,
                 onValueChange = onFieldChange,
-                modifier = Modifier.weight(1f).heightIn(min = Theme.Size.composerControl),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = Theme.Size.composerControl)
+                    .onPreviewKeyEvent { event -> hardwareReturn(event, sendsWithCtrl) { if (canSend) onSend() } },
                 placeholder = { Text(stringResource(R.string.room_composer_placeholder)) },
                 maxLines = COMPOSER_LINES,
                 shape = RoundedCornerShape(Theme.Radius.bubble),
@@ -2040,3 +2059,35 @@ internal val LocalShowReactors = androidx.compose.runtime.compositionLocalOf<((S
 
 /** «Бета → JSON»: показать событие сообщения. Null — не включено. */
 internal val LocalShowSource = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }
+
+/**
+ * Enter на аппаратной клавиатуре (`composerReturnKey` на iOS): отправка или перенос строки по настройке. Экранная клавиатура шлёт Enter с виртуального
+ * устройства — её событие не трогаем: там Enter всегда новая строка, а отправляет кнопка.
+ */
+private fun hardwareReturn(event: androidx.compose.ui.input.key.KeyEvent, sendsWithCtrl: Boolean, send: () -> Unit): Boolean {
+    if (event.key != androidx.compose.ui.input.key.Key.Enter && event.key != androidx.compose.ui.input.key.Key.NumPadEnter) return false
+    val device = event.nativeKeyEvent.device
+    if (device == null || device.isVirtual) return false
+    val action = wtf.iskra.core.support.ReturnKey.action(sendsWithCtrl, ctrl = event.isCtrlPressed || event.isMetaPressed, shift = event.isShiftPressed)
+    if (action == wtf.iskra.core.support.ReturnKey.Action.NEWLINE) return false
+    if (event.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) send()
+    return true
+}
+
+/** Пунктирный контур пузыря удалённого сообщения: волосяная линия, штрих и пропуск по [Theme.Border.dash], вполсилы. */
+private fun Modifier.deletedOutline(color: Color): Modifier = this.drawBehind {
+    val stroke = Theme.Border.hairline.toPx()
+    val inset = stroke / 2
+    drawRoundRect(
+        color = color.copy(alpha = DELETED_OUTLINE_ALPHA),
+        topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+        size = androidx.compose.ui.geometry.Size(size.width - stroke, size.height - stroke),
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(Theme.Radius.bubble.toPx() - inset),
+        style = androidx.compose.ui.graphics.drawscope.Stroke(
+            width = stroke,
+            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(Theme.Border.dash.map { it.toPx() }.toFloatArray()),
+        ),
+    )
+}
+
+private const val DELETED_OUTLINE_ALPHA = 0.5f

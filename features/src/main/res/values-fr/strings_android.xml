@@ -47,4 +47,8 @@
     <string name="notification_channel_background">Tâches en arrière-plan</string>
     <string name="app_icon_note">Le lanceur peut clignoter un instant pendant le changement d’icône, et un raccourci sur l’écran d’accueil peut disparaître : c’est ainsi qu’Android fonctionne.</string>
     <string name="about_tagline_android">Un client Matrix open source pour Android, écrit en Kotlin.</string>
+    <string name="chats_ctrl_return_section">Clavier</string>
+    <string name="chats_ctrl_return">Envoyer avec Ctrl + Entrée</string>
+    <string name="chats_ctrl_return_on_help">Avec un clavier physique, Entrée passe à la ligne et Ctrl + Entrée envoie.</string>
+    <string name="chats_ctrl_return_off_help">Avec un clavier physique, Entrée envoie et Maj + Entrée passe à la ligne.</string>
 </resources>

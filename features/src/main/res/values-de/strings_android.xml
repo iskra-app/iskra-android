@@ -47,4 +47,8 @@
     <string name="notification_channel_background">Hintergrundaufgaben</string>
     <string name="app_icon_note">Der Launcher kann kurz flackern, während das Symbol wechselt, und eine Verknüpfung auf dem Startbildschirm kann verschwinden – so funktioniert Android.</string>
     <string name="about_tagline_android">Ein Open-Source-Matrix-Client für Android, geschrieben in Kotlin.</string>
+    <string name="chats_ctrl_return_section">Tastatur</string>
+    <string name="chats_ctrl_return">Mit Strg + Enter senden</string>
+    <string name="chats_ctrl_return_on_help">Mit Hardware-Tastatur beginnt Enter eine neue Zeile, Strg + Enter sendet.</string>
+    <string name="chats_ctrl_return_off_help">Mit Hardware-Tastatur sendet Enter, Umschalt + Enter beginnt eine neue Zeile.</string>
 </resources>

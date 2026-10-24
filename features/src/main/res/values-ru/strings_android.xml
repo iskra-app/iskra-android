@@ -47,4 +47,8 @@
     <string name="notification_channel_background">Фоновые задачи</string>
     <string name="app_icon_note">Лаунчер может на секунду моргнуть, пока меняется иконка, а ярлык на рабочем столе — пропасть: так устроен Android.</string>
     <string name="about_tagline_android">Открытый клиент Matrix для Android, написан на Kotlin.</string>
+    <string name="chats_ctrl_return_section">Клавиатура</string>
+    <string name="chats_ctrl_return">Отправлять по Ctrl + Enter</string>
+    <string name="chats_ctrl_return_on_help">С аппаратной клавиатурой Enter переносит строку, а Ctrl + Enter отправляет.</string>
+    <string name="chats_ctrl_return_off_help">С аппаратной клавиатурой Enter отправляет, а Shift + Enter переносит строку.</string>
 </resources>
