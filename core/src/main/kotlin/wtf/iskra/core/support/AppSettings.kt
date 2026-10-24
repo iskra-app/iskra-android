@@ -119,6 +119,22 @@ class AppSettings(context: Context) : UpdateStore {
         mutableMedia.value = settings
     }
 
+    private val mutableWallpaper = string(WALLPAPER)
+    private val mutableWallpaperDimming = MutableStateFlow(preferences.getFloat(WALLPAPER_DIMMING, NO_DIMMING).takeIf { it >= 0f })
+
+    /** Имя обоев для хранения (`Wallpaper.storageName`); null — без обоев. Одни на всё приложение, как акцент. */
+    val wallpaper: StateFlow<String?> = mutableWallpaper.asStateFlow()
+
+    /** Насколько обои приглушены, 0..; null — по умолчанию (решает экран: `Wallpaper.DEFAULT_DIMMING`). */
+    val wallpaperDimming: StateFlow<Float?> = mutableWallpaperDimming.asStateFlow()
+
+    fun setWallpaper(name: String) = save(WALLPAPER, name, mutableWallpaper)
+
+    fun setWallpaperDimming(value: Float) {
+        preferences.edit().putFloat(WALLPAPER_DIMMING, value).apply()
+        mutableWallpaperDimming.value = value
+    }
+
     fun setAccent(name: String) = save(ACCENT, name, mutableAccent)
     fun setAppearance(name: String) = save(APPEARANCE, name, mutableAppearance)
     fun setDemoBackend(on: Boolean) = save(DEMO, on, mutableDemo)
@@ -169,6 +185,10 @@ class AppSettings(context: Context) : UpdateStore {
     private companion object {
         const val FILE = "iskra.settings"
         const val ACCENT = "appearance.accent"
+        // Ключи — те же, что у iOS (`Wallpaper.storageKey`, `.dimmingKey`).
+        const val WALLPAPER = "appearance.wallpaper"
+        const val WALLPAPER_DIMMING = "appearance.wallpaperDimming"
+        const val NO_DIMMING = -1f
         const val APPEARANCE = "appearance.mode"
         /** Прежний выбор шрифта (Inter или системный): выбора больше нет (2026-10-24), запись убирается. */
         const val LEGACY_FONT = "appearance.font"

@@ -403,7 +403,9 @@ fun RoomScreen(
         )
     }
 
-    Column(modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
+    Box(modifier.fillMaxSize()) {
+    ChatWallpaper()
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
         identityChanges?.let { identity ->
@@ -641,6 +643,7 @@ fun RoomScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
     }
 
     // Черновик — в зашифрованный стор SDK, когда комнату оставляют, и не раньше, чем он прочитан.
@@ -1732,4 +1735,20 @@ private fun presenceText(presence: wtf.iskra.core.session.Presence): String? {
             java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(label.at.toEpochMilli())),
         )
     }
+}
+
+/** Обои за разговором: выбор приложения, одна картинка на всё. Своя `Composable`, чтобы чтение настроек перестраивало её, а не всю комнату. */
+@Composable
+private fun ChatWallpaper() {
+    val settings = wtf.iskra.features.support.LocalAppSettings.current ?: return
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val name by settings.wallpaper.collectAsStateWithLifecycle()
+    val dimming by settings.wallpaperDimming.collectAsStateWithLifecycle()
+    val photo by wtf.iskra.features.support.WallpaperStore.photo.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { wtf.iskra.features.support.WallpaperStore.load(context) }
+    wtf.iskra.design.WallpaperBackdrop(
+        wtf.iskra.design.Wallpaper.fromStorage(name),
+        photo,
+        dimming ?: wtf.iskra.design.Wallpaper.DEFAULT_DIMMING,
+    )
 }

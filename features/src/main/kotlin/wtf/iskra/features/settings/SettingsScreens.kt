@@ -429,6 +429,8 @@ private fun Appearance(settings: AppSettings) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
+
+    WallpaperSection(settings)
 }
 
 private fun accentName(theme: AccentTheme): Int = when (theme) {
