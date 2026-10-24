@@ -165,6 +165,30 @@ class AppSettings(context: Context) : UpdateStore {
 
     fun setNamesAccountInNotifications(on: Boolean) = save(NAMES_ACCOUNT, on, mutableNamesAccount)
 
+    private val mutableStickersBuiltIn = flag(STICKERS_BUILT_IN, true)
+    private val mutableStickersMine = flag(STICKERS_MINE, true)
+    private val mutableStickersRoomPack = flag(STICKERS_ROOM_PACK, true)
+
+    /** «Искорки» в листе стикеров — пока не выключат. На устройстве, не в аккаунте: это про то, сколько показывает лист на этом экране. */
+    val stickersBuiltIn: StateFlow<Boolean> = mutableStickersBuiltIn.asStateFlow()
+
+    /** «Мои стикеры» в листе. */
+    val stickersMine: StateFlow<Boolean> = mutableStickersMine.asStateFlow()
+
+    /** Пак открытого чата, пока вы в нём, — без подписки на него. */
+    val stickersRoomPack: StateFlow<Boolean> = mutableStickersRoomPack.asStateFlow()
+
+    fun setStickersBuiltIn(on: Boolean) = save(STICKERS_BUILT_IN, on, mutableStickersBuiltIn)
+    fun setStickersMine(on: Boolean) = save(STICKERS_MINE, on, mutableStickersMine)
+    fun setStickersRoomPack(on: Boolean) = save(STICKERS_ROOM_PACK, on, mutableStickersRoomPack)
+
+    /** Что показывает лист стикеров, по этим настройкам (`StickerSettings`). */
+    fun stickerSources() = wtf.iskra.core.stickers.StickerLibrary.Sources(
+        builtIn = mutableStickersBuiltIn.value,
+        roomPack = mutableStickersRoomPack.value,
+        mine = mutableStickersMine.value,
+    )
+
     private val mutableCompact = flag(COMPACT_LAYOUT, false)
 
     /** Лента строками (аватар, имя, слова) вместо пузырей — «Компактный вид» (`messages.layout` у iOS: `compact` / `bubbles`). */
@@ -314,6 +338,9 @@ class AppSettings(context: Context) : UpdateStore {
         const val AUTO_DOWNLOAD = "media.autoDownload"
         const val TINTS_INTERFACE = "appearance.tintsInterface"
         const val COMPACT_LAYOUT = "messages.layout.compact"
+        const val STICKERS_BUILT_IN = "stickers.showsBuiltIn"
+        const val STICKERS_ROOM_PACK = "stickers.showsRoomPack"
+        const val STICKERS_MINE = "stickers.showsMine"
         const val SHARE_ACCOUNT = "chats.shareAccount"
         const val WIDGET_ACCOUNT = "chats.widgetAccount"
         const val NAMES_ACCOUNT = "chats.namesAccountInNotifications"

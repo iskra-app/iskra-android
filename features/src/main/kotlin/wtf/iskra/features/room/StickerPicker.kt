@@ -220,7 +220,7 @@ private fun Cell(sticker: Sticker, library: StickerLibrary, state: wtf.iskra.cor
 }
 
 @Composable
-private fun StickerImage(url: String?, side: androidx.compose.ui.unit.Dp, description: String? = null, fallback: Boolean = false) {
+internal fun StickerImage(url: String?, side: androidx.compose.ui.unit.Dp, description: String? = null, fallback: Boolean = false) {
     val image = rememberAvatarImage(url, side)
     when {
         image != null -> Image(image, contentDescription = description, contentScale = ContentScale.Fit, modifier = Modifier.size(side))

@@ -208,7 +208,7 @@ fun SettingsScreen(
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings, accounts)
-                SettingsPage.REACTIONS -> ReactionsPage(settings)
+                SettingsPage.REACTIONS -> ReactionsPage(settings, session.stickers.takeIf { !session.isDemo })
                 SettingsPage.FOLDERS -> FoldersPage(session)
                 SettingsPage.SECURITY -> Security(session, onNavigate)
                 SettingsPage.DEVICES -> DevicesPage(session)

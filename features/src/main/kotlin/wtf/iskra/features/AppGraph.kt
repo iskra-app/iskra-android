@@ -76,6 +76,7 @@ class AppGraph(
         networkWatch = wtf.iskra.core.support.NetworkWatch(context),
         knownDevices = wtf.iskra.core.session.KnownDevices(context),
         locationSource = wtf.iskra.features.location.DeviceLocationSource(context),
+        stickerSources = { settings.stickerSources() },
     )
 
     /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */

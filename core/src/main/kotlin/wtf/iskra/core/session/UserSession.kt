@@ -84,6 +84,7 @@ class UserSession internal constructor(
         writeAccountData = { type, content -> client.setAccountData(type, content) },
         readRoomPack = { _, _ -> null },
         upload = { mimeType, bytes -> client.uploadMedia(mimeType, bytes, null) },
+        settings = authentication.stickerSources,
     )
 
     /**

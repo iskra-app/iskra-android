@@ -127,6 +127,35 @@ class StickerLibrary(
         }
     }
 
+    /** Подписан ли аккаунт на пак комнаты. */
+    fun isSubscribed(pack: StickerPack): Boolean = pack.id in state.value.subscribed
+
+    /** Убрать пак из подписок: сам он остаётся в своём чате. */
+    suspend fun unsubscribe(pack: StickerPack) {
+        val room = pack.origin as? StickerPack.Origin.Room ?: return
+        mutableState.update { it.copy(subscribed = it.subscribed - pack.id, packs = it.packs.filterNot { p -> p.id == pack.id }) }
+        try {
+            writeRemembering(ImagePack.SUBSCRIPTIONS_TYPE, ImagePack.unsubscribing(room, current(ImagePack.SUBSCRIPTIONS_TYPE)))
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "отписка от пака не записалась: ${Log.describe(error)}")
+            mutableState.update { it.copy(subscribed = it.subscribed + pack.id, failure = StickerFailure.UNSUBSCRIBE) }
+        }
+    }
+
+    /** Очистить недавние — во всём аккаунте, на всех устройствах. */
+    suspend fun clearRecent() {
+        val before = mutableState.value.recent
+        mutableState.update { it.copy(recent = emptyList()) }
+        try {
+            write(RECENT_TYPE, json("images" to emptyList<Any>()))
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.MEDIA, "недавние не очистились: ${Log.describe(error)}")
+            mutableState.update { it.copy(recent = before, failure = StickerFailure.CLEAR_RECENT) }
+        }
+    }
+
     fun clearFailure() = mutableState.update { it.copy(failure = null) }
 
     private suspend fun changeOwn(failure: StickerFailure, url: String, adding: Boolean, change: (JSON) -> JSON) {

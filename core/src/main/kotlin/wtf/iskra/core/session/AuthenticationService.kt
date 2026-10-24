@@ -71,6 +71,8 @@ class AuthenticationService(
     internal val knownDevices: KnownDevices? = null,
     /** Откуда берётся положение для живой геопозиции. Null — датчика нет (тесты, демо). */
     internal val locationSource: wtf.iskra.core.rooms.LocationSource? = null,
+    /** Что показывает лист стикеров — «Настройки → Реакции» (`StickerSettings`). */
+    internal val stickerSources: () -> wtf.iskra.core.stickers.StickerLibrary.Sources = { wtf.iskra.core.stickers.StickerLibrary.Sources() },
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
     /** Где на диске лежит то, что хранит этот сеанс, — для экрана «Хранилище». */
