@@ -108,6 +108,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Poll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.ui.draw.shadow
@@ -387,6 +388,18 @@ fun RoomScreen(
             onDismiss = { locating = false },
         )
     }
+    // «Опрос»: вопрос, варианты и две настройки; только в группе — в личном чате это один человек, голосующий за вопрос другого.
+    var composingPoll by remember(store.roomId) { mutableStateOf(false) }
+    if (composingPoll) {
+        PollComposerSheet(
+            onSend = { draft ->
+                val reply = replyingTo
+                replyingTo = null
+                scope.launch { store.sendPoll(draft) }
+            },
+            onDismiss = { composingPoll = false },
+        )
+    }
     // Камера — системным приложением, в свой файл: снятое встаёт в композер, как выбранное из галереи.
     var capturing by remember(store.roomId) { mutableStateOf<PendingAttachment?>(null) }
     val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken ->
@@ -559,6 +572,7 @@ fun RoomScreen(
                     }
                 },
                 onLocation = { locating = true },
+                onPoll = if (state.header.isOneToOne) null else ({ composingPoll = true }),
                 onStickers = if (stickers != null) ({ choosingSticker = true }) else null,
                 canPaste = { Camera.clipboardHasMedia(context) },
                 onPaste = {
@@ -1704,6 +1718,8 @@ private fun Composer(
     onTakePhoto: () -> Unit = {},
     onRecordVideo: () -> Unit = {},
     onLocation: () -> Unit = {},
+    /** «Опрос» в меню «+»; null — в личном чате его нет. */
+    onPoll: (() -> Unit)? = null,
     /** Лист стикеров; null — стикеров здесь нет (нет библиотеки). */
     onStickers: (() -> Unit)? = null,
     canPaste: () -> Boolean = { false },
@@ -1777,6 +1793,13 @@ private fun Composer(
                             leadingIcon = { Icon(Icons.Filled.Place, contentDescription = null) },
                             onClick = { choosing = false; onLocation() },
                         )
+                        if (onPoll != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.poll_attach)) },
+                                leadingIcon = { Icon(Icons.Filled.Poll, contentDescription = null) },
+                                onClick = { choosing = false; onPoll() },
+                            )
+                        }
                         if (pastable) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.room_paste_image)) },

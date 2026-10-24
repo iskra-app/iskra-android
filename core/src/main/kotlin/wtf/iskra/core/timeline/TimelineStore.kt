@@ -862,6 +862,32 @@ class TimelineStore internal constructor(
      * где нажимал «Отправить». Тело — фраза с координатами для клиентов, не знающих событий места
      * (порт `send(location:)`).
      */
+    /** Создать опрос (`send(poll:)`). Много ответов — столько выборов, сколько вариантов; один — один. */
+    suspend fun sendPoll(draft: PollDraft): Boolean {
+        val timeline = timeline ?: run {
+            fail(TimelineFailure.SEND)
+            return false
+        }
+        if (!draft.canSend) return false
+        val answers = draft.trimmedAnswers.take(PollDraft.MAX_ANSWERS)
+        return try {
+            withTimeLimit(SDK_LIMIT) {
+                timeline.createPoll(
+                    draft.question.trim(),
+                    answers,
+                    (if (draft.isMultipleChoice) answers.size else 1).toUByte(),
+                    if (draft.isAnonymous) org.matrix.rustcomponents.sdk.PollKind.UNDISCLOSED else org.matrix.rustcomponents.sdk.PollKind.DISCLOSED,
+                )
+            }
+            true
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "опрос не ушёл: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+            false
+        }
+    }
+
     suspend fun sendLocation(latitude: Double, longitude: Double, name: String? = null, replyingTo: String? = null): Boolean {
         val timeline = timeline ?: run {
             fail(TimelineFailure.SEND)
