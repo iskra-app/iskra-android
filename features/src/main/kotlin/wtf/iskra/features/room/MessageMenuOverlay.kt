@@ -1,6 +1,7 @@
 package wtf.iskra.features.room
 
 import androidx.compose.foundation.background
+import wtf.iskra.features.support.closesOnEscape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -100,6 +101,7 @@ internal fun MessageMenuOverlay(
         Box(
             Modifier
                 .fillMaxSize()
+                .closesOnEscape(onDismiss)
                 .background(Color.Black.copy(alpha = Theme.Backdrop.MENU_SCRIM))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClickLabel = closeLabel, onClick = onDismiss),
         ) {

@@ -1,6 +1,9 @@
 package wtf.iskra.features.rooms
 
 import wtf.iskra.core.rooms.ChatFolder
+import wtf.iskra.features.support.secondaryClick
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.hoverable
 import wtf.iskra.core.rooms.ChatFolders
 import wtf.iskra.core.rooms.FoldersState
 import wtf.iskra.core.search.SearchHit
@@ -435,6 +438,9 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
     var menu by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
     val description = rowDescription(room)
+    // Мышь: строка под курсором подсвечена, правая кнопка — как долгое нажатие.
+    val hover = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
     // Как на iOS: вправо — прочитано и закрепить, влево — архив и удалить. Удаление спрашивает.
     // Цвета — роли схемы: смысл тот же (прочитано — акцентом, удалить — ошибкой), тон — Material.
     val leading = listOf(
@@ -464,9 +470,11 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (selected) scheme.secondaryContainer else Color.Transparent)
+            .hoverable(hover)
+            .background(if (selected) scheme.secondaryContainer else if (hovered) scheme.surfaceContainerHigh else Color.Transparent)
             .semantics(mergeDescendants = true) { contentDescription = description }
             .combinedClickable(onClick = onOpen, onClickLabel = room.name, onLongClick = { if (onHold != null) onHold() else menu = true })
+            .secondaryClick { if (onHold != null) onHold() else menu = true }
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
         verticalAlignment = Alignment.CenterVertically,

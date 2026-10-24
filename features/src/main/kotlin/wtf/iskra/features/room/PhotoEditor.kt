@@ -1,6 +1,8 @@
 package wtf.iskra.features.room
 
 import android.content.Context
+import wtf.iskra.features.support.isUndo
+import wtf.iskra.features.support.closesOnEscape
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas as AndroidCanvas
@@ -116,7 +118,16 @@ internal fun PhotoEditorDialog(source: Uri, onDone: (Uri) -> Unit, onCancel: () 
     }
 
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Column(Modifier.fillMaxSize().background(Color.Black).safeDrawingPadding()) {
+        Column(
+            Modifier.fillMaxSize().closesOnEscape(onCancel) { event ->
+                if (event.isUndo) {
+                    history.removeLastOrNull()?.let { (previous, previousTurns) -> edits = previous; turns = previousTurns }
+                    true
+                } else {
+                    false
+                }
+            }.background(Color.Black).safeDrawingPadding(),
+        ) {
             Row(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close), verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onCancel) { Text(stringResource(R.string.photo_editor_cancel), color = Color.White) }
                 Box(Modifier.weight(1f))

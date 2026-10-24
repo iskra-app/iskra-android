@@ -1,6 +1,9 @@
 package wtf.iskra.features.room
 
 import android.graphics.BitmapFactory
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.Key
+import wtf.iskra.features.support.closesOnEscape
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -121,7 +124,15 @@ internal fun MediaViewer(items: List<Message>, startId: String, onClose: () -> U
         onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier.fillMaxSize().closesOnEscape(onClose) { event ->
+                when (event.key) {
+                    Key.DirectionLeft -> { scope.launch { pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0)) }; true }
+                    Key.DirectionRight -> { scope.launch { pager.animateScrollToPage((pager.currentPage + 1).coerceAtMost(items.lastIndex)) }; true }
+                    else -> false
+                }
+            },
+        ) {
             Box(Modifier.fillMaxSize().alpha(1f - dismissing).background(Color.Black))
             HorizontalPager(
                 state = pager,

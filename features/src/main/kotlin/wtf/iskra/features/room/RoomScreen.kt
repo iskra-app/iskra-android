@@ -1,6 +1,12 @@
 package wtf.iskra.features.room
 
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.draganddrop.toAndroidDragEvent
+import androidx.compose.ui.draganddrop.DragAndDropTarget
+import androidx.compose.ui.draganddrop.DragAndDropEvent
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
+import wtf.iskra.features.support.secondaryClick
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -538,8 +544,39 @@ fun RoomScreen(
     DisposableEffect(memberStore) { onDispose { memberStore?.stop() } }
     LaunchedEffect(memberStore) { memberStore?.load() }
     val openProfile: ((String) -> Unit)? = if (members != null && !isThread) { id -> profileOf = id } else null
-    Box(modifier.fillMaxSize()) {
+    // Файлы, брошенные мышью или пальцем из другого окна, — во вложения (`room_drop_to_attach`): планшет, ChromeOS, разделённый экран.
+    var dropping by remember(store.roomId) { mutableStateOf(false) }
+    val activity = context as? android.app.Activity
+    Box(
+        modifier.fillMaxSize().dragAndDropTarget(
+            shouldStartDragAndDrop = { !isThread && state.canPost && editing == null },
+            target = object : DragAndDropTarget {
+                override fun onEntered(event: DragAndDropEvent) { dropping = true }
+                override fun onExited(event: DragAndDropEvent) { dropping = false }
+                override fun onEnded(event: DragAndDropEvent) { dropping = false }
+                override fun onDrop(event: DragAndDropEvent): Boolean {
+                    dropping = false
+                    val android = event.toAndroidDragEvent()
+                    val clip = android.clipData ?: return false
+                    val uris = (0 until clip.itemCount).mapNotNull { clip.getItemAt(it).uri }
+                    if (uris.isEmpty()) return false
+                    // Права на чтение дают только на время броска: без этого файл из чужого приложения не открыть.
+                    activity?.requestDragAndDropPermissions(android)
+                    attachments = (attachments + uris.map { PendingAttachment.shared(context, it) }).distinct().take(MAX_ATTACHMENTS)
+                    return true
+                }
+            },
+        ),
+    ) {
     ChatWallpaper()
+    if (dropping) {
+        Box(
+            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f)).zIndex(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(stringResource(R.string.room_drop_to_attach), style = MaterialTheme.typography.titleLarge, color = Color.White)
+        }
+    }
     sourceOf?.let { json -> EventSourceSheet(json, onDismiss = { sourceOf = null }) }
     forwardOf?.let { messages -> if (forwarding != null) ForwardPicker(messages, forwarding, onDismiss = { forwardOf = null; selectedIds = null }) }
     reportOf?.let { message -> ReportSheet(onReport = { reason -> scope.launch { store.report(message.id, reason) } }, onDismiss = { reportOf = null }) }
@@ -1505,7 +1542,7 @@ private fun Modifier.bubbleGestures(
     onClick = onClick,
     onDoubleClick = onDoubleClick,
     onLongClick = onLongClick,
-)
+).secondaryClick(onLongClick)
 
 /**
  * Сам пузырь: альбом, картинка или слова. Рисуется дважды — в ленте и поднятым в меню долгого

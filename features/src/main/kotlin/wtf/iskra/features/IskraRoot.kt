@@ -198,7 +198,11 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
-    val timeline = remember(roomId) {
+    // Широкий экран (планшет, ChromeOS, развёрнутый складной): список — колонка слева, комната — справа.
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
+    // Лента привязана и к раскладке: экран комнаты закрывает свою ленту, уходя, а при повороте или складывании комната переезжает в другое
+    // место дерева — это новый экран, и ему нужна новая лента, а не закрытая прежняя («Не получилось открыть чат»).
+    val timeline = remember(roomId, wide) {
         roomId?.let { id ->
             session.timeline(
                 id,
@@ -301,7 +305,6 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val updateWaiting = offer is wtf.iskra.core.update.UpdateOffer.Available
 
     // Широкий экран (планшет, ChromeOS, развёрнутый складной): список — колонка слева, комната — справа.
-    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
     val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val forwarding = remember(session) { wtf.iskra.features.room.Forwarding(session, appContext) }
     val detailsPane: @Composable (wtf.iskra.core.rooms.RoomDetailsStore) -> Unit = { details ->

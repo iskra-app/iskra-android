@@ -1,6 +1,7 @@
 package wtf.iskra.features.room
 
 import androidx.compose.foundation.background
+import wtf.iskra.features.support.closesOnEscape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -80,6 +81,7 @@ internal fun ChatPeek(
         Box(
             Modifier
                 .fillMaxSize()
+                .closesOnEscape(onDismiss)
                 .background(MaterialTheme.colorScheme.scrim.copy(alpha = SCRIM))
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
                 .safeDrawingPadding()
