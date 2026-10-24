@@ -10,6 +10,7 @@ import android.os.CancellationSignal
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
@@ -34,7 +36,11 @@ import wtf.iskra.core.support.withTimeLimit
 import wtf.iskra.design.LocalAccent
 import wtf.iskra.design.Theme
 import wtf.iskra.features.R
+import wtf.iskra.features.location.hasLocationPermission
 import kotlin.coroutines.resume
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import wtf.iskra.core.R as CoreR
 
@@ -44,9 +50,15 @@ import wtf.iskra.core.R as CoreR
  * на карте (MapLibre) — следующим пунктом.
  */
 @Composable
-internal fun MyLocationDialog(onSend: (latitude: Double, longitude: Double) -> Unit, onDismiss: () -> Unit) {
+internal fun MyLocationDialog(
+    onSend: (latitude: Double, longitude: Double) -> Unit,
+    onDismiss: () -> Unit,
+    /** Делиться, пока идёшь, и сколько. Null — комната не умеет (тред, демо, нет датчика). */
+    onShareLive: ((Duration) -> Unit)? = null,
+) {
+    var choosingDuration by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    var allowed by remember { mutableStateOf(hasPermission(context)) }
+    var allowed by remember { mutableStateOf(hasLocationPermission(context)) }
     var denied by remember { mutableStateOf(false) }
     var point by remember { mutableStateOf<Location?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -63,6 +75,10 @@ internal fun MyLocationDialog(onSend: (latitude: Double, longitude: Double) -> U
         failed = point == null
     }
     val found = point
+    if (choosingDuration && onShareLive != null) {
+        LiveDurationDialog(onPick = onShareLive, onDismiss = { choosingDuration = false })
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.location_my_location)) },
@@ -82,13 +98,39 @@ internal fun MyLocationDialog(onSend: (latitude: Double, longitude: Double) -> U
                 Text(stringResource(R.string.location_send))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.location_cancel)) } },
+        dismissButton = {
+            Row {
+                if (onShareLive != null) {
+                    TextButton(enabled = allowed, onClick = { choosingDuration = true }) { Text(stringResource(R.string.location_share_live)) }
+                }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.location_cancel)) }
+            }
+        },
     )
 }
 
-private fun hasPermission(context: Context) =
-    ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+/** «На сколько?» — 15 минут, час, 8 часов. Те же три, что в iOS. */
+@Composable
+private fun LiveDurationDialog(onPick: (Duration) -> Unit, onDismiss: () -> Unit) {
+    val options = listOf(
+        pluralStringResource(R.plurals.location_live_for_minutes, 15, 15) to 15.minutes,
+        pluralStringResource(R.plurals.location_live_for_hours, 1, 1) to 1.hours,
+        pluralStringResource(R.plurals.location_live_for_hours, 8, 8) to 8.hours,
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.location_share_live_for)) },
+        text = {
+            Column {
+                options.forEach { (label, duration) ->
+                    TextButton(onClick = { onPick(duration) }) { Text(label) }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.location_cancel)) } },
+    )
+}
 
 /**
  * Одна свежая точка: спутники, если включены, иначе сеть. Ограничено: в помещении спутники могут не

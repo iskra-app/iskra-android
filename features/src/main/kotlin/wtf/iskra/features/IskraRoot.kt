@@ -369,6 +369,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 identityChanges = identityChanges,
                 stickers = session.stickers,
                 mediaJobs = session.mediaJobs,
+                liveLocation = session.liveLocation.takeIf { !session.isDemo },
                 blocked = session.blocked,
                 share = shareIntoRoom.takeIf { roomId != null },
                 onShareTaken = { shareIntoRoom = null },

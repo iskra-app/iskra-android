@@ -1,6 +1,7 @@
 package wtf.iskra.features.room
 
 import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material.icons.filled.PushPin
@@ -202,6 +203,8 @@ fun RoomScreen(
     stickers: StickerLibrary? = null,
     /** Задачи отправки медиа сеанса (`UserSession.mediaJobs`): видео и альбом идут, пока человек не здесь. Null — не следим. */
     mediaJobs: wtf.iskra.core.media.MediaSendJobs? = null,
+    /** Живая геопозиция сеанса: полоса «Вы делитесь…» и пункт «Делиться» в «Месте». Null — без неё (демо). */
+    liveLocation: wtf.iskra.core.rooms.LiveLocationSharer? = null,
     /** Блокировка аккаунта (`ignore`): личный чат с заблокированным показывает плашку вместо поля ввода. Null — без неё. */
     blocked: wtf.iskra.core.session.BlockStore? = null,
     /** Чем поделились из другого приложения: ложится в поле ввода и под миниатюры, отправляет человек. */
@@ -387,6 +390,12 @@ fun RoomScreen(
     var locating by remember(store.roomId) { mutableStateOf(false) }
     if (locating) {
         MyLocationDialog(
+            onShareLive = liveLocation?.takeIf { it.isAvailable && !isThread }?.let { sharer ->
+                { duration ->
+                    locating = false
+                    scope.launch { sharer.start(store.roomId, duration) }
+                }
+            },
             onSend = { latitude, longitude ->
                 locating = false
                 val reply = replyingTo
@@ -533,6 +542,19 @@ fun RoomScreen(
                         }
                     }
                 }
+            }
+        }
+        liveLocation?.let { sharer ->
+            val sharing by sharer.state.collectAsStateWithLifecycle()
+            sharing.shares[store.roomId]?.takeIf { sharing.isSharing(store.roomId, java.time.Instant.now()) }?.let { until ->
+                LiveLocationStrip(until) { scope.launch { sharer.stop(store.roomId) } }
+            }
+            sharing.failure?.let { failure ->
+                AlertDialog(
+                    onDismissRequest = sharer::dismissFailure,
+                    confirmButton = { TextButton(onClick = sharer::dismissFailure) { Text(stringResource(android.R.string.ok)) } },
+                    text = { Text(stringResource(failure.explanation)) },
+                )
             }
         }
         // Полоса верит и комнате: открепили последнее — `pinnedIds` пуст раньше, чем лента закреплённых ответит.
@@ -1311,6 +1333,22 @@ private fun PinnedStrip(message: Message, count: Int, onClick: () -> Unit, onOpe
                 )
             }
         }
+    }
+}
+
+/** «Вы делитесь геопозицией до 18:30» и «Остановить» — над лентой, пока трансляция идёт. Порт `LiveLocationStrip`. */
+@Composable
+private fun LiveLocationStrip(until: java.time.Instant, onStop: () -> Unit) {
+    val time = remember(until) { java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date.from(until)) }
+    Row(
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(start = Theme.Spacing.roomy, end = Theme.Spacing.tight, top = Theme.Spacing.tight, bottom = Theme.Spacing.tight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Filled.NearMe, contentDescription = null, tint = LocalAccent.current.control, modifier = Modifier.size(Theme.Size.menuIcon))
+        Spacer(Modifier.width(Theme.Spacing.close))
+        Text(stringResource(R.string.location_you_are_sharing, time), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        TextButton(onClick = onStop) { Text(stringResource(R.string.location_stop), color = MaterialTheme.colorScheme.error) }
     }
 }
 

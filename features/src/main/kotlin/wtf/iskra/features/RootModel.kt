@@ -60,6 +60,10 @@ class RootModel(
     /** Виджет «Избранные чаты». Null — без него. */
     private val widgets: wtf.iskra.features.widget.WidgetPublisher? = null,
     private val mediaJobsChanged: ((String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit)? = null,
+    /** Трансляция геопозиции сеанса изменилась (аккаунт, что идёт; null — ничего): уведомление foreground-сервиса. Null — без него. */
+    private val liveLocationChanged: ((String, wtf.iskra.features.location.LiveLocationShare?) -> Unit)? = null,
+    /** «Остановить» из уведомления: ставится, пока сеанс жив. */
+    private val liveLocationStopper: ((() -> Unit)?) -> Unit = {},
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""
@@ -321,6 +325,30 @@ class RootModel(
             if (!session.isDemo) {
                 wtf.iskra.features.media.MediaSendHub.cancel = { id -> scope.launch { session.mediaJobs.cancel(id) } }
                 scope.launch { session.mediaJobs.jobs.collect { changed(session.sessionId, it) } }
+            }
+        }
+        if (!session.isDemo) {
+            liveLocationStopper { scope.launch { session.liveLocation.stopAll() } }
+            scope.launch { session.liveLocation.resume() }
+            liveLocationChanged?.let { changed ->
+                scope.launch {
+                    session.liveLocation.state.collect { state ->
+                        val order = state.shares.entries.sortedByDescending { it.value }
+                        val known = session.rooms.state.value.let { it.rooms + it.archivedRooms }
+                        changed(
+                            session.sessionId,
+                            order.firstOrNull()?.let { first ->
+                                wtf.iskra.features.location.LiveLocationShare(
+                                    accountId = session.sessionId,
+                                    rooms = order.map { (id, _) -> wtf.iskra.features.location.LiveLocationShare.Room(id, known.firstOrNull { it.id == id }?.name.orEmpty()) },
+                                    until = first.value,
+                                    hasPoint = state.roomsWithPoints.isNotEmpty(),
+                                    stopFailed = state.failure == wtf.iskra.core.rooms.LiveLocationSharer.Failure.STOP,
+                                )
+                            },
+                        )
+                    }
+                }
             }
         }
         scope.launch {

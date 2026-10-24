@@ -101,6 +101,17 @@ class UserSession internal constructor(
     )
 
     /**
+     * Живая геопозиция (`LiveLocationSharer`): живёт с сеансом, потому что трансляция идёт и когда экрана чата нет, а её
+     * уведомление (`LiveLocationService`) следит за ней отсюда. У демо датчика нет — «Делиться» там не предлагается.
+     */
+    val liveLocation = wtf.iskra.core.rooms.LiveLocationSharer(
+        roomFor = { id -> runCatching { client.getRoom(id) }.getOrNull() },
+        source = if (isDemo) null else authentication.locationSource,
+        ledger = if (isDemo) null else authentication.liveLocationLedger(sessionId),
+        scope = scope,
+    )
+
+    /**
      * Сессии аккаунта для экрана «Устройства». Заново на каждый вход на экран: список — правда сервера в этот момент.
      * Вошли через OAuth — сессии заканчиваются на странице самого сервера (`accountUrl`), и экран её откроет.
      */
@@ -365,6 +376,8 @@ class UserSession internal constructor(
      * Так переключаются аккаунты и так приложение готовится к обновлению.
      */
     suspend fun shutDown() {
+        // Ничто не должно слать через клиент, который уходит: трансляции кончаются, пока комнаты ещё слышат.
+        liveLocation.stopAll()
         verification.stop()
         recovery.stop()
         rooms.stop()

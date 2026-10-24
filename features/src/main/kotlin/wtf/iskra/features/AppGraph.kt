@@ -75,6 +75,7 @@ class AppGraph(
         localNames = LocalNames.of(context),
         networkWatch = wtf.iskra.core.support.NetworkWatch(context),
         knownDevices = wtf.iskra.core.session.KnownDevices(context),
+        locationSource = wtf.iskra.features.location.DeviceLocationSource(context),
     )
 
     /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */
@@ -103,6 +104,7 @@ class AppGraph(
     init {
         SdkLogging.start(environment.logsDir)
         wtf.iskra.features.media.MediaSendHub.smallIcon = notificationIcon
+        wtf.iskra.features.location.LiveLocationHub.smallIcon = notificationIcon
     }
 
     /**
@@ -136,10 +138,18 @@ class AppGraph(
         if (jobs.any { !it.isFinished }) wtf.iskra.features.media.MediaSendService.start(context)
     }
 
+    /** Трансляция геопозиции → хаб и сервис с уведомлением (`LiveLocationService`). */
+    private val liveLocationChanged: (String, wtf.iskra.features.location.LiveLocationShare?) -> Unit = { account, share ->
+        wtf.iskra.features.location.LiveLocationHub.update(account, share)
+        if (share != null) wtf.iskra.features.location.LiveLocationService.start(context)
+    }
+
+    private val liveLocationStopper: ((() -> Unit)?) -> Unit = { wtf.iskra.features.location.LiveLocationHub.stopAll = it }
+
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts, widgets = widgets)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, liveLocationChanged = liveLocationChanged, liveLocationStopper = liveLocationStopper, links = linkRouter, shares = shareRouter, shortcuts = chatShortcuts, widgets = widgets)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

@@ -69,6 +69,8 @@ class AuthenticationService(
     internal val networkWatch: wtf.iskra.core.support.NetworkWatch? = null,
     /** Какие сеансы аккаунта это устройство уже видело — для баннера «новый вход»; выход забывает. */
     internal val knownDevices: KnownDevices? = null,
+    /** Откуда берётся положение для живой геопозиции. Null — датчика нет (тесты, демо). */
+    internal val locationSource: wtf.iskra.core.rooms.LocationSource? = null,
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
     /** Где на диске лежит то, что хранит этот сеанс, — для экрана «Хранилище». */
@@ -77,6 +79,9 @@ class AuthenticationService(
         wtf.iskra.core.storage.StorageKind.CACHE to environment.sessionCacheDir(sessionId),
         wtf.iskra.core.storage.StorageKind.SEARCH to environment.searchIndexDir(sessionId),
     )
+
+    /** Запись о идущих трансляциях геопозиции: лежит в каталоге сеанса, и выход уносит её вместе с ним. */
+    internal fun liveLocationLedger(sessionId: String): java.io.File = java.io.File(environment.sessionDataDir(sessionId), "iskra-live-location")
 
     internal fun localNamesOf(sessionId: String): LocalNames.Account? = localNames?.of(sessionId)
 

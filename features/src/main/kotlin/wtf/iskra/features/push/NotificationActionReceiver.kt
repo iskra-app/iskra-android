@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import wtf.iskra.features.AppGraphOwner
+import wtf.iskra.features.location.LiveLocationHub
 import wtf.iskra.features.media.MediaSendHub
 
 /**
@@ -20,6 +21,10 @@ class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == PushIntents.ACTION_CANCEL_MEDIA) {
             intent.getStringExtra(PushIntents.EXTRA_JOB)?.let { MediaSendHub.cancel?.invoke(it) }
+            return
+        }
+        if (intent.action == PushIntents.ACTION_STOP_LIVE_LOCATION) {
+            LiveLocationHub.stopAll?.invoke()
             return
         }
         val roomId = intent.getStringExtra(PushIntents.EXTRA_ROOM) ?: return
