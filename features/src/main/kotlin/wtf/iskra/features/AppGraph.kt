@@ -102,6 +102,9 @@ class AppGraph(
      * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер. В release
      * демо-входа нет ([MockSignIn.isAvailable]), и флаг ничего не меняет.
      */
+    /** Ссылки на людей и комнаты, открытые снаружи: `MainActivity` кладёт, корень забирает. */
+    val linkRouter = LinkRouter()
+
     /** Задачи отправки медиа → хаб и сервис с уведомлением (`MediaSendService`). */
     private val mediaJobsChanged: (String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit = { account, jobs ->
         wtf.iskra.features.media.MediaSendHub.update(account, jobs)
@@ -111,7 +114,7 @@ class AppGraph(
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

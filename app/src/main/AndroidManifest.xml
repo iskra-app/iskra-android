@@ -70,6 +70,31 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="wtf.iskra" android:path="/oauth-callback" />
             </intent-filter>
+            <!--
+                Ссылки на людей и комнаты (`MatrixLink`): `matrix:` — схема протокола, `wtf.iskra://u|r|roomid/…` — кнопка
+                «Открыть в Искре» на странице s.iskra.wtf, и сама эта страница как App Link. Страница-ссылка и файл
+                `assetlinks.json` на ней — у автора: пока он не лежит, https открывается выбором приложения, а не сразу.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="matrix" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="wtf.iskra" android:host="u" />
+                <data android:scheme="wtf.iskra" android:host="r" />
+                <data android:scheme="wtf.iskra" android:host="roomid" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="s.iskra.wtf" />
+            </intent-filter>
         </activity>
 
         <!--

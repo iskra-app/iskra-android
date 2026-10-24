@@ -62,6 +62,8 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(intent: Intent) {
         if (browser.handle(intent.data)) return
+        // Ссылка на человека или комнату из другого приложения, камеры, браузера (`MatrixLink`).
+        if (intent.action == Intent.ACTION_VIEW && (application as IskraApplication).graph.linkRouter.opened(intent.dataString)) return
         // Нажали уведомление или ярлык разговора: в этот чат, в его аккаунт (PushRouter).
         intent.getStringExtra(PushIntents.EXTRA_ROOM)?.let { roomId ->
             (application as IskraApplication).graph.pushRouter.tapped(roomId, intent.getStringExtra(PushIntents.EXTRA_ACCOUNT))

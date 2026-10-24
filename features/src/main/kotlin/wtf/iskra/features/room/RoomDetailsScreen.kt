@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.PersonAdd
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
 import androidx.compose.material3.AlertDialog
@@ -91,6 +92,7 @@ fun RoomDetailsScreen(
     // Правка — своим экраном поверх этого, а стор остаётся здесь: подписка на комнату нужна обоим.
     var editing by rememberSaveable(store.roomId) { mutableStateOf(false) }
     val canEdit = !state.isDirect && state.permissions.canEditAnything
+    var showingCode by remember { mutableStateOf(false) }
 
     if (editing && canEdit) {
         RoomEdit(store, isOffline, onBack = { editing = false })
@@ -104,6 +106,12 @@ fun RoomDetailsScreen(
             },
             // Карандаш — только тому, кому комната что-то менять разрешает (`RoomInfoView` на iOS).
             actions = {
+                // Код у открытой комнаты с адресом: по нему входят, а закрытой ссылка ничего не даст.
+                if (!state.isDirect && state.isPublic && state.canonicalAlias != null) {
+                    IconButton(onClick = { showingCode = true }) {
+                        Icon(Icons.Outlined.QrCode2, contentDescription = stringResource(R.string.qr_title))
+                    }
+                }
                 if (canEdit) {
                     IconButton(onClick = { editing = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.room_manage_edit))
@@ -189,6 +197,15 @@ fun RoomDetailsScreen(
         }
     }
 
+    val alias = state.canonicalAlias
+    if (showingCode && alias != null) {
+        wtf.iskra.features.support.QrCardSheet(
+            name = state.name,
+            subtitle = alias,
+            link = wtf.iskra.core.rooms.MatrixLink.Room(alias),
+            onDismiss = { showingCode = false },
+        )
+    }
     picked?.let { member -> MemberSheet(store, member, isOffline, onDismiss = { picked = null }) }
     if (inviting) InviteSheet(store, onDismiss = { inviting = false })
 

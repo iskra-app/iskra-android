@@ -208,6 +208,18 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
         }
     }
 
+    // Ссылка, открытая снаружи: страница человека или комнаты поверх всего; «назад» — туда, где были.
+    var linked by remember(session.sessionId) { mutableStateOf<wtf.iskra.core.rooms.MatrixLink?>(null) }
+    model.links?.let { links ->
+        val incoming by links.request.collectAsStateWithLifecycle()
+        LaunchedEffect(incoming, session.sessionId) {
+            val link = links.take() ?: return@LaunchedEffect
+            settingsPage = null
+            creating = false
+            linked = link
+        }
+    }
+
     // Точка на шестерёнке: есть версия новее. Не диалог и не уведомление — человек пришёл читать.
     val offer by (model.updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
     val updateWaiting = offer is wtf.iskra.core.update.UpdateOffer.Available
@@ -215,6 +227,16 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     CompositionLocalProvider(LocalFaceMode provides FaceMode(creatures, forced)) {
         val page = settingsPage
         when {
+            linked != null -> wtf.iskra.features.rooms.MatrixLinkScreen(
+                session.conversations,
+                linked!!,
+                onOpen = {
+                    linked = null
+                    openEvent = null
+                    openRoom = it
+                },
+                onBack = { linked = null },
+            )
             // Баннер «старые сообщения заперты» ведёт сюда: тот же экран, что после входа.
             unlocking -> {
                 val setup = remember(session) { RecoverySetupModel(session) }

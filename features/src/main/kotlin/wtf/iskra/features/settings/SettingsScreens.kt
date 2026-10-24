@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -257,6 +258,15 @@ private fun Main(
     val profile by session.profile.collectAsStateWithLifecycle()
     LaunchedEffect(session) { session.loadProfile() }
     var confirming by remember { mutableStateOf(false) }
+    var showingCode by remember { mutableStateOf(false) }
+    if (showingCode) {
+        wtf.iskra.features.support.QrCardSheet(
+            name = profile.displayName ?: session.userId,
+            subtitle = session.userId,
+            link = wtf.iskra.core.rooms.MatrixLink.User(session.userId),
+            onDismiss = { showingCode = false },
+        )
+    }
 
     Column(
         Modifier.fillMaxWidth().padding(Theme.Spacing.generous),
@@ -269,6 +279,10 @@ private fun Main(
         // Имя и картинка меняются на своём экране, а не здесь: экран, который читают, не должен
         // править себя от случайного касания (`ProfileEditView` на iOS).
         TextButton(onClick = { onNavigate(SettingsPage.PROFILE) }) { Text(stringResource(R.string.account_edit)) }
+        TextButton(onClick = { showingCode = true }) {
+            Icon(Icons.Outlined.QrCode2, contentDescription = null)
+            Text(stringResource(R.string.qr_title), modifier = Modifier.padding(start = Theme.Spacing.close))
+        }
     }
     accountsSection()
     // «Выйти» — или, когда аккаунтов несколько и неясно, из какого, — «Выйти из Саши».
