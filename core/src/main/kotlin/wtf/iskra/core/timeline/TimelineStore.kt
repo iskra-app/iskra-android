@@ -89,6 +89,8 @@ data class RoomHeader(
     val kind: RoomKind = RoomKind.GROUP,
     /** Ровно один собеседник *сейчас*: имя и лицо над каждым его сообщением не нужны. */
     val isOneToOne: Boolean = false,
+    /** Matrix ID собеседника, когда [isOneToOne]: по нему плашка «вы заблокировали» знает, о ком речь. */
+    val counterpartId: String? = null,
     val memberCount: Int = 0,
     val privacy: PrivacyStatus = PrivacyStatus.UNKNOWN,
 )
@@ -377,6 +379,7 @@ class TimelineStore internal constructor(
                     faces = if (info.kind == RoomKind.GROUP) info.faces(ownUserId) else emptyList(),
                     kind = info.kind,
                     isOneToOne = oneToOne,
+                    counterpartId = counterpartId,
                     memberCount = info.joinedMembersCount.toInt(),
                     privacy = PrivacyStatus.of(info.encryptionState),
                 ),

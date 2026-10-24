@@ -187,6 +187,9 @@ fun RoomDetailsScreen(
             val other = if (state.isDirect) state.members.firstOrNull { it.userId != wtf.iskra.features.support.LocalOwnUserId.current } else null
             if (other != null && blocked != null) {
                 Group({ wtf.iskra.features.support.PersonBlockRow(blocked, other.userId, other.name, enabled = !isOffline) })
+                // Сказано один раз под строкой, а не оставлено читателю как серая кнопка: выключенный переключатель сам ничего не объясняет.
+                val blockedNow by blocked.state.collectAsStateWithLifecycle()
+                if (other.userId in blockedNow.blockedUserIds) Hint(R.string.profile_blocked_notice)
             }
 
             Group({

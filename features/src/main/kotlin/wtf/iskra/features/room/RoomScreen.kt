@@ -103,6 +103,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -185,6 +186,8 @@ fun RoomScreen(
     stickers: StickerLibrary? = null,
     /** Задачи отправки медиа сеанса (`UserSession.mediaJobs`): видео и альбом идут, пока человек не здесь. Null — не следим. */
     mediaJobs: wtf.iskra.core.media.MediaSendJobs? = null,
+    /** Блокировка аккаунта (`ignore`): личный чат с заблокированным показывает плашку вместо поля ввода. Null — без неё. */
+    blocked: wtf.iskra.core.session.BlockStore? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -405,6 +408,7 @@ fun RoomScreen(
 
     Box(modifier.fillMaxSize()) {
     ChatWallpaper()
+    CompositionLocalProvider(LocalChatInk provides wallpaperInk()) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
@@ -464,11 +468,16 @@ fun RoomScreen(
                     stringResource(R.string.room_typing)
                 },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = quietInk(),
                 modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.tight),
             )
         }
-        if (state.canPost) {
+        // Личный чат с тем, кого заблокировали: плашка вместо поля ввода. В группе один заблокированный не мешает писать остальным.
+        val blockedId = state.header.counterpartId?.takeIf { state.header.isOneToOne && blocked != null }
+        val blockedState by (blocked?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(wtf.iskra.core.session.BlockStore.State()) }).collectAsStateWithLifecycle()
+        if (blockedId != null && blockedId in blockedState.blockedUserIds) {
+            BlockedBanner { scope.launch { blocked?.unblock(blockedId) } }
+        } else if (state.canPost) {
             val suggestions = mentionQuery?.let { ComposerMentions.matches(it.text, candidates).take(MAX_SUGGESTIONS) }.orEmpty()
             if (suggestions.isNotEmpty() && mentionQuery != null) {
                 MentionPicker(suggestions) { member ->
@@ -640,9 +649,10 @@ fun RoomScreen(
                 stringResource(R.string.room_read_only),
                 modifier = Modifier.fillMaxWidth().padding(Theme.Spacing.roomy),
                 textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = quietInk(),
             )
         }
+    }
     }
     }
 
@@ -1023,7 +1033,7 @@ private fun Bubble(
                             message.senderName,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = quietInk(),
                             maxLines = 1,
                             modifier = Modifier.padding(start = Theme.Spacing.close),
                         )
@@ -1300,7 +1310,7 @@ private fun Message.richText(ownUserId: String): RichText? = when (val kind = ki
  */
 @Composable
 private fun MessageMarks(message: Message) {
-    val quiet = MaterialTheme.colorScheme.onSurfaceVariant
+    val quiet = quietInk()
     Row(
         modifier = Modifier.padding(bottom = Theme.Spacing.tight),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
@@ -1488,7 +1498,7 @@ private fun ServiceLine(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = quietInk(),
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.generous, vertical = Theme.Spacing.close),
     )
@@ -1680,7 +1690,7 @@ private fun Empty() {
         Text(
             stringResource(R.string.room_empty_message),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = quietInk(),
             textAlign = TextAlign.Center,
         )
     }
@@ -1697,7 +1707,7 @@ private fun Failed(onRetry: () -> Unit) {
         Text(
             stringResource(R.string.room_load_failed_message),
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = quietInk(),
             textAlign = TextAlign.Center,
         )
         PrimaryActionButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.room_try_again)) }
@@ -1752,3 +1762,50 @@ private fun ChatWallpaper() {
         dimming ?: wtf.iskra.design.Wallpaper.DEFAULT_DIMMING,
     )
 }
+
+/** Вместо поля ввода: человек заблокирован, его новые сообщения не приходят, а путь назад — одно нажатие. Порт `BlockedBanner`. */
+@Composable
+private fun BlockedBanner(onUnblock: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            stringResource(R.string.profile_blocked_notice),
+            style = MaterialTheme.typography.bodyMedium,
+            color = quietInk(),
+            textAlign = TextAlign.Center,
+        )
+        TextButton(onClick = onUnblock) { Text(stringResource(R.string.profile_unblock_user)) }
+    }
+}
+
+/**
+ * Цвет подписей *вне пузырей* — время, имена, «печатает…», плашки: серый, когда за разговором страница приложения, и светлый или тёмный по яркости
+ * обоев, когда они есть (`Wallpaper.isDark` после вуали). Серый на тёмно-синем или на фото не читается. Порт `onWallpaperInk`. Null — обоев нет,
+ * и подписи берут цвет схемы.
+ */
+private val LocalChatInk = androidx.compose.runtime.compositionLocalOf<Color?> { null }
+
+@Composable
+private fun quietInk(): Color = LocalChatInk.current ?: MaterialTheme.colorScheme.onSurfaceVariant
+
+@Composable
+private fun wallpaperInk(): Color? {
+    val settings = wtf.iskra.features.support.LocalAppSettings.current ?: return null
+    val name by settings.wallpaper.collectAsStateWithLifecycle()
+    val storedDimming by settings.wallpaperDimming.collectAsStateWithLifecycle()
+    val measured by wtf.iskra.features.support.WallpaperStore.luminance.collectAsStateWithLifecycle()
+    val wallpaper = wtf.iskra.design.Wallpaper.fromStorage(name)
+    if (!wallpaper.isSet) return null
+    val lightens = !LocalAccent.current.isDark
+    val dimming = storedDimming ?: wtf.iskra.design.Wallpaper.DEFAULT_DIMMING
+    val luminance = if (wallpaper == wtf.iskra.design.Wallpaper.PHOTO) measured else wallpaper.luminance
+    // Фото, которое ещё не измерено, считается тёмным под темнящей вуалью и светлым под светлящей: туда её и ведёт вуаль, а догадка о неувиденной картинке
+    // должна идти в ту же сторону.
+    val dark = luminance?.let { wtf.iskra.design.Wallpaper.isDark(it, dimming, lightens) } ?: !lightens
+    return if (dark) Color.White.copy(alpha = INK_ON_DARK) else Color.Black.copy(alpha = INK_ON_LIGHT)
+}
+
+private const val INK_ON_DARK = 0.82f
+private const val INK_ON_LIGHT = 0.62f

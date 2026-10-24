@@ -310,6 +310,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 identityChanges = identityChanges,
                 stickers = session.stickers,
                 mediaJobs = session.mediaJobs,
+                blocked = session.blocked,
             )
             creating -> wtf.iskra.features.rooms.NewConversationScreen(
                 session,
