@@ -171,6 +171,8 @@ private fun Rules(session: UserSession) {
             CircularProgressIndicator()
         }
         else -> {
+            // Два вопроса, что задают чаще всего: как громки личные чаты и как громко всё остальное — под одним заголовком, как на iOS.
+            SectionTitle(R.string.notifications_defaults)
             SectionTitle(R.string.notifications_direct)
             Alerts(rules.directChats, enabled) { scope.launch { store.setDefault(it, isOneToOne = true) } }
             SectionTitle(R.string.notifications_groups)

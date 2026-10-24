@@ -81,6 +81,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.session.UserSession
@@ -216,7 +217,7 @@ fun SettingsScreen(
                 SettingsPage.BLOCKED -> BlockedPage(session)
                 SettingsPage.STORAGE -> StoragePage(session, onStorageCleared)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
-                SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
+                SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion, session.homeserver)
                 SettingsPage.LIBRARIES -> Libraries(librariesResource)
                 SettingsPage.ABOUT -> About(appVersion, onBeta = { onNavigate(SettingsPage.BETA) }) {
                     // Выше длинных текстов лицензий: под ними их никто не нашёл бы.
@@ -577,7 +578,7 @@ private fun Chats(settings: AppSettings, accounts: RootModel.Accounts) {
 
 /** Бета-функции (`BetaView`): существа вместо инициалов и, в debug, демо-сервер. */
 @Composable
-private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit, browser: WebAuthentication?, appVersion: String) {
+private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Unit, browser: WebAuthentication?, appVersion: String, homeserver: String? = null) {
     val creatures by settings.creatures.collectAsStateWithLifecycle()
     val forced by settings.forceCreatures.collectAsStateWithLifecycle()
     Text(
@@ -586,6 +587,12 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
+    // Кому нарисовать существо — ползунок из первого запуска: картинки, картинки и существа, существа (`FaceModePicker`).
+    SectionTitle(R.string.appearance_avatars)
+    FaceModeSlider(creatures, forced) { drawsCreatures, overridesPictures ->
+        settings.setCreatures(drawsCreatures)
+        settings.setForceCreatures(overridesPictures)
+    }
     Group(
         { Toggle(R.string.beta_blobatar, R.string.beta_blobatar_help, creatures, settings::setCreatures) },
         { Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures) },
@@ -597,6 +604,16 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         { Toggle(R.string.beta_shows_all_events, R.string.beta_shows_all_events_help, events.showsEverything, settings::setShowsAllEvents) },
         { Toggle(R.string.beta_shows_source, R.string.beta_shows_source_help, source, settings::setShowsSource) },
     )
+    // Сервер, с которым приложение говорит на самом деле: найден по имени аккаунта и не обязательно то, что набрали при входе.
+    if (homeserver != null) {
+        SectionTitle(R.string.beta_developers)
+        ListItem(
+            headlineContent = { Text(stringResource(R.string.beta_homeserver)) },
+            supportingContent = { Text(homeserver) },
+            colors = rowColors(),
+        )
+        Text(stringResource(R.string.beta_homeserver_help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(Theme.Spacing.roomy))
+    }
     // Демо-сервер и демо-вход — только в debug (`DemoServers`), как `#if DEBUG` на iOS.
     if (!MockSignIn.isAvailable) return
     SectionTitle(R.string.beta_developers)
@@ -607,6 +624,57 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         )
     } else {
         Group({ Toggle(R.string.beta_mock_backend, R.string.beta_mock_backend_help, isDemo, onDemo) })
+    }
+}
+
+/** Три положения ползунка лиц: что рисуется и кому (`FaceMode`). */
+private enum class FaceStop(val title: Int, val help: Int) {
+    PICTURES(R.string.onboarding_faces_pictures, R.string.onboarding_faces_pictures_help),
+    MIXED(R.string.onboarding_faces_mixed, R.string.onboarding_faces_mixed_help),
+    FACES(R.string.onboarding_faces_faces, R.string.onboarding_faces_faces_help),
+}
+
+/**
+ * Ползунок на три остановки с подписями под дорожкой и фразой о выбранной, что меняется вместе с ним. Выбранная подпись — единственная
+ * в полную силу: ручка между тремя одинаково чёрными словами не говорит, где села. Порт `FaceModePicker`.
+ */
+@Composable
+private fun FaceModeSlider(drawsCreatures: Boolean, overridesPictures: Boolean, onChange: (Boolean, Boolean) -> Unit) {
+    val stop = when {
+        !drawsCreatures -> FaceStop.PICTURES
+        overridesPictures -> FaceStop.FACES
+        else -> FaceStop.MIXED
+    }
+    Column(Modifier.padding(horizontal = Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+        androidx.compose.material3.Slider(
+            value = stop.ordinal.toFloat(),
+            onValueChange = { value ->
+                when (FaceStop.entries[value.roundToInt().coerceIn(0, FaceStop.entries.lastIndex)]) {
+                    FaceStop.PICTURES -> onChange(false, false)
+                    FaceStop.MIXED -> onChange(true, false)
+                    FaceStop.FACES -> onChange(true, true)
+                }
+            },
+            valueRange = 0f..FaceStop.entries.lastIndex.toFloat(),
+            steps = FaceStop.entries.size - 2,
+            colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = LocalAccent.current.control, activeTrackColor = LocalAccent.current.control),
+        )
+        Row(Modifier.fillMaxWidth()) {
+            FaceStop.entries.forEach { candidate ->
+                Text(
+                    stringResource(candidate.title),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (candidate == stop) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = when (candidate) {
+                        FaceStop.PICTURES -> androidx.compose.ui.text.style.TextAlign.Start
+                        FaceStop.MIXED -> androidx.compose.ui.text.style.TextAlign.Center
+                        FaceStop.FACES -> androidx.compose.ui.text.style.TextAlign.End
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Text(stringResource(stop.help), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = Theme.Spacing.close))
     }
 }
 
