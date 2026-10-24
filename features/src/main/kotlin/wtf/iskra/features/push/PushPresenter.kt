@@ -194,10 +194,12 @@ internal class PushPresenter(
 
     /**
      * Лицо: фото, если успело приехать, иначе существо из того же сида, что в списке чатов (если
-     * человек не выключил их в «Бете»). Без того и другого система нарисует букву сама.
+     * человек не выключил их в «Бете»); при «Существа всегда» — существо и поверх фото, как везде. Без того и другого система
+     * нарисует букву сама.
      */
     private fun face(avatar: ByteArray?, seed: String): IconCompat? {
-        val photo = avatar?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
+        val overrides = settings.creatures.value && settings.forceCreatures.value
+        val photo = avatar?.takeUnless { overrides }?.let { runCatching { BitmapFactory.decodeByteArray(it, 0, it.size) }.getOrNull() }
         val bitmap: Bitmap = photo ?: if (settings.creatures.value) BlobatarBitmap.render(seed, FACE_SIZE) else return null
         return IconCompat.createWithBitmap(bitmap)
     }
