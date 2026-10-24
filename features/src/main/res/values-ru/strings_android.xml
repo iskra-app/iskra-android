@@ -44,4 +44,5 @@
     <string name="update_check_failed">Не удалось связаться с GitHub. Попробуйте позже.</string>
     <string name="about_libraries">Открытые библиотеки</string>
     <string name="about_libraries_help">Всё внутри приложения, что написали другие, и под какой лицензией.</string>
+    <string name="notification_channel_background">Фоновые задачи</string>
 </resources>

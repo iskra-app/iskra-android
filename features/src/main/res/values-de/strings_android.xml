@@ -44,4 +44,5 @@
     <string name="update_check_failed">GitHub ist nicht erreichbar. Versuche es später noch einmal.</string>
     <string name="about_libraries">Open-Source-Bibliotheken</string>
     <string name="about_libraries_help">Alles in der App, was andere geschrieben haben, und unter welcher Lizenz.</string>
+    <string name="notification_channel_background">Hintergrundaufgaben</string>
 </resources>

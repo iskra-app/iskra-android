@@ -86,6 +86,20 @@ class UserSession internal constructor(
         upload = { mimeType, bytes -> client.uploadMedia(mimeType, bytes, null) },
     )
 
+    /**
+     * Видео, альбомы и большие файлы на пути вверх (`MediaSendJobs`): живёт, пока жив сеанс, — уведомление
+     * foreground-сервиса следит за ним, когда экрана чата уже нет.
+     */
+    val mediaJobs = wtf.iskra.core.media.MediaSendJobs(
+        roomFor = { id -> runCatching { client.getRoom(id) }.getOrNull() },
+        look = { id ->
+            val state = rooms.state.value
+            (state.rooms + state.archivedRooms).firstOrNull { it.id == id }
+                ?.let { wtf.iskra.core.media.MediaSendJobs.RoomLook(it.name, it.avatarSeed) }
+        },
+        scope = scope,
+    )
+
     /** Папки чатов: правила в account data, общие для устройств аккаунта (`ChatFolders`). */
     val folders = wtf.iskra.core.rooms.ChatFolders(
         readAccountData = { type -> client.accountData(type) },
@@ -277,6 +291,7 @@ class UserSession internal constructor(
     fun close() {
         if (closed) return
         closed = true
+        mediaJobs.stop()
         scope.cancel()
         // Клиент в аренде (`AuthenticationService.leaseClient`): закроется, когда отдаст и пуш, если тот
         // ещё расшифровывает. У демо аренды нет — он только здесь.

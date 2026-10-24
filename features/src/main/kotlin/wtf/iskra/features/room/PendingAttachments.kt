@@ -184,6 +184,20 @@ private fun displayName(context: Context, uri: Uri): String =
         }
     }.getOrNull() ?: uri.lastPathSegment.orEmpty()
 
+/** Что за вещь уходит и сколько в ней байт — чтобы решить, следовать ли за отправкой (`MediaSendJobs.isWorthFollowing`). */
+internal fun pickedItem(context: Context, attachment: PendingAttachment): wtf.iskra.core.media.MediaSendJobs.Item {
+    val bytes = runCatching {
+        context.contentResolver.query(attachment.uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getLong(0) else 0L
+        }
+    }.getOrNull() ?: 0L
+    return wtf.iskra.core.media.MediaSendJobs.Item(
+        isVideo = attachment.kind == PendingAttachment.Kind.VIDEO,
+        isFile = attachment.isFile,
+        bytes = bytes,
+    )
+}
+
 /** Выбранный файл целиком и его имя. Null — система его уже не отдаёт (удалили, отозвали доступ). */
 internal suspend fun readPicked(context: Context, uri: Uri): Pair<ByteArray, String>? = withContext(Dispatchers.IO) {
     try {

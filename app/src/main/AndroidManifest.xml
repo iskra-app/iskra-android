@@ -19,6 +19,12 @@
     <!-- Уведомления (docs/PROMPT.md, 10.5): спрашивается после первого входа, не на экране входа. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!--
+        Отправка видео, альбома и большого файла (docs/PROMPT.md, 11.5): foreground-сервис типа dataSync держит процесс,
+        пока идёт загрузка, и показывает её в уведомлении. Запускается из видимого приложения, по нажатию «отправить».
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!--
         Обновления изнутри приложения (docs/PROMPT.md, 19.1): магазина нет, APK из GitHub Releases ставит
         сама Искра через PackageInstaller — после проверки хэша и сертификата.
     -->
@@ -78,6 +84,12 @@
         <receiver
             android:name="wtf.iskra.features.update.UpdateInstallReceiver"
             android:exported="false" />
+
+        <!-- Загрузка видео, альбома и файла, пока человек ушёл из чата (MediaSendService). -->
+        <service
+            android:name="wtf.iskra.features.media.MediaSendService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Второй заход на пуш, не успевший расшифроваться, пока ждал транспорт (PushRetryJob). -->
         <service

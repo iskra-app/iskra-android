@@ -47,6 +47,8 @@ class RootModel(
     val updates: Updates? = null,
     /** Список библиотек для «О приложении» (`R.raw.aboutlibraries` из `:app`); 0 — нет. */
     val librariesResource: Int = 0,
+    /** Задачи отправки медиа сеанса изменились (аккаунт, задачи): уведомление foreground-сервиса. Null — без него. */
+    private val mediaJobsChanged: ((String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit)? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */
     private var address = ""
@@ -280,6 +282,9 @@ class RootModel(
             pushRegistration = scope.launch {
                 pushes.target.collect { target -> if (target != null) session.registerPush(target, pushes.language()) }
             }
+        }
+        mediaJobsChanged?.let { changed ->
+            if (!session.isDemo) scope.launch { session.mediaJobs.jobs.collect { changed(session.sessionId, it) } }
         }
         scope.launch {
             // Имя и картинка — в запись аккаунта: переключатель покажет их, когда он закрыт.

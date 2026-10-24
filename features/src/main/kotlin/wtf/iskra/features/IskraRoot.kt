@@ -267,6 +267,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onOpenDetails = { showingDetails = true },
                 identityChanges = identityChanges,
                 stickers = session.stickers,
+                mediaJobs = session.mediaJobs,
             )
             creating -> wtf.iskra.features.rooms.NewConversationScreen(
                 session,

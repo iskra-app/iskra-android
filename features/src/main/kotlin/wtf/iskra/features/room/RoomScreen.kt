@@ -183,6 +183,8 @@ fun RoomScreen(
     identityChanges: IdentityChangesStore? = null,
     /** Стикеры аккаунта (`UserSession.stickers`). Null — кнопки стикеров нет. */
     stickers: StickerLibrary? = null,
+    /** Задачи отправки медиа сеанса (`UserSession.mediaJobs`): видео и альбом идут, пока человек не здесь. Null — не следим. */
+    mediaJobs: wtf.iskra.core.media.MediaSendJobs? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -597,6 +599,10 @@ fun RoomScreen(
                                 // Вложения вперёд; слова — подписью под первым, в том же событии.
                                 val settings = mediaSettings()
                                 var captioned = false
+                                val job = mediaJobs?.begin(
+                                    store.roomId,
+                                    photos.map { pickedItem(context, it) },
+                                )
                                 photos.forEachIndexed { index, attachment ->
                                     val caption = text.takeIf { !captioned && it.isNotBlank() }
                                     val replyId = reply?.id.takeIf { index == 0 }
@@ -612,8 +618,10 @@ fun RoomScreen(
                                         } ?: false
                                     }
                                     Camera.discard(context, attachment.uri)
+                                    mediaJobs?.handed(job, sent)
                                     if (sent && caption != null) captioned = true
                                 }
+                                mediaJobs?.doneHanding(job)
                                 if (!captioned && text.isNotBlank()) store.send(text, reply?.id, called)
                             }
                             else -> store.send(text, reply?.id, called)

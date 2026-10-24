@@ -94,6 +94,7 @@ class AppGraph(
 
     init {
         SdkLogging.start(environment.logsDir)
+        wtf.iskra.features.media.MediaSendHub.smallIcon = notificationIcon
     }
 
     /**
@@ -101,10 +102,16 @@ class AppGraph(
      * обычный запуск: тогда аккаунт устройства и, по флагу [demo] или «Бете», демо-сервер. В release
      * демо-входа нет ([MockSignIn.isAvailable]), и флаг ничего не меняет.
      */
+    /** Задачи отправки медиа → хаб и сервис с уведомлением (`MediaSendService`). */
+    private val mediaJobsChanged: (String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit = { account, jobs ->
+        wtf.iskra.features.media.MediaSendHub.update(account, jobs)
+        if (jobs.any { !it.isFinished }) wtf.iskra.features.media.MediaSendService.start(context)
+    }
+
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

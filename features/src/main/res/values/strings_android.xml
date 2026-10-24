@@ -64,4 +64,5 @@
     <!-- Список зависимостей в «О приложении» (aboutlibraries). На iOS его показывает Settings bundle. -->
     <string name="about_libraries">Open-source libraries</string>
     <string name="about_libraries_help">Everything inside the app that someone else wrote, and the licence it comes under.</string>
+    <string name="notification_channel_background">Background tasks</string>
 </resources>
