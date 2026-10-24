@@ -17,7 +17,7 @@ object Sharing {
             ?: intent.getStringExtra(Intent.EXTRA_SUBJECT)?.trim()?.takeIf { it.isNotEmpty() && uris.isEmpty() }
         // Direct Share называет ярлык, на который нажали: это чат (`ShortcutIds`), и выбирать его снова незачем.
         val target = ShortcutIds.parse(intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID))
-        return SharedContent(text, uris.take(MAX), target?.second, target?.first)
+        return SharedContent(text, uris.take(MAX), target?.second, target?.first, intent.type)
     }
 
     /** Столько же, сколько в композере (`MAX_ATTACHMENTS`). */

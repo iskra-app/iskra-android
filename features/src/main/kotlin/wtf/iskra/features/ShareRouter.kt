@@ -13,6 +13,8 @@ data class SharedContent(
     /** Direct Share: человек уже выбрал чат в системном меню — выбирать не надо. */
     val roomId: String? = null,
     val accountId: String? = null,
+    /** Тип, что назвало приложение в интенте: на случай, когда система по адресу его не знает (нет доступа). */
+    val type: String? = null,
 ) {
     val isEmpty: Boolean get() = text.isNullOrBlank() && uris.isEmpty()
 }

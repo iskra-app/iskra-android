@@ -396,6 +396,19 @@ fun RoomScreen(
             onDismiss = { locating = false },
         )
     }
+    // Правка фото из вложений: исходник не трогается, правленое встаёт на его место.
+    var editingPhoto by remember(store.roomId) { mutableStateOf<PendingAttachment?>(null) }
+    editingPhoto?.let { original ->
+        PhotoEditorDialog(
+            source = original.uri,
+            onDone = { edited ->
+                attachments = attachments.map { if (it == original) PendingAttachment(edited, PendingAttachment.Kind.PHOTO) else it }
+                Camera.discard(context, original.uri)
+                editingPhoto = null
+            },
+            onCancel = { editingPhoto = null },
+        )
+    }
     // «Опрос»: вопрос, варианты и две настройки; только в группе — в личном чате это один человек, голосующий за вопрос другого.
     var composingPoll by remember(store.roomId) { mutableStateOf(false) }
     if (composingPoll) {
@@ -435,7 +448,7 @@ fun RoomScreen(
             val joined = if (field.text.isBlank()) words else field.text.trimEnd() + "\n" + words
             field = TextFieldValue(joined, TextRange(joined.length))
         }
-        attachments = (attachments + content.uris.map { PendingAttachment.shared(context, it) }).distinct().take(MAX_ATTACHMENTS)
+        attachments = (attachments + content.uris.map { PendingAttachment.shared(context, it, content.type) }).distinct().take(MAX_ATTACHMENTS)
         onShareTaken()
     }
     val mentionQuery = field.selection.takeIf { it.collapsed }?.let { ComposerMentions.query(field.text, it.end) }
@@ -619,6 +632,7 @@ fun RoomScreen(
                 },
                 onAttachFile = { filePicker.launch(arrayOf(ANY_TYPE)) },
                 onRemoveAttachment = { attachment -> attachments = attachments - attachment },
+                onEditAttachment = { attachment -> editingPhoto = attachment },
                 recordingElapsed = recordingElapsed,
                 onCancelLocked = if (voiceLocked) ({ voiceLocked = false; recorder.cancel() }) else null,
                 mic = {
@@ -1782,6 +1796,8 @@ private fun Composer(
     canPaste: () -> Boolean = { false },
     onPaste: () -> Unit = {},
     onRemoveAttachment: (PendingAttachment) -> Unit,
+    /** Правка фото во вложениях. Null — карандаша нет. */
+    onEditAttachment: ((PendingAttachment) -> Unit)? = null,
     recordingElapsed: Long?,
     onCancelLocked: (() -> Unit)? = null,
     mic: @Composable () -> Unit,
@@ -1793,7 +1809,7 @@ private fun Composer(
     val canSend = text.isNotBlank() || (editing == null && attachments.isNotEmpty())
     val sendsWithCtrl by (LocalAppSettings.current?.sendsWithCtrlReturn ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     Column(Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight)) {
-        if (attachments.isNotEmpty() && editing == null) PendingAttachments(attachments, onRemoveAttachment)
+        if (attachments.isNotEmpty() && editing == null) PendingAttachments(attachments, onRemoveAttachment, onEditAttachment)
         val context = replyingTo ?: editing
         if (context != null) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Theme.Spacing.close)) {

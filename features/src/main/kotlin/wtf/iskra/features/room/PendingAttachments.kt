@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,8 +73,8 @@ internal data class PendingAttachment(val uri: Uri, val kind: Kind) {
 
     companion object {
         /** Из общего меню: картинка и видео идут через подготовку, всё прочее — файлом как есть. */
-        fun shared(context: Context, uri: Uri): PendingAttachment {
-            val type = context.contentResolver.getType(uri).orEmpty()
+        fun shared(context: Context, uri: Uri, fallbackType: String? = null): PendingAttachment {
+            val type = context.contentResolver.getType(uri) ?: fallbackType.orEmpty()
             return PendingAttachment(uri, when {
                 type.startsWith("video/") -> Kind.VIDEO
                 type.startsWith("image/") && type != "image/svg+xml" -> Kind.PHOTO
@@ -88,7 +89,7 @@ internal data class PendingAttachment(val uri: Uri, val kind: Kind) {
 }
 
 @Composable
-internal fun PendingAttachments(attachments: List<PendingAttachment>, onRemove: (PendingAttachment) -> Unit) {
+internal fun PendingAttachments(attachments: List<PendingAttachment>, onRemove: (PendingAttachment) -> Unit, onEdit: ((PendingAttachment) -> Unit)? = null) {
     LazyRow(
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
         contentPadding = PaddingValues(horizontal = Theme.Spacing.close),
@@ -128,6 +129,21 @@ internal fun PendingAttachments(attachments: List<PendingAttachment>, onRemove: 
                                 .background(Color.Black.copy(alpha = Theme.Backdrop.PLATE)),
                         )
                     }
+                }
+                // Карандаш — только у фото: правятся рисунком, подписью, обрезкой и поворотом (`PhotoEditor`).
+                if (onEdit != null && attachment.kind == PendingAttachment.Kind.PHOTO) {
+                    Icon(
+                        Icons.Filled.Edit,
+                        contentDescription = stringResource(R.string.photo_editor_edit),
+                        tint = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(Theme.Spacing.withinRun)
+                            .size(Theme.Size.audioScrubber)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = Theme.Backdrop.PLATE))
+                            .clickable { onEdit(attachment) },
+                    )
                 }
                 Icon(
                     Icons.Filled.Close,
