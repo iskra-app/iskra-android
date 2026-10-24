@@ -192,6 +192,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
             )
         }
     }
+    // «Поиск» из «О чата»: «О чате» закрывается, и комната открывается сразу в поиске.
+    var searchOnOpen by remember(session.sessionId) { mutableStateOf(false) }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
     var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
@@ -327,6 +329,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 blocked = session.blocked,
                 isOffline = rooms.isUnreachable,
                 onBack = { showingDetails = false },
+                onSearch = { showingDetails = false; searchOnOpen = true },
                 onLeave = {
                     val leaving = details.roomId
                     showingDetails = false
@@ -352,6 +355,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onShareTaken = { shareIntoRoom = null },
                 isOffline = rooms.isOffline,
                 isUpdating = rooms.isUpdating,
+                startSearching = searchOnOpen,
+                onSearchStarted = { searchOnOpen = false },
             )
             creating -> wtf.iskra.features.rooms.NewConversationScreen(
                 session,

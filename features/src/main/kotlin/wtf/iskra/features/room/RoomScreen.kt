@@ -200,6 +200,9 @@ fun RoomScreen(
     /** Сервер недоступен / список догоняет его — строка под названием говорит об этом вместо участников (`RoomListStatus`). */
     isOffline: Boolean = false,
     isUpdating: Boolean = false,
+    /** Открыться сразу в поиске — «Поиск» в плитках «О чате». */
+    startSearching: Boolean = false,
+    onSearchStarted: () -> Unit = {},
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -243,7 +246,8 @@ fun RoomScreen(
     var mentions by remember(store.roomId) { mutableStateOf<List<ComposerMention>>(emptyList()) }
     // К какому сообщению вести ленту: нажали на закреплённое или на цитату в ответе.
     var jumpTo by remember(store.roomId) { mutableStateOf(initialJump) }
-    var searching by remember(store.roomId) { mutableStateOf(false) }
+    var searching by remember(store.roomId) { mutableStateOf(startSearching) }
+    LaunchedEffect(startSearching) { if (startSearching) onSearchStarted() }
     // Закреплённые — своя лента SDK, и открывается, только когда закреплённое есть (`PinnedStore`).
     val pinnedStore = remember(store) { store.pinned() }
     val pinned by pinnedStore.state.collectAsStateWithLifecycle()

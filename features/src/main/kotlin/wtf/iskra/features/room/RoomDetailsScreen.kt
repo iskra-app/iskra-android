@@ -34,6 +34,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,6 +90,8 @@ fun RoomDetailsScreen(
     onLeave: () -> Unit,
     /** Блокировка аккаунта (`ignore`) — человека личного чата и участника группы. Null — без неё. */
     blocked: wtf.iskra.core.session.BlockStore? = null,
+    /** «Поиск» в плитках: закрыть «О чате» и открыть поиск по переписке. Null — плитки нет. */
+    onSearch: (() -> Unit)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -108,12 +119,6 @@ fun RoomDetailsScreen(
             },
             // Карандаш — только тому, кому комната что-то менять разрешает (`RoomInfoView` на iOS).
             actions = {
-                // Код у открытой комнаты с адресом: по нему входят, а закрытой ссылка ничего не даст.
-                if (!state.isDirect && state.isPublic && state.canonicalAlias != null) {
-                    IconButton(onClick = { showingCode = true }) {
-                        Icon(Icons.Outlined.QrCode2, contentDescription = stringResource(R.string.qr_title))
-                    }
-                }
                 if (canEdit) {
                     IconButton(onClick = { editing = true }) {
                         Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.room_manage_edit))
@@ -127,6 +132,38 @@ fun RoomDetailsScreen(
             verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
         ) {
             Portrait(store)
+
+            // Плитки под лицом (`tiles` в `RoomInfoView`): поиск, звук, пригласить, поделиться, код. Ссылка — на человека в личном чате, на открытую комнату в комнате.
+            val own = wtf.iskra.features.support.LocalOwnUserId.current
+            val link: wtf.iskra.core.rooms.MatrixLink? = when {
+                state.isDirect -> state.members.firstOrNull { it.userId != own }?.let { wtf.iskra.core.rooms.MatrixLink.User(it.userId) }
+                !state.isPublic -> null
+                else -> state.canonicalAlias?.let { wtf.iskra.core.rooms.MatrixLink.Room(it) }
+                    ?: wtf.iskra.core.rooms.MatrixLink.Room(store.roomId, listOfNotNull(store.roomId.substringAfter(':', "").takeIf { it.isNotEmpty() }))
+            }
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val muted = state.alerts == RoomAlerts.MUTED
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy),
+                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.roomy, Alignment.CenterHorizontally),
+            ) {
+                if (onSearch != null) ProfileTile(R.string.profile_search, Icons.Outlined.Search) { onSearch() }
+                ProfileTile(
+                    if (muted) R.string.profile_unmute else R.string.profile_mute,
+                    if (muted) Icons.Outlined.NotificationsOff else Icons.Outlined.Notifications,
+                    enabled = !isOffline,
+                ) { scope.launch { store.setAlerts(if (muted) RoomAlerts.ALL else RoomAlerts.MUTED) } }
+                if (!state.isDirect && state.permissions.canInvite) {
+                    ProfileTile(R.string.room_manage_invite, Icons.Outlined.PersonAdd, enabled = !isOffline) { inviting = true }
+                }
+                if (link != null) {
+                    ProfileTile(R.string.profile_share, Icons.Outlined.Share) {
+                        val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, link.url)
+                        runCatching { context.startActivity(android.content.Intent.createChooser(send, null)) }
+                    }
+                    ProfileTile(R.string.qr_title, Icons.Outlined.QrCode2) { showingCode = true }
+                }
+            }
 
             if (state.isDirect) LocalName(store)
 
@@ -164,16 +201,6 @@ fun RoomDetailsScreen(
                 val shown = if (needle.isEmpty()) state.members else state.members.filter {
                     it.name.contains(needle, ignoreCase = true) || it.userId.contains(needle, ignoreCase = true)
                 }
-                if (state.permissions.canInvite && !isOffline) {
-                    Group({
-                        ListItem(
-                            headlineContent = { Text(stringResource(R.string.room_manage_invite)) },
-                            leadingContent = { Icon(Icons.Outlined.PersonAdd, contentDescription = null, tint = wtf.iskra.design.LocalAccent.current.control) },
-                            modifier = Modifier.clickable { inviting = true },
-                            colors = rowColors(),
-                        )
-                    })
-                }
                 Group(
                     *shown.take(MEMBERS_SHOWN).map { member ->
                         @Composable { Member(member) { picked = member } }
@@ -207,14 +234,21 @@ fun RoomDetailsScreen(
         }
     }
 
-    val alias = state.canonicalAlias
-    if (showingCode && alias != null) {
-        wtf.iskra.features.support.QrCardSheet(
-            name = state.name,
-            subtitle = alias,
-            link = wtf.iskra.core.rooms.MatrixLink.Room(alias),
-            onDismiss = { showingCode = false },
-        )
+    if (showingCode) {
+        val own = wtf.iskra.features.support.LocalOwnUserId.current
+        val qrLink: wtf.iskra.core.rooms.MatrixLink? = when {
+            state.isDirect -> state.members.firstOrNull { it.userId != own }?.let { wtf.iskra.core.rooms.MatrixLink.User(it.userId) }
+            else -> state.canonicalAlias?.let { wtf.iskra.core.rooms.MatrixLink.Room(it) }
+                ?: wtf.iskra.core.rooms.MatrixLink.Room(store.roomId, listOfNotNull(store.roomId.substringAfter(':', "").takeIf { it.isNotEmpty() }))
+        }
+        if (qrLink != null) {
+            wtf.iskra.features.support.QrCardSheet(
+                name = state.name,
+                subtitle = state.canonicalAlias ?: (qrLink as? wtf.iskra.core.rooms.MatrixLink.User)?.userId ?: store.roomId,
+                link = qrLink,
+                onDismiss = { showingCode = false },
+            )
+        }
     }
     picked?.let { member -> MemberSheet(store, member, isOffline, blocked, onDismiss = { picked = null }) }
     if (inviting) InviteSheet(store, onDismiss = { inviting = false })
@@ -337,3 +371,24 @@ private const val MEMBERS_SHOWN = 100
 
 /** С какого числа людей показывается поиск. */
 private const val SEARCH_FROM = 8
+
+/** Круглая плитка с подписью под лицом чата (`ProfileActionTile`). */
+@Composable
+private fun ProfileTile(title: Int, icon: androidx.compose.ui.graphics.vector.ImageVector, enabled: Boolean = true, onClick: () -> Unit) {
+    val label = stringResource(title)
+    Column(
+        Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.control)).clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
+    ) {
+        Box(
+            Modifier.size(Theme.Size.profileAction).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = wtf.iskra.design.LocalAccent.current.control.copy(alpha = if (enabled) 1f else DISABLED))
+        }
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+private const val DISABLED = 0.4f
