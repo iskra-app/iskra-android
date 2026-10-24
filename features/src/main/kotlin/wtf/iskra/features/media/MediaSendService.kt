@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import wtf.iskra.core.media.MediaSendJobs
 import wtf.iskra.core.support.Log
 import wtf.iskra.features.R
+import wtf.iskra.features.push.NotificationActionReceiver
 import wtf.iskra.features.push.PushIntents
 import wtf.iskra.core.R as CoreR
 
@@ -42,6 +43,10 @@ internal object MediaSendHub {
     /** Значок в строке состояния — знак Искры, живущий в `:app` (его отдаёт `AppGraph`). */
     @Volatile
     var smallIcon: Int = 0
+
+    /** «Отменить» из уведомления → задача сеанса. Ставит `RootModel`, пока сеанс жив; null — отменять некому. */
+    @Volatile
+    var cancel: ((String) -> Unit)? = null
 
     fun update(accountId: String, jobs: List<MediaSendJobs.Job>) {
         mutable.value = State(accountId, jobs)
@@ -181,7 +186,19 @@ class MediaSendService : Service() {
                     .setOngoing(true)
                     .setProgress(PERCENT, (job.progress * PERCENT).toInt(), job.progress <= 0.0)
                     .setSubText(context.getString(CoreR.string.live_activity_media_preparing))
-                MediaSendJobs.Phase.UPLOADING -> builder.setOngoing(true).setProgress(PERCENT, (job.progress * PERCENT).toInt(), false)
+                MediaSendJobs.Phase.UPLOADING -> {
+                    builder.setOngoing(true).setProgress(PERCENT, (job.progress * PERCENT).toInt(), false)
+                    if (MediaSendJobs.canCancel(job)) {
+                        val cancel = Intent(context, NotificationActionReceiver::class.java)
+                            .setAction(PushIntents.ACTION_CANCEL_MEDIA)
+                            .putExtra(PushIntents.EXTRA_JOB, job.id)
+                        builder.addAction(
+                            0,
+                            context.getString(R.string.message_delivery_cancel_upload),
+                            PendingIntent.getBroadcast(context, job.id.hashCode(), cancel, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                        )
+                    }
+                }
                 MediaSendJobs.Phase.SENT -> builder.setOngoing(false).setSubText(context.getString(CoreR.string.live_activity_media_sent))
                 MediaSendJobs.Phase.FAILED -> builder
                     .setOngoing(false)

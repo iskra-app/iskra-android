@@ -294,7 +294,10 @@ class RootModel(
         presenceJob?.cancel()
         presenceJob = if (session.isDemo) null else settings?.let { s -> scope.launch { s.privacy.collect { session.applyPresence(it) } } }
         mediaJobsChanged?.let { changed ->
-            if (!session.isDemo) scope.launch { session.mediaJobs.jobs.collect { changed(session.sessionId, it) } }
+            if (!session.isDemo) {
+                wtf.iskra.features.media.MediaSendHub.cancel = { id -> scope.launch { session.mediaJobs.cancel(id) } }
+                scope.launch { session.mediaJobs.jobs.collect { changed(session.sessionId, it) } }
+            }
         }
         scope.launch {
             // Имя и картинка — в запись аккаунта: переключатель покажет их, когда он закрыт.

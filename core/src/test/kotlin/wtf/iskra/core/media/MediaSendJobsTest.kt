@@ -70,6 +70,23 @@ class MediaSendJobsTest {
     }
 
     @Test
+    fun cancelIsOfferedOnlyOnceTheQueueHoldsEverything() {
+        val jobs = jobs()
+        val id = assertNotNull(jobs.begin("!r", listOf(Item(isVideo = true), Item(isVideo = true))))
+        jobs.handed(id, accepted = true)
+        jobs.receive(QueueEvent.Created("t1"), "!r")
+        assertTrue(!MediaSendJobs.canCancel(jobs.first()), "вторую вещь ещё готовят")
+        jobs.handed(id, accepted = true)
+        jobs.receive(QueueEvent.Created("t2"), "!r")
+        jobs.doneHanding(id)
+        assertTrue(MediaSendJobs.canCancel(jobs.first()))
+        jobs.receive(QueueEvent.Sent("t1"), "!r")
+        assertTrue(MediaSendJobs.canCancel(jobs.first()), "вторая ещё в пути")
+        jobs.receive(QueueEvent.Sent("t2"), "!r")
+        assertTrue(!MediaSendJobs.canCancel(jobs.first()), "всё ушло")
+    }
+
+    @Test
     fun anotherRoomsOrALaterMessageIsNotTheJobs() {
         val jobs = jobs()
         val id = assertNotNull(jobs.begin("!r", listOf(Item(isVideo = true))))

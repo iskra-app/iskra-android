@@ -317,4 +317,6 @@ object PushIntents {
     const val KEY_REPLY = "reply"
     const val ACTION_REPLY = "wtf.iskra.push.REPLY"
     const val ACTION_READ = "wtf.iskra.push.READ"
+    const val ACTION_CANCEL_MEDIA = "wtf.iskra.media.CANCEL"
+    const val EXTRA_JOB = "media_job"
 }

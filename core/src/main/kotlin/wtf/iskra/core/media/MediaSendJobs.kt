@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import org.matrix.rustcomponents.sdk.EventOrTransactionId
 import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomSendQueueUpdate
 import org.matrix.rustcomponents.sdk.SendQueueListener
@@ -272,6 +273,38 @@ class MediaSendJobs internal constructor(
         }
     }
 
+    /**
+     * «Отменить» в уведомлении: неушедшие вещи задачи выбрасываются из очереди SDK (ничего на сервере и никому не
+     * сообщается — они туда не дошли), задача исчезает сразу. Уже отправленные остаются в чате. Пока вещи только
+     * готовятся, очереди нечего отдавать — отмена такой задачи не предлагается ([canCancel]).
+     */
+    suspend fun cancel(id: String) {
+        val job = mutableJobs.value.firstOrNull { it.id == id && canCancel(it) } ?: return
+        val room = roomFor(job.roomId)
+        if (room != null) {
+            try {
+                val timeline = room.timeline()
+                try {
+                    for (transaction in job.uploads.keys - job.sent) {
+                        runCatching {
+                            withTimeLimit(SDK_LIMIT) { timeline.redactEvent(EventOrTransactionId.TransactionId(transaction), null) }
+                        }.onFailure {
+                            if (it is CancellationException) throw it
+                            Log.error(Log.Category.MEDIA, "отмена отправки не прошла: ${Log.describe(it)}")
+                        }
+                    }
+                } finally {
+                    timeline.close()
+                }
+            } finally {
+                room.close()
+            }
+        }
+        cleanup.remove(id)?.cancel()
+        mutableJobs.update { jobs -> jobs.filterNot { it.id == id } }
+        if (mutableJobs.value.none { it.roomId == job.roomId }) release(job.roomId)
+    }
+
     /** Всё — для уходящего сеанса. */
     fun stop() {
         subscriptions.keys.toList().forEach(::release)
@@ -284,6 +317,9 @@ class MediaSendJobs internal constructor(
         /** Видео, три картинки и больше, или файл больше ~10 МБ. Меньше — уйдёт, пока индикатор успел бы что-то сказать. */
         fun isWorthFollowing(items: List<Item>): Boolean =
             items.any { it.isVideo } || items.size >= 3 || items.any { it.bytes > BIG_FILE }
+
+        /** Отменить можно, когда очередь уже держит вещи и передача закончена: до того подготовка продолжила бы их отдавать. */
+        fun canCancel(job: Job): Boolean = job.phase == Phase.UPLOADING && job.handingDone && job.uploads.keys.any { it !in job.sent }
 
         const val BIG_FILE = 10L * 1024 * 1024
         const val PREPARATION_SHARE = 0.3

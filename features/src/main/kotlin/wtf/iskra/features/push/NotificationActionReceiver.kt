@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import wtf.iskra.features.AppGraphOwner
+import wtf.iskra.features.media.MediaSendHub
 
 /**
  * «Ответить» и «Прочитано» на уведомлении. Работает без экранов и часто без живого приложения:
@@ -17,6 +18,10 @@ import wtf.iskra.features.AppGraphOwner
  */
 class NotificationActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == PushIntents.ACTION_CANCEL_MEDIA) {
+            intent.getStringExtra(PushIntents.EXTRA_JOB)?.let { MediaSendHub.cancel?.invoke(it) }
+            return
+        }
         val roomId = intent.getStringExtra(PushIntents.EXTRA_ROOM) ?: return
         val accountId = intent.getStringExtra(PushIntents.EXTRA_ACCOUNT) ?: return
         val push = (context.applicationContext as AppGraphOwner).graph.push
