@@ -194,6 +194,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     }
     // «Поиск» из «О чата»: «О чате» закрывается, и комната открывается сразу в поиске.
     var searchOnOpen by remember(session.sessionId) { mutableStateOf(false) }
+    // Открытое пространство (ID и название): его комнаты — отдельным экраном поверх списка.
+    var openSpace by remember(session.sessionId) { mutableStateOf<Pair<String, String>?>(null) }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
     var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
@@ -285,6 +287,13 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onBack = { linked = null },
                 blocked = session.blocked,
             )
+            openSpace != null && roomId == null -> wtf.iskra.features.rooms.SpaceRoomsScreen(
+                session,
+                openSpace!!.first,
+                openSpace!!.second,
+                onOpenRoom = { openRoom = it },
+                onBack = { openSpace = null },
+            )
             sharing != null -> wtf.iskra.features.rooms.ShareTargetScreen(
                 rooms = rooms.rooms,
                 onPick = { id ->
@@ -370,7 +379,11 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
             )
             else -> RoomListScreen(
                 session.rooms,
-                onOpen = { openRoom = it },
+                onOpen = { id ->
+                    // Пространство открывается не перепиской, а своим экраном — комнаты внутри него.
+                    val space = (rooms.rooms + rooms.archivedRooms).firstOrNull { it.id == id && it.isSpace }
+                    if (space != null) openSpace = space.id to space.name else openRoom = id
+                },
                 onNewConversation = { creating = true },
                 search = session.search,
                 onOpenAt = { room, event ->

@@ -96,12 +96,14 @@ class StickerPackTest {
     private class Account(var uploadWorks: Boolean = true) {
         val data = mutableMapOf<String, String>()
         val roomPacks = mutableMapOf<String, String>()
-        var uploads = 0
+        // Загрузки идут параллельно: счётчик обязан быть атомарным, иначе тест сам терял бы единицу.
+        private val uploadCount = java.util.concurrent.atomic.AtomicInteger()
+        val uploads: Int get() = uploadCount.get()
         fun library() = StickerLibrary(
             readAccountData = { data[it] },
             writeAccountData = { type, content -> data[type] = content },
             readRoomPack = { roomId, key -> roomPacks["$roomId/$key"] },
-            upload = { _, _ -> if (!uploadWorks) error("нет сети"); uploads++; "mxc://s/up$uploads" },
+            upload = { _, _ -> if (!uploadWorks) error("нет сети"); "mxc://s/up${uploadCount.incrementAndGet()}" },
         )
     }
 

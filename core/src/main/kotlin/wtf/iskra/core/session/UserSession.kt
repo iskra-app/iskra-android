@@ -345,6 +345,9 @@ class UserSession internal constructor(
     }
 
     /** «О чате» комнаты — для экрана, который её показывает; [RoomDetailsStore.stop], когда он уходит. */
+    /** Что внутри пространства [spaceId] (`SpaceRoomsScreen`). */
+    fun space(spaceId: String): wtf.iskra.core.rooms.SpaceStore = wtf.iskra.core.rooms.SpaceStore(client, spaceId)
+
     fun details(roomId: String): wtf.iskra.core.rooms.RoomDetailsStore? {
         val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
         return wtf.iskra.core.rooms.RoomDetailsStore(room, client, roomId, userId, strings, scope, localNames)
