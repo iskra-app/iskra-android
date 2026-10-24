@@ -60,7 +60,7 @@ internal class PeekAction(val title: Int, val icon: ImageVector, val run: () -> 
 /**
  * Заглянуть в чат, не открывая его: долгое нажатие на строку поднимает живую карточку с последними сообщениями, под ней — действия
  * (открыть, прочитано, закрепить, в архив, в папку). Заглядывание ничего не читает: непрочитанное остаётся непрочитанным, пока чат
- * не откроют. Порт `ChatPeek`.
+ * не откроют (словами об этом карточка не напоминает). Порт `ChatPeek`.
  *
  * Лента — своя на карточку: стор запускается, когда карточка появилась, и закрывается вместе с ней. Сообщения в ней не нажимаются:
  * меню над ними не поднимается — смотрят, а не отвечают.
@@ -142,9 +142,6 @@ private fun Card(room: RoomSummary, store: TimelineStore, ownUserId: String, onO
                 Avatar(room.name, room.avatarUrl, Theme.Size.avatarToolbar, seed = room.avatarSeed)
                 Column(Modifier.weight(1f)) {
                     Text(room.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (room.hasUnread) {
-                        Text(stringResource(R.string.room_list_peek_stays_unread), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                    }
                 }
             }
             val messages = remember(state.rows) { state.rows.mapNotNull { (it as? TimelineRow.MessageRow)?.message } }
