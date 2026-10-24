@@ -84,4 +84,11 @@ class PeekLineTest {
         assertEquals("Когда?", text(MessageKind.Poll(wtf.iskra.core.timeline.Poll.of("Когда?", true, 1, emptyList(), emptyMap(), false, "@me:x"))))
         assertNull(PeekLine.previewKind(MessageKind.Text("слова")))
     }
+
+    @Test
+    fun aStateEventWithNoWordsOfItsOwnIsNotTheRow() {
+        val hidden = TimelineRow.EventRow(RoomEvent("e1", RoomEventKind.Hidden("RoomPinnedEvents"), at.plusSeconds(5)))
+        val line = PeekLine.last(listOf(message(MessageKind.Text("привет")), hidden), strings)
+        assertEquals("привет", line?.text)
+    }
 }

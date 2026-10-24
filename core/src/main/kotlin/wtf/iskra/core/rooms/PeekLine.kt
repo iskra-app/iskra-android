@@ -6,6 +6,7 @@ import wtf.iskra.core.timeline.DeliveryStatus
 import wtf.iskra.core.timeline.HtmlWords
 import wtf.iskra.core.timeline.Message
 import wtf.iskra.core.timeline.MessageKind
+import wtf.iskra.core.timeline.RoomEventKind
 import wtf.iskra.core.timeline.TimelineRow
 import java.time.Instant
 
@@ -50,7 +51,10 @@ internal data class PeekLine(
                             sender = if (message.isOwn) null else message.senderName,
                         )
                     }
-                    is TimelineRow.EventRow -> return PeekLine(row.event.text(strings), null, null, row.event.timestamp)
+                    // Закреплённое, родитель пространства и прочее без своих слов — строка ленты при «Бета → все события», но не слова под
+                    // именем чата: там человек читает, что ему написали, а не словарь протокола.
+                    is TimelineRow.EventRow ->
+                        if (row.event.kind is RoomEventKind.Hidden) continue else return PeekLine(row.event.text(strings), null, null, row.event.timestamp)
                     is TimelineRow.DayDividerRow, TimelineRow.UnreadDivider -> continue
                 }
             }
