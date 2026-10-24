@@ -215,7 +215,7 @@ fun SettingsScreen(
                 SettingsPage.CHATS -> Chats(settings, accounts)
                 SettingsPage.REACTIONS -> ReactionsPage(settings, session.stickers.takeIf { !session.isDemo })
                 SettingsPage.FOLDERS -> FoldersPage(session)
-                SettingsPage.SECURITY -> Security(session, onNavigate, hasConnection = connection != null && !session.isDemo)
+                SettingsPage.SECURITY -> Security(session, onNavigate, hasConnection = connection != null)
                 SettingsPage.DEVICES -> DevicesPage(session)
                 SettingsPage.PRIVACY -> PrivacyPage(settings) { onNavigate(SettingsPage.BLOCKED) }
                 SettingsPage.BLOCKED -> BlockedPage(session)

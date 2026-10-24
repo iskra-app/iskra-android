@@ -151,7 +151,10 @@ class RootModel(
                 if (secret == null) {
                     wtf.iskra.core.transport.BridgeCheck.Outcome.Failed("no device key")
                 } else {
-                    wtf.iskra.core.transport.BridgeCheck.run(key, relays, homeserver, secret)
+                    // Сервер на этой машине — демо или сервер входа: мост туда не повезёт, а `http` через
+                    // прокси `CONNECT` и не идёт (405). Проверяется мост, а не сервер — как у пробы, к matrix.org.
+                    val target = if (wtf.iskra.core.transport.TunnelSettings.isLoopback(homeserver)) BRIDGE_CHECK_FALLBACK else homeserver
+                    wtf.iskra.core.transport.BridgeCheck.run(key, relays, target, secret)
                 }
             },
         )
@@ -540,6 +543,9 @@ class RootModel(
     }
 
     private companion object {
+        /** Куда проверять мост, когда у сеанса нет настоящего сервера. */
+        const val BRIDGE_CHECK_FALLBACK = "https://matrix.org"
+
         /** Сколько верхних чатов уходит в ярлыки и как долго список должен молчать, прежде чем их обновлять. */
         const val SHORTCUT_ROOMS = 4
         const val SHORTCUT_QUIET_MS = 2_000L
