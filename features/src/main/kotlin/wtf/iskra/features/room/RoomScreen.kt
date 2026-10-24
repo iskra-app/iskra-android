@@ -500,12 +500,14 @@ fun RoomScreen(
     ChatWallpaper()
     sourceOf?.let { json -> EventSourceSheet(json, onDismiss = { sourceOf = null }) }
     reactorsOf?.let { (messageId, key) ->
-        val reactions = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }?.reactions.orEmpty()
+        val shown = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }
+        val reactions = shown?.reactions.orEmpty()
+        val isOwnMessage = shown?.isOwn == true
         ReactorsSheet(
             reactions, key,
             load = { store.reactors(messageId) },
             onDismiss = { reactorsOf = null },
-            loadReaders = if (state.header.isOneToOne) null else ({ store.readers(messageId) }),
+            loadReaders = if (state.header.isOneToOne || !isOwnMessage) null else ({ store.readers(messageId) }),
         )
     }
     val profileId = profileOf
@@ -1426,7 +1428,21 @@ private fun BubbleBody(
     val picture = message.kind.picture
     val album = message.album
     if (album != null) {
-        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+        // Альбом — в пузыре, как слова (`AlbumBubble`): заливка, мозаика внутри с узким полем и подпись под ней. В компактном виде заливки нет.
+        Column(
+            Modifier
+                .then(
+                    if (plain) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .clip(RoundedCornerShape(Theme.Radius.bubble))
+                            .background(if (own) accent.bubble else accent.incomingBubble)
+                            .padding(Theme.Spacing.tight)
+                    },
+                ),
+            horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+        ) {
             UploadOverlay(message) {
                 AlbumContent(
                     album,
@@ -1439,6 +1455,7 @@ private fun BubbleBody(
                 Text(
                     caption,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble,
                     modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
                 )
             }
@@ -1692,7 +1709,8 @@ private fun MessageMenu(
         val countReaders = LocalReaderCount.current
         if (showReactors != null && countReaders != null && message.canReact) {
             val reactions = message.reactions.sumOf { it.count }
-            val seen = countReaders(message.id)
+            // Кто прочёл — только у своих сообщений: чужие квитанции — не то, что человек просил показать.
+            val seen = if (message.isOwn) countReaders(message.id) else 0
             val title = when {
                 seen > 0 && reactions > 0 -> stringResource(
                     R.string.message_menu_seen_and_reacted,

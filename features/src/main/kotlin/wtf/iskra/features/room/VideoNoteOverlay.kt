@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -86,25 +87,25 @@ internal fun VideoNoteOverlay(
                     Text(
                         DateUtils.formatElapsedTime((elapsed ?: 0L) / MILLIS),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        color = Color.White,
                     )
                     IconButton(onClick = recorder::flip) {
                         Icon(
                             Icons.Filled.FlipCameraAndroid,
                             contentDescription = stringResource(R.string.video_note_flip_camera),
-                            tint = MaterialTheme.colorScheme.inverseOnSurface,
+                            tint = Color.White,
                         )
                     }
                 }
                 if (locked) {
                     TextButton(onClick = onCancel) {
-                        Text(stringResource(R.string.recording_cancel), color = MaterialTheme.colorScheme.inverseOnSurface)
+                        Text(stringResource(R.string.recording_cancel), color = Color.White)
                     }
                 } else {
                     Text(
                         stringResource(R.string.video_note_hold_to_record),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                        color = Color.White,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = Theme.Spacing.generous),
                     )
