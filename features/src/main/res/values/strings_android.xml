@@ -66,4 +66,5 @@
     <string name="about_libraries_help">Everything inside the app that someone else wrote, and the licence it comes under.</string>
     <string name="notification_channel_background">Background tasks</string>
     <string name="app_icon_note">Your launcher may flicker for a moment while the icon changes, and a shortcut on the home screen may disappear — that is how Android works.</string>
+    <string name="about_tagline_android">An open-source Matrix client for Android, written in Kotlin.</string>
 </resources>

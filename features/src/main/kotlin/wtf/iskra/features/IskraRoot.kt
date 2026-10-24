@@ -188,6 +188,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 id,
                 threadSettings = { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() },
                 privacy = { settings?.privacy?.value ?: wtf.iskra.core.session.PrivacySettings() },
+                serviceEvents = { settings?.serviceEvents?.value ?: wtf.iskra.core.timeline.ServiceEventSettings() },
             )
         }
     }

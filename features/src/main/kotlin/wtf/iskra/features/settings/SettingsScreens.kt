@@ -30,7 +30,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -109,7 +112,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, STORAGE, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, STORAGE, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES, REACTIONS }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -170,6 +173,7 @@ fun SettingsScreen(
                 SettingsPage.APPEARANCE -> R.string.settings_appearance
                 SettingsPage.MEDIA -> R.string.media_title
                 SettingsPage.CHATS -> R.string.settings_chats
+                SettingsPage.REACTIONS -> R.string.settings_reactions
                 SettingsPage.FOLDERS -> R.string.folders_title
                 SettingsPage.SECURITY -> R.string.settings_security
                 SettingsPage.DEVICES -> R.string.devices_title
@@ -198,6 +202,7 @@ fun SettingsScreen(
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
                 SettingsPage.CHATS -> Chats(settings)
+                SettingsPage.REACTIONS -> ReactionsPage(settings)
                 SettingsPage.FOLDERS -> FoldersPage(session)
                 SettingsPage.SECURITY -> Security(session)
                 SettingsPage.DEVICES -> DevicesPage(session)
@@ -312,9 +317,11 @@ private fun Main(
         { Link(Icons.Outlined.Notifications, R.string.settings_notifications) { onNavigate(SettingsPage.NOTIFICATIONS) } },
         { Link(Icons.Outlined.Palette, R.string.settings_appearance) { onNavigate(SettingsPage.APPEARANCE) } },
         { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
+        { Link(Icons.Outlined.EmojiEmotions, R.string.settings_reactions) { onNavigate(SettingsPage.REACTIONS) } },
         { Link(Icons.Outlined.Folder, R.string.folders_title) { onNavigate(SettingsPage.FOLDERS) } },
         { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
         { Link(Icons.Outlined.Storage, R.string.settings_storage) { onNavigate(SettingsPage.STORAGE) } },
+        *languageRow(),
     )
     Group(
         { Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) } },
@@ -505,6 +512,13 @@ private fun Chats(settings: AppSettings) {
             enabled = threads.shown != ThreadSettings.Shown.NEVER,
         )
     })
+
+    val service by settings.serviceEvents.collectAsStateWithLifecycle()
+    SectionTitle(R.string.chats_service_section)
+    Group(
+        { Toggle(R.string.chats_hide_name_changes, null, service.hidesNameChanges, { settings.setServiceEvents(service.copy(hidesNameChanges = it)) }) },
+        { Toggle(R.string.chats_hide_membership_changes, R.string.chats_service_help, service.hidesMembershipChanges, { settings.setServiceEvents(service.copy(hidesMembershipChanges = it)) }) },
+    )
 }
 
 /** Бета-функции (`BetaView`): существа вместо инициалов и, в debug, демо-сервер. */
@@ -616,14 +630,41 @@ internal fun ChoiceText(title: String, selected: Boolean, onSelect: () -> Unit) 
  */
 @Composable
 private fun About(appVersion: String, beforeLicences: @Composable () -> Unit = {}) {
-    Column(Modifier.padding(Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val build = remember {
+        runCatching { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0)).toString() }.getOrDefault("")
+    }
+    val device = "${android.os.Build.MANUFACTURER.replaceFirstChar { it.uppercase() }} ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE})"
+    Column(
+        Modifier.fillMaxWidth().padding(Theme.Spacing.roomy),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
+    ) {
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(AppIcon.current(context).preview),
+            contentDescription = null,
+            modifier = Modifier.size(Theme.Size.avatarProfile).clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.appIcon(Theme.Size.avatarProfile.value).let { androidx.compose.ui.unit.Dp(it) })),
+        )
         Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold)
-        Row(horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
-            Text(stringResource(R.string.about_version), style = MaterialTheme.typography.bodyMedium)
-            Text(appVersion, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Text(stringResource(R.string.about_free_software), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            stringResource(R.string.about_tagline_android),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+    }
+    Group(
+        { AboutRow(R.string.about_version, appVersion) },
+        { if (build.isNotEmpty()) AboutRow(R.string.about_build, build) },
+        { AboutRow(R.string.about_device, device) },
+    )
+    Group(
+        { AboutLink(R.string.about_website, "iskra.wtf", "https://iskra.wtf") },
+        { AboutLink(R.string.about_source_code, "github.com/iskra-app/iskra-android", "https://github.com/iskra-app/iskra-android") },
+    )
+    Column(Modifier.padding(horizontal = Theme.Spacing.roomy), verticalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
         Text(stringResource(R.string.about_copyright), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.about_free_software), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     beforeLicences()
     SectionTitle(R.string.about_licences)
@@ -773,4 +814,44 @@ private fun LockSection(lock: wtf.iskra.features.lock.LockHooks) {
             }.toTypedArray(),
         )
     }
+}
+
+/**
+ * «Язык»: как на iPhone, выбор живёт в системных настройках приложения (Android 13+, `localeConfig` с теми же семью языками) —
+ * строка ведёт туда. Ниже 13 такой страницы нет, и строки нет тоже: язык там системный.
+ */
+@Composable
+private fun languageRow(): Array<@Composable () -> Unit> {
+    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return emptyArray()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return arrayOf({
+        Link(Icons.Outlined.Language, R.string.settings_language) {
+            val intent = android.content.Intent(android.provider.Settings.ACTION_APP_LOCALE_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null))
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { context.startActivity(intent) }
+        }
+    })
+}
+
+@Composable
+private fun AboutRow(title: Int, value: String) {
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        trailingContent = { Text(value, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun AboutLink(title: Int, address: String, url: String) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    ListItem(
+        headlineContent = { Text(stringResource(title)) },
+        supportingContent = { Text(address) },
+        trailingContent = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        modifier = Modifier.clickable {
+            runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        },
+    )
 }

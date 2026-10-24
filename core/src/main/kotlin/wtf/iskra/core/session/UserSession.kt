@@ -284,6 +284,7 @@ class UserSession internal constructor(
         roomId: String,
         threadSettings: () -> ThreadSettings = { ThreadSettings() },
         privacy: () -> PrivacySettings = { PrivacySettings() },
+        serviceEvents: () -> wtf.iskra.core.timeline.ServiceEventSettings = { wtf.iskra.core.timeline.ServiceEventSettings() },
     ): TimelineStore? {
         val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
         return TimelineStore(
@@ -295,6 +296,7 @@ class UserSession internal constructor(
             onDraftChanged = { rooms.noteDraft(roomId, it) },
             onOwnMessagesRead = { rooms.noteRead(roomId, it) },
             threadSettings = threadSettings,
+            serviceEvents = serviceEvents,
             localNames = localNames,
             downloadMedia = downloadMedia,
             privacy = privacy,

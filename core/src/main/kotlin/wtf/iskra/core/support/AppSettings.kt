@@ -71,6 +71,31 @@ class AppSettings(context: Context) : UpdateStore {
         mutableRecentReactions.value = RecentReactions.list(stored)
     }
 
+    private val mutableQuickReaction = MutableStateFlow(preferences.getString(QUICK_REACTION, null)?.takeIf { it.isNotEmpty() } ?: DEFAULT_QUICK_REACTION)
+
+    /** Что оставляет двойное нажатие на сообщение: любой эмодзи, по умолчанию сердце (ключ и значение — как у iOS, `QuickReaction`). */
+    val quickReaction: StateFlow<String> = mutableQuickReaction.asStateFlow()
+
+    fun setQuickReaction(emoji: String) {
+        preferences.edit().putString(QUICK_REACTION, emoji).apply()
+        mutableQuickReaction.value = emoji
+    }
+
+    private val mutableServiceEvents = MutableStateFlow(
+        wtf.iskra.core.timeline.ServiceEventSettings(
+            hidesNameChanges = preferences.getBoolean(HIDES_NAME_CHANGES, false),
+            hidesMembershipChanges = preferences.getBoolean(HIDES_MEMBERSHIP_CHANGES, false),
+        ),
+    )
+
+    /** «Служебные строки» в «Чатах»: скрыть смену имён и вход-выход (ключи — как у iOS, `ServiceEventSettings`). */
+    val serviceEvents: StateFlow<wtf.iskra.core.timeline.ServiceEventSettings> = mutableServiceEvents.asStateFlow()
+
+    fun setServiceEvents(settings: wtf.iskra.core.timeline.ServiceEventSettings) {
+        preferences.edit().putBoolean(HIDES_NAME_CHANGES, settings.hidesNameChanges).putBoolean(HIDES_MEMBERSHIP_CHANGES, settings.hidesMembershipChanges).apply()
+        mutableServiceEvents.value = settings
+    }
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -210,6 +235,10 @@ class AppSettings(context: Context) : UpdateStore {
         const val PRIVACY_PRESENCE = "privacy.hidesPresence"
         const val PRIVACY_TYPING = "privacy.hidesTyping"
         const val RECENT_REACTIONS = "reactions.recent"
+        const val HIDES_NAME_CHANGES = "chats.hidesNameChanges"
+        const val HIDES_MEMBERSHIP_CHANGES = "chats.hidesMembershipChanges"
+        const val QUICK_REACTION = "reactions.quick"
+        const val DEFAULT_QUICK_REACTION = "❤️"
         const val THREADS_SHOWN = "chats.threads.shown"
         const val THREADS_HIDE_REPLIES = "chats.threads.hidesReplies"
     }

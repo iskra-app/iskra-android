@@ -188,6 +188,8 @@ class TimelineStore internal constructor(
     val threadRootId: String? = null,
     /** Настройки тредов на миг открытия: фокус открытой ленты не меняется. */
     private val threadSettings: () -> ThreadSettings = { ThreadSettings() },
+    /** Какие служебные строки скрыты (`AppSettings`); читается при каждой сборке строк. */
+    private val serviceEvents: () -> ServiceEventSettings = { ServiceEventSettings() },
     /** Прозвища личных чатов: шапка, имена на сообщениях собеседника и в цитатах его. */
     private val localNames: wtf.iskra.core.rooms.LocalNames.Account? = null,
     /** Скачать картинку по `mxc://` — стикеру из пака в зашифрованной комнате (`sendSticker`). Null — нечем. */
@@ -586,7 +588,9 @@ class TimelineStore internal constructor(
 
     private fun rebuildRows() {
         // Альбомы — последним проходом: заходы, даты и «прочитано» считаются по отдельным сообщениям.
-        var rows = Album.grouping(applyingLocalName(TimelineRows.rows(memo.mapped(items, ownUserId, strings))))
+        val hidden = serviceEvents()
+        val mapped = memo.mapped(items, ownUserId, strings).filterNot { (it.body as? Mapped.Body.EventBody)?.event?.kind?.let(hidden::hides) == true }
+        var rows = Album.grouping(applyingLocalName(TimelineRows.rows(mapped)))
 
         // Отправленное и ещё не показанное — в конец, и снимается, как только среди строк выше
         // появится его эхо. Снимается *до* добавления: эхо приходит обычным диффом, и это та самая

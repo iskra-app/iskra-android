@@ -46,4 +46,5 @@
     <string name="about_libraries_help">Alles in der App, was andere geschrieben haben, und unter welcher Lizenz.</string>
     <string name="notification_channel_background">Hintergrundaufgaben</string>
     <string name="app_icon_note">Der Launcher kann kurz flackern, während das Symbol wechselt, und eine Verknüpfung auf dem Startbildschirm kann verschwinden – so funktioniert Android.</string>
+    <string name="about_tagline_android">Ein Open-Source-Matrix-Client für Android, geschrieben in Kotlin.</string>
 </resources>

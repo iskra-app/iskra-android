@@ -46,4 +46,5 @@
     <string name="about_libraries_help">应用中由他人编写的所有内容及其许可证。</string>
     <string name="notification_channel_background">后台任务</string>
     <string name="app_icon_note">更换图标时启动器可能会闪一下，主屏幕上的快捷方式也可能消失——这是 Android 的行为。</string>
+    <string name="about_tagline_android">面向 Android 的开源 Matrix 客户端，使用 Kotlin 编写。</string>
 </resources>

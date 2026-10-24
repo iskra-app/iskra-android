@@ -228,7 +228,7 @@ private fun Actions(actions: List<MenuAction>, onDismiss: () -> Unit) {
 
 /** Все эмодзи, недавние сверху, с вкладками групп — как клавиатура (`EmojiPanel`). */
 @Composable
-private fun EmojiPanel(recent: List<String>, mine: Set<String>, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+internal fun EmojiPanel(recent: List<String>, mine: Set<String>, onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     val accent = LocalAccent.current
     val grid = rememberLazyGridState()
     val scope = rememberCoroutineScope()

@@ -999,6 +999,7 @@ private fun Bubble(
     onUnsent: (UnsentAction) -> Unit = {},
     onOpenThread: ((Message) -> Unit)? = null,
 ) {
+    val quickReaction by (LocalAppSettings.current?.quickReaction ?: remember { kotlinx.coroutines.flow.MutableStateFlow("❤️") }).collectAsStateWithLifecycle()
     val accent = LocalAccent.current
     val own = message.isOwn
     val top = if (message.isContinuation) Theme.Spacing.withinRun else Theme.Spacing.betweenSenders / 2
@@ -1063,7 +1064,7 @@ private fun Bubble(
                             onNoteTap = { noteTaps++ },
                             onOpen = onOpen,
                             onVote = onVote,
-                            onDoubleTap = { if (message.canReact) onReact(QUICK_REACTION) },
+                            onDoubleTap = { if (message.canReact) onReact(quickReaction) },
                             onLongPress = { menuAnchor = anchor.rect },
                             onQuote = onQuote,
                         )
@@ -1727,9 +1728,6 @@ private fun Failed(onRetry: () -> Unit) {
         PrimaryActionButton(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.room_try_again)) }
     }
 }
-
-/** Двойное нажатие — как в Telegram: сердце (`QuickReaction.default`). Выбор в настройках — позже. */
-private const val QUICK_REACTION = "❤️"
 
 /** За сколько строк до начала просить следующую страницу. */
 private const val HISTORY_PREFETCH = 5
