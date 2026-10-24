@@ -464,7 +464,10 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                         timeline != null -> roomPane(timeline)
                         creating -> creatingPane()
                         else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(R.string.settings_app_name), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+                                Text(stringResource(R.string.room_no_room_selected_title), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(stringResource(R.string.room_no_room_selected_message), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
                 }

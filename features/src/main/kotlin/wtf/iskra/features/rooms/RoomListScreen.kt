@@ -50,6 +50,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -375,11 +378,39 @@ private fun Empty(title: Int, message: Int?) {
     }
 }
 
+/**
+ * Что читает TalkBack вместо картинки строки: имя, закрытый ли, закреплён ли, черновик или последнее сообщение, потом *оба* — число
+ * непрочитанных и упоминания, если оба верны. Раньше это было «или»: упоминание глушило счёт, и комната с двенадцатью непрочитанными и
+ * одним упоминанием показывала красное «12», а голос говорил «1 упоминание». Порт `accessibilityLabel`.
+ */
+@Composable
+private fun rowDescription(room: RoomSummary): String {
+    val parts = mutableListOf(room.name)
+    if (room.privacy == wtf.iskra.core.rooms.PrivacyStatus.PROTECTED) parts += stringResource(R.string.room_list_private_chat)
+    if (room.isPinned) parts += stringResource(R.string.room_list_pinned)
+    val draft = room.draft
+    val message = room.lastMessage
+    if (draft != null) {
+        parts += stringResource(R.string.room_list_draft, draft.replace('\n', ' '))
+    } else if (message != null) {
+        parts += if (!room.isDirectMessage && room.lastSender != null) "${room.lastSender}: $message" else message
+    }
+    if (room.hasUnreadCount) {
+        parts += pluralStringResource(R.plurals.room_list_unread, room.unreadNotifyingMessages, room.unreadNotifyingMessages)
+    } else if (room.hasUnread) {
+        parts += stringResource(R.string.room_list_has_unread)
+    }
+    if (room.isMentioned) parts += pluralStringResource(R.plurals.room_list_mentions, room.mentionCount, room.mentionCount)
+    if (room.hasUnreadReactions) parts += pluralStringResource(R.plurals.room_list_reactions, room.unreadReactionCount, room.unreadReactionCount)
+    return parts.joinToString(", ")
+}
+
 @Composable
 private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
+    val description = rowDescription(room)
     // Как на iOS: вправо — прочитано и закрепить, влево — архив и удалить. Удаление спрашивает.
     // Цвета — роли схемы: смысл тот же (прочитано — акцентом, удалить — ошибкой), тон — Material.
     val leading = listOf(
@@ -410,6 +441,7 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
         modifier = Modifier
             .fillMaxWidth()
             .background(if (selected) scheme.secondaryContainer else Color.Transparent)
+            .semantics(mergeDescendants = true) { contentDescription = description }
             .combinedClickable(onClick = onOpen, onClickLabel = room.name, onLongClick = { menu = true })
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),

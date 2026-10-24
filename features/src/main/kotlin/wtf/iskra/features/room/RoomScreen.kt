@@ -2123,7 +2123,8 @@ private fun Composer(
         val context = replyingTo ?: editing
         if (context != null) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = Theme.Spacing.close)) {
-                Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = null, tint = accent.control)
+                // Карандаш при правке, стрелка при ответе (`contextStrip`).
+                Icon(if (editing != null) Icons.Filled.Edit else Icons.AutoMirrored.Filled.Reply, contentDescription = null, tint = accent.control)
                 Spacer(Modifier.width(Theme.Spacing.close))
                 Column(Modifier.weight(1f)) {
                     Text(
@@ -2204,7 +2205,7 @@ private fun Composer(
                     .weight(1f)
                     .heightIn(min = Theme.Size.composerControl)
                     .onPreviewKeyEvent { event -> hardwareReturn(event, sendsWithCtrl) { if (canSend) onSend() } },
-                placeholder = { Text(stringResource(R.string.room_composer_placeholder)) },
+                placeholder = { Text(stringResource(if (attachments.isNotEmpty()) R.string.room_caption_placeholder else R.string.room_composer_placeholder)) },
                 maxLines = COMPOSER_LINES,
                 shape = RoundedCornerShape(Theme.Radius.bubble),
                 colors = pillColors(),
