@@ -108,6 +108,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.ui.draw.shadow
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -191,6 +197,9 @@ fun RoomScreen(
     /** Чем поделились из другого приложения: ложится в поле ввода и под миниатюры, отправляет человек. */
     share: wtf.iskra.features.SharedContent? = null,
     onShareTaken: () -> Unit = {},
+    /** Сервер недоступен / список догоняет его — строка под названием говорит об этом вместо участников (`RoomListStatus`). */
+    isOffline: Boolean = false,
+    isUpdating: Boolean = false,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -424,7 +433,7 @@ fun RoomScreen(
     ChatWallpaper()
     CompositionLocalProvider(LocalChatInk provides wallpaperInk()) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
-        Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails)
+        Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
         identityChanges?.let { identity ->
             val waiting by identity.changes.collectAsStateWithLifecycle()
@@ -475,16 +484,8 @@ fun RoomScreen(
         // что он видит, прыгало на строку каждый раз, как кто-то начинал или бросал писать (вторая
         // причина «скачущей ленты» на iOS). Поэтому только у конца переписки; выше — в шапке.
         if (state.typing.isNotEmpty() && atLiveEnd) {
-            Text(
-                if (state.typing.size == 1 && !state.header.isOneToOne) {
-                    stringResource(R.string.room_typing_by, state.typing[0])
-                } else {
-                    stringResource(R.string.room_typing)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = quietInk(),
-                modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.tight),
-            )
+            // Три точки в пузыре, а имя — в заголовке (`headerSubtitle`): две подачи одного факта, одна из них без слов, лишние.
+            TypingBubble(Modifier.padding(horizontal = Theme.Spacing.normal).padding(top = Theme.Spacing.withinRun))
         }
         // Личный чат с тем, кого заблокировали: плашка вместо поля ввода. В группе один заблокированный не мешает писать остальным.
         val blockedId = state.header.counterpartId?.takeIf { state.header.isOneToOne && blocked != null }
@@ -718,7 +719,7 @@ fun RoomScreen(
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit, onOpenDetails: (() -> Unit)? = null) {
+private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, onSearch: () -> Unit, onOpenDetails: (() -> Unit)? = null, isOffline: Boolean = false, isUpdating: Boolean = false) {
     val header = state.header
     TopAppBar(
         navigationIcon = {
@@ -748,11 +749,20 @@ private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, 
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    // Порядок — `headerSubtitle` на iOS: сеть, тред, кто пишет, присутствие или Matrix ID собеседника, участники.
+                    val presence = state.counterpartPresence?.let { presenceText(it) }
                     val status = when {
+                        isOffline -> stringResource(R.string.room_list_waiting_for_network)
+                        isUpdating -> stringResource(R.string.room_list_updating)
                         isThread -> header.name
-                        state.typing.isNotEmpty() -> stringResource(R.string.room_typing)
-                        state.counterpartPresence?.let { presenceText(it) } != null -> presenceText(state.counterpartPresence!!)
-                        !header.isOneToOne && header.memberCount > 0 ->
+                        state.typing.isNotEmpty() ->
+                            if (header.isOneToOne) {
+                                stringResource(R.string.room_typing)
+                            } else {
+                                stringResource(R.string.room_typing_by, android.icu.text.ListFormatter.getInstance().format(state.typing))
+                            }
+                        header.isOneToOne -> presence ?: header.counterpartId
+                        header.memberCount > 0 ->
                             pluralStringResource(R.plurals.room_participants, header.memberCount, header.memberCount)
                         else -> null
                     }
@@ -910,6 +920,43 @@ private fun Conversation(
             }
         }
         FloatingDate(list, newestFirst)
+
+        // Кнопка «вниз» (`scrollToBottom`): появляется, когда читающий ушёл от живого конца, и считает, сколько чужих сообщений пришло, пока он там.
+        val away by remember { derivedStateOf { list.firstVisibleItemIndex > 1 } }
+        var unseen by remember { mutableIntStateOf(0) }
+        LaunchedEffect(newest?.let(state::viewKey)) {
+            if (away && newest?.message?.isOwn == false) unseen++
+        }
+        LaunchedEffect(away) { if (!away) unseen = 0 }
+        AnimatedVisibility(away, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.BottomEnd).padding(Theme.Spacing.roomy)) {
+            val label = stringResource(R.string.room_scroll_to_bottom)
+            Box(
+                Modifier
+                    .size(Theme.Size.composerControl)
+                    .shadow(Theme.Spacing.tight, CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClickLabel = label) { scope.launch { list.animateScrollToItem(0); unseen = 0 } },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = label)
+                if (unseen > 0) {
+                    Text(
+                        unseen.toString(),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = LocalAccent.current.foreground,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .offset(y = -Theme.Size.unreadBadge / 2)
+                            .sizeIn(minWidth = Theme.Size.unreadBadge, minHeight = Theme.Size.unreadBadge)
+                            .background(LocalAccent.current.control, CircleShape)
+                            .padding(horizontal = Theme.Spacing.tight),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -941,7 +988,19 @@ private fun BoxScope.FloatingDate(list: LazyListState, newestFirst: List<Timelin
     }
     val day = top
     AnimatedVisibility(scrolling && day != null, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.TopCenter)) {
-        if (day != null) DayLine(day)
+        // Плавающая дата — капсула над перепиской (`FloatingDateLabel`), а не голые слова: под ней идут пузыри.
+        if (day != null) {
+            Text(
+                dayLabel(day),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .padding(top = Theme.Spacing.close)
+                    .shadow(Theme.Spacing.tight, CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+                    .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.tight),
+            )
+        }
     }
 }
 
@@ -1510,49 +1569,59 @@ internal fun body(message: Message): String = when (val kind = message.kind) {
 
 @Composable
 private fun ServiceLine(text: String) {
+    // `RoomEventRow` на iOS: caption по центру, поля normal и tight; воздух сверху даёт соседний ряд (`TimelineRows`).
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
         color = quietInk(),
         textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.generous, vertical = Theme.Spacing.close),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.tight),
     )
 }
 
 @Composable
-private fun DayLine(date: Instant) {
+private fun dayLabel(date: Instant): String {
     val day = date.atZone(ZoneId.systemDefault()).toLocalDate()
     val today = LocalDate.now()
     val locale = LocalConfiguration.current.locales[0]
-    val label = when (day) {
+    return when (day) {
         today -> stringResource(R.string.room_today)
         today.minusDays(1) -> stringResource(R.string.room_yesterday)
-        else -> DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG).withLocale(locale).format(day)
-    }
-    Box(Modifier.fillMaxWidth().padding(vertical = Theme.Spacing.close), contentAlignment = Alignment.Center) {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.tight),
-        )
+        // «24 октября» в этом году и «24 октября 2025» в другом — как `DayDividerView` на iOS.
+        else -> {
+            val skeleton = if (day.year == today.year) "dMMMM" else "dMMMMy"
+            DateTimeFormatter.ofPattern(android.text.format.DateFormat.getBestDateTimePattern(locale, skeleton), locale).format(day)
+        }
     }
 }
 
 @Composable
+private fun DayLine(date: Instant) {
+    val label = dayLabel(date)
+    // Голые слова, как время у пузыря: без плашки. Воздух неровный нарочно — он над датой: дата закрывает день до себя и открывает тот, что под ней.
+    Text(
+        label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Medium,
+        color = quietInk(),
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(top = Theme.Spacing.roomy, bottom = Theme.Spacing.close),
+    )
+}
+
+@Composable
 private fun UnreadLine() {
+    // Во всю ширину экрана, за поля переписки: полоса, что кончалась бы там же, где пузыри, была бы ещё одной фигурой в их колонке.
     Text(
         stringResource(R.string.room_unread_messages),
         style = MaterialTheme.typography.labelMedium,
-        color = LocalAccent.current.control,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = Theme.Spacing.close)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(top = Theme.Spacing.roomy, bottom = Theme.Spacing.close)
+            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = Theme.Backdrop.WASH))
             .padding(vertical = Theme.Spacing.tight),
     )
 }
@@ -1821,3 +1890,38 @@ private fun wallpaperInk(): Color? {
 
 private const val INK_ON_DARK = 0.82f
 private const val INK_ON_LIGHT = 0.62f
+
+/** Три пульсирующие точки в серой плашке входящего: кто-то пишет (`TypingBubble` на iOS). */
+@Composable
+private fun TypingBubble(modifier: Modifier = Modifier) {
+    val transition = androidx.compose.animation.core.rememberInfiniteTransition(label = "typing")
+    Row(
+        modifier
+            .clip(RoundedCornerShape(Theme.Radius.bubble))
+            .background(LocalAccent.current.incomingBubble)
+            .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.normal),
+        horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(3) { index ->
+            val pulse by transition.animateFloat(
+                initialValue = 0.35f,
+                targetValue = 1f,
+                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                    androidx.compose.animation.core.tween(TYPING_PERIOD_MS, delayMillis = index * TYPING_STAGGER_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                    androidx.compose.animation.core.RepeatMode.Reverse,
+                ),
+                label = "dot$index",
+            )
+            Box(
+                Modifier
+                    .size(Theme.Spacing.close)
+                    .graphicsLayer { alpha = pulse; scaleX = 0.8f + 0.2f * (pulse - 0.35f) / 0.65f; scaleY = scaleX }
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant, CircleShape),
+            )
+        }
+    }
+}
+
+private const val TYPING_PERIOD_MS = 600
+private const val TYPING_STAGGER_MS = 180

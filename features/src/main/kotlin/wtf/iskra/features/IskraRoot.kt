@@ -350,6 +350,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 blocked = session.blocked,
                 share = shareIntoRoom.takeIf { roomId != null },
                 onShareTaken = { shareIntoRoom = null },
+                isOffline = rooms.isOffline,
+                isUpdating = rooms.isUpdating,
             )
             creating -> wtf.iskra.features.rooms.NewConversationScreen(
                 session,
