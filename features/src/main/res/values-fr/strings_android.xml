@@ -45,4 +45,5 @@
     <string name="about_libraries">Bibliothèques open source</string>
     <string name="about_libraries_help">Tout ce que d’autres ont écrit dans l’app, et sous quelle licence.</string>
     <string name="notification_channel_background">Tâches en arrière-plan</string>
+    <string name="app_icon_note">Le lanceur peut clignoter un instant pendant le changement d’icône, et un raccourci sur l’écran d’accueil peut disparaître : c’est ainsi qu’Android fonctionne.</string>
 </resources>

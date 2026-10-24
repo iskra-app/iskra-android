@@ -45,4 +45,5 @@
     <string name="about_libraries">Bibliotecas de código abierto</string>
     <string name="about_libraries_help">Todo lo que hay dentro de la app escrito por otros, y bajo qué licencia.</string>
     <string name="notification_channel_background">Tareas en segundo plano</string>
+    <string name="app_icon_note">El launcher puede parpadear un momento al cambiar el icono, y un acceso directo del escritorio puede desaparecer: así funciona Android.</string>
 </resources>

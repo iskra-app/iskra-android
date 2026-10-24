@@ -435,7 +435,7 @@ def sync_icon(iskra: Repo, rev: str) -> None:
     """Знак Искры как adaptive icon: тот же контур, что в Icon Composer, на том же зелёном.
 
     Фон — `automatic-gradient` документа `iskra-spark.icon`; знак — его слой. Монохромный слой (иконки
-    в теме, Android 13+) — тот же контур. Остальные семь иконок — этап 10 (activity-alias).
+    в теме, Android 13+) — тот же контур. Остальные семь — `sync_alt_icons`.
     """
     import json
 
@@ -480,6 +480,87 @@ def sync_icon(iskra: Repo, rev: str) -> None:
     )
 
 
+# Остальные семь иконок на выбор (`activity-alias`, этап 10). Фон — цвет или вертикальный градиент документа `.icon`,
+# слой — его контур (цвет — свой в SVG или переопределение документа), ширина — в dp из 108 adaptive icon.
+# Монохромный слой (Android 13+) — главный контур белым.
+_ALT_ICONS = {
+    "chrome": {"background": "#14 1F25", "layers": [("Subtract2.svg", "#D8E1EE", 56)]},
+    "garnet": {"background": "#70122A", "layers": [("Subtract2.svg", None, 56)]},
+    "pine": {"background": "#124233", "layers": [("Subtract2.svg", None, 56)]},
+    "rio": {"background": ("#5F3990", "#AD523F"), "layers": [("Subtract2.svg", "#FFFFFF", 56)]},
+    "black_white": {"background": "#F0EBDE", "layers": [("Subtract2.svg", None, 56)]},
+    "letters": {"background": "#FCF91E", "layers": [("Union2.svg", "#000000", 130)]},
+    "retro": {"background": "#000000", "layers": [("Subtract3.svg", "#FCF91E", 108), ("Subtract2.svg", None, 44)]},
+}
+_ALT_SOURCE = {"rio": "iskra-rio-de-janeiro", "black_white": "iskra-black-white"}
+_SVG_ANY_PATH = re.compile(r'<path d="([^"]+)"')
+_SVG_FILL = re.compile(r'fill="(#[0-9A-Fa-f]{6})"')
+
+
+def sync_alt_icons(iskra: Repo, rev: str) -> None:
+    """Семь иконок на выбор: фон, слои и монохромный слой каждой — в `ic_launcher_<имя>*`."""
+    res = ROOT / "app/src/main/res"
+    colors = ['<?xml version="1.0" encoding="utf-8"?>',
+              f"<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@{rev[:12]}: icons/*.icon. -->", "<resources>"]
+    for name, spec in _ALT_ICONS.items():
+        source = _ALT_SOURCE.get(name, f"iskra-{name}")
+        paths = []
+        for image, override, size in spec["layers"]:
+            # Retro берёт контур из своей папки; `Subtract2.svg` и `Subtract3.svg` лежат в `iskra-retro.icon`.
+            svg = iskra.read(f"icons/{source}.icon/Assets/{image}").decode()
+            data = _SVG_ANY_PATH.search(svg)
+            if not data:
+                raise SyncError(f"в слое {source}/{image} не нашёлся контур")
+            width, height = (float(x) for x in re.search(r'viewBox="0 0 ([\d.]+) ([\d.]+)"', svg).groups())
+            fill = (override or (_SVG_FILL.search(svg) or [None, "#000000"])[1]).upper()
+            paths.append((data.group(1), fill, size / width, width, height, size))
+
+        def vector(mono: bool) -> str:
+            body = []
+            for d, fill, scale, w, h, size in (paths[-1:] if mono else paths):
+                tx, ty = (108 - w * scale) / 2, (108 - h * scale) / 2
+                body.append(
+                    f'    <group android:scaleX="{scale:.6f}" android:scaleY="{scale:.6f}"\n'
+                    f'        android:translateX="{tx:.4f}" android:translateY="{ty:.4f}">\n'
+                    f'        <path android:fillColor="{"#FFFFFFFF" if mono else fill}" android:fillType="evenOdd"\n'
+                    f'            android:pathData="{d}" />\n    </group>\n'
+                )
+            return (
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                f"<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@{rev[:12]}: icons/{source}.icon. -->\n"
+                '<vector xmlns:android="http://schemas.android.com/apk/res/android"\n'
+                '    android:width="108dp"\n    android:height="108dp"\n'
+                '    android:viewportWidth="108"\n    android:viewportHeight="108">\n' + "".join(body) + "</vector>\n"
+            )
+
+        write(res / f"drawable/ic_launcher_{name}_foreground.xml", vector(False))
+        write(res / f"drawable/ic_launcher_{name}_monochrome.xml", vector(True))
+        background = spec["background"]
+        if isinstance(background, tuple):
+            write(
+                res / f"drawable/ic_launcher_{name}_background.xml",
+                '<?xml version="1.0" encoding="utf-8"?>\n'
+                f"<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@{rev[:12]}: icons/{source}.icon. -->\n"
+                '<shape xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                f'    <gradient android:angle="270" android:startColor="{background[0]}" android:endColor="{background[1]}" />\n</shape>\n',
+            )
+            background_ref = f"@drawable/ic_launcher_{name}_background"
+        else:
+            colors.append(f'    <color name="ic_launcher_{name}_background">{background.replace(" ", "")}</color>')
+            background_ref = f"@color/ic_launcher_{name}_background"
+        write(
+            res / f"mipmap-anydpi/ic_launcher_{name}.xml",
+            '<?xml version="1.0" encoding="utf-8"?>\n'
+            f"<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@{rev[:12]}: icons/{source}.icon. -->\n"
+            '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+            f'    <background android:drawable="{background_ref}" />\n'
+            f'    <foreground android:drawable="@drawable/ic_launcher_{name}_foreground" />\n'
+            f'    <monochrome android:drawable="@drawable/ic_launcher_{name}_monochrome" />\n</adaptive-icon>\n',
+        )
+    colors.append("</resources>\n")
+    write(res / "values/ic_launcher_alt_colors.xml", "\n".join(colors))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("iskra", type=Path, help="путь к клону iskra")
@@ -496,6 +577,7 @@ def main() -> int:
         sync_strings(iskra, rev)
         sync_fixtures(iskra, rev)
         sync_icon(iskra, rev)
+        sync_alt_icons(iskra, rev)
         sync_stickers(iskra, rev)
         sync_proto(bridge, bridge_rev)
     except (SyncError, subprocess.CalledProcessError) as error:

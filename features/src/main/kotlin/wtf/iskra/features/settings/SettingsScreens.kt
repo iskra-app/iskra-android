@@ -431,6 +431,7 @@ private fun Appearance(settings: AppSettings) {
     )
 
     WallpaperSection(settings)
+    AppIconSection()
 }
 
 private fun accentName(theme: AccentTheme): Int = when (theme) {

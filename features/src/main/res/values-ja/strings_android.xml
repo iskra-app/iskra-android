@@ -45,4 +45,5 @@
     <string name="about_libraries">オープンソースライブラリ</string>
     <string name="about_libraries_help">アプリ内で他の人が書いたものと、そのライセンス。</string>
     <string name="notification_channel_background">バックグラウンドの処理</string>
+    <string name="app_icon_note">アイコンの変更中はランチャーが一瞬ちらつくことがあり、ホーム画面のショートカットが消える場合があります。これはAndroidの仕様です。</string>
 </resources>
