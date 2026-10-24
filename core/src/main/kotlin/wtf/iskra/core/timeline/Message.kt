@@ -204,6 +204,8 @@ data class Message(
     val uploadProgress: Double? = null,
     /** Откуда пересланное (`m.forwarded`); null — не пересылка. */
     val forwardedFrom: ForwardOrigin? = null,
+    /** Когда сообщение удалили, если сервер оставил это в событии; у остального null. Нет строки в меню — не неверная дата. */
+    val deletedAt: Instant? = null,
 ) {
     /** Все сообщения, за которые стоит эта строка: альбома или только оно само. */
     val members: List<Message> get() = album ?: listOf(this)
@@ -227,6 +229,9 @@ data class Message(
 
     /** Не на удалённое (👍 под «сообщение удалено») и не на неотправленное — у него нет ID события. */
     val canReact: Boolean get() = !isDeleted && isOnServer
+
+    /** Может ли тот, кому комната разрешает удалять чужое, удалить это: любое чужое, пока от него что-то осталось. Своё — по [canDelete]. */
+    val canBeDeletedByModerator: Boolean get() = !isOwn && !isDeleted
 
     /** Свои, дошедшие до сервера: у сообщения в очереди нечего удалять. */
     val canDelete: Boolean get() = isOwn && !isDeleted && delivery != null && isOnServer

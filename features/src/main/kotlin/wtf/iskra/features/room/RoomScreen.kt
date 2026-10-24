@@ -582,6 +582,7 @@ fun RoomScreen(
             report = { message -> reportOf = message },
             retractVote = { message -> scope.launch { store.vote(message.id, emptyList()) } },
             stickers = stickers,
+            canDeleteOthers = state.canDeleteOthers,
         ),
         LocalSelection provides selectedIds?.let { ids -> SelectionState(ids) { id -> selectedIds = if (id in ids) ids - id else ids + id } },
         LocalReaderCount provides if (isThread || state.header.isOneToOne) null else { id -> store.readerIds(id).size },
@@ -676,7 +677,7 @@ fun RoomScreen(
             val transcript = selectionTranscript(chosen)
             SelectionBar(
                 count = picked.size,
-                canDelete = chosen.isNotEmpty() && !isOffline && chosen.all { it.canDelete },
+                canDelete = chosen.isNotEmpty() && !isOffline && chosen.all { it.canDelete || (state.canDeleteOthers && it.canBeDeletedByModerator) },
                 canForward = chosen.isNotEmpty() && !isOffline && forwarding != null && !isThread && chosen.all { it.canForward },
                 canCopy = transcript != null,
                 onCancel = { selectedIds = null },
@@ -1918,12 +1919,15 @@ private fun MessageMenu(
             add(MenuAction(stringResource(R.string.message_menu_select), Icons.Filled.CheckCircle) { select(message) })
         }
         LocalShowSource.current?.let { show -> add(MenuAction(stringResource(R.string.beta_view_source), Icons.Filled.Code) { show(message.id) }) }
-        if (message.canDelete && !offline) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
+        if ((message.canDelete || (tools?.canDeleteOthers == true && message.canBeDeletedByModerator)) && !offline) {
+            add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
+        }
         // Жалуются на чужое и дошедшее до сервера: на своё не жалуются, у удалённого жаловаться не на что, без сети некому.
         if (!message.isOwn && !message.isDeleted && !offline && message.delivery == null) {
             tools?.report?.let { report -> add(MenuAction(stringResource(R.string.message_menu_report), Icons.Filled.Report, destructive = true) { report(message) }) }
         }
         add(MenuAction(stringResource(R.string.message_menu_sent_at, exactly(message.timestamp)), Icons.Outlined.Schedule, fact = true) {})
+        message.deletedAt?.let { at -> add(MenuAction(stringResource(R.string.message_menu_deleted_at, exactly(at)), Icons.Filled.Delete, fact = true) {}) }
     }
     MessageMenuOverlay(
         anchor = anchor,
@@ -2490,6 +2494,8 @@ internal class MessageTools(
     val report: ((Message) -> Unit)?,
     val retractVote: (Message) -> Unit,
     val stickers: StickerLibrary?,
+    /** Модератор: может удалить и чужое (`canOwnUserRedactOther`). */
+    val canDeleteOthers: Boolean = false,
 )
 
 internal val LocalMessageTools = androidx.compose.runtime.compositionLocalOf<MessageTools?> { null }

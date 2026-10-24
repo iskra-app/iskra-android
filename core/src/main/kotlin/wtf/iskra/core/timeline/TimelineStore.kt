@@ -112,6 +112,8 @@ data class TimelineState(
     val didFailToPaginate: Boolean = false,
     /** Можно ли писать сюда. С начала true: пока права не пришли, безопасно держать композер на экране. */
     val canPost: Boolean = true,
+    /** Можно ли удалять чужие сообщения: модератору комнаты. */
+    val canDeleteOthers: Boolean = false,
     /** Кто печатает, по имени в этой комнате. Себя нет никогда. */
     val typing: List<String> = emptyList(),
     /** Где собеседник личного чата, по словам сервера. Null — сказать нечего: присутствие выключено или скрыто своё. */
@@ -398,6 +400,7 @@ class TimelineStore internal constructor(
                 // Права приходят не всегда; «нет» — только на ясное слово комнаты.
                 pinnedIds = info.pinnedEventIds,
                 canPost = levels?.let { runCatching { it.canOwnUserSendMessage(MessageLikeEventType.RoomMessage) }.getOrNull() } ?: state.canPost,
+                canDeleteOthers = levels?.let { runCatching { it.canOwnUserRedactOther() }.getOrNull() } ?: state.canDeleteOthers,
             )
         }
         pinnedStore?.roomPinned(info.pinnedEventIds)

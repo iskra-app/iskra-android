@@ -113,6 +113,7 @@ internal object TimelineMapper {
             readAt = if (event.isOwn) readAt(event, ownUserId) else null,
             uploadProgress = if (event.isOwn) uploadProgress(event.localSendState) else null,
             forwardedFrom = forwardOrigin(event, kind),
+            deletedAt = if (kind == MessageKind.Deleted) redactionTime(event) else null,
             isEdited = ((msgLike?.kind as? MsgLikeKind.Message)?.content?.isEdited) == true,
             replyTo = replyPreview(event.content, strings),
             reactions = reactions(event.content, ownUserId),
@@ -353,6 +354,18 @@ internal object TimelineMapper {
 
     /** Доля ушедшего; null, пока делить не на что. */
     internal fun fraction(current: Long, total: Long): Double? = if (total > 0) minOf(1.0, current.toDouble() / total) else null
+
+    /**
+     * Когда сообщение удалили: `unsigned.redacted_because.origin_server_ts` события. Поле необязательно, и сервер, что опустил
+     * удаление, — это строка меню без «Удалено …», а не неверная дата: единственный допустимый способ ошибиться.
+     */
+    private fun redactionTime(event: EventTimelineItem): Instant? {
+        val json = runCatching { event.lazyProvider.debugInfo().originalJson }.getOrNull() ?: return null
+        val parsed = runCatching { kotlinx.serialization.json.Json.parseToJsonElement(json) as? kotlinx.serialization.json.JsonObject }.getOrNull() ?: return null
+        val because = (parsed["unsigned"] as? kotlinx.serialization.json.JsonObject)?.get("redacted_because") as? kotlinx.serialization.json.JsonObject ?: return null
+        val millis = (because["origin_server_ts"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: return null
+        return Instant.ofEpochMilli(millis)
+    }
 
     /** `m.forwarded` события, если оно пересылка, — только для видов, что пересылаются, и один раз на событие (`Forwarded.origin`). */
     private fun forwardOrigin(event: EventTimelineItem, kind: MessageKind): ForwardOrigin? {
