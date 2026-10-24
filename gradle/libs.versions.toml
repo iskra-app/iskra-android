@@ -15,10 +15,10 @@ minSdk = "29"
 compileSdk = "37"
 targetSdk = "37"
 
-# Matrix. Тот же коммит matrix-rust-sdk (1c44fb6), что Swift-пакет 26.06.06 в
-# iskra/Core/Package.swift: у Kotlin-биндингов свои номера релизов, и 26.06.3 — тот, что собран
+# Matrix. Тот же коммит matrix-rust-sdk (15a3ce2), что Swift-пакет 26.08.11 в
+# iskra/Core/Package.swift: у Kotlin-биндингов свои номера релизов, и 26.08.11 — тот, что собран
 # с этого коммита. Обновлять на обеих платформах вместе.
-matrixSdk = "26.06.3"
+matrixSdk = "26.08.11"
 
 # NDK для крейта клиента моста (:tunnel, docs/PROMPT.md, 9.3). r28+ выравнивает .so на 16 KB сам.
 ndk = "29.0.14206865"

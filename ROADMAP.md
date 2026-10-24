@@ -12,7 +12,7 @@
 - [x] Gradle-модули `:core`, `:design`, `:features`, `:app`; правило зависимостей проверяется
       сборкой (`checkModuleRules`, по разрешённому графу); `foss` без библиотек Google — там же
 - [x] Version catalog: minSdk 29 с обоснованием, compileSdk/targetSdk 37, AGP 9.4, Kotlin 2.4
-- [x] SDK подключён: `sdk-android 26.06.3` — тот же коммит `matrix-rust-sdk` (1c44fb6), что Swift `26.06.06`
+- [x] SDK подключён: `sdk-android 26.08.11` — тот же коммит `matrix-rust-sdk` (15a3ce2), что Swift `26.08.11`
 - [x] `Theme` (все размеры и движение из `Theme.swift`, сетка держится `ThemeTest`), `Motion` —
       перевод пружин SwiftUI в Compose
 - [x] `AccentTheme` (семь цветов, моно, `system`/Material You с API 31), `AppearanceMode`,

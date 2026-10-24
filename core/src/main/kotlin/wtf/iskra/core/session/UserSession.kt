@@ -73,7 +73,8 @@ class UserSession internal constructor(
     val notificationRules: NotificationRulesStore by lazy { NotificationRulesStore(client) }
 
     /** Поиск по своим сообщениям — по локальному индексу, на сервер не уходит. */
-    val search = wtf.iskra.core.search.SearchStore(client, scope, strings)
+    private val messageSearch = wtf.iskra.core.search.MessageSearch(client, strings)
+    val search = wtf.iskra.core.search.SearchStore(messageSearch, scope)
 
     /**
      * Стикеры, которые аккаунт может отправить (`StickerLibrary`): сессии, а не комнаты — свой пак,
@@ -315,6 +316,7 @@ class UserSession internal constructor(
             downloadMedia = downloadMedia,
             privacy = privacy,
             askPresence = if (isDemo) null else ::presenceOf,
+            searchMessages = messageSearch,
         )
     }
 
@@ -334,6 +336,7 @@ class UserSession internal constructor(
             threadRootId = rootEventId,
             localNames = localNames,
             downloadMedia = downloadMedia,
+            searchMessages = messageSearch,
         )
     }
 

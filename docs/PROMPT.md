@@ -92,7 +92,7 @@ Matrix и шифрование целиком отданы `matrix-rust-sdk`. П
 
 | Слой | Библиотека | Заметки |
 |---|---|---|
-| Matrix | `org.matrix.rustcomponents:sdk-android` (из `matrix-org/matrix-rust-components-kotlin`) | Брать релиз **того же коммита SDK**, что Swift-пакет `26.06.06` в `Core/Package.swift`, и проверить, что он есть на Maven Central. Тогда API совпадает почти один в один и сторы переносятся прямо. Обновлять SDK на обеих платформах синхронно. |
+| Matrix | `org.matrix.rustcomponents:sdk-android` (из `matrix-org/matrix-rust-components-kotlin`) | Брать релиз **того же коммита SDK**, что Swift-пакет `26.08.11` в `Core/Package.swift`, и проверить, что он есть на Maven Central. Тогда API совпадает почти один в один и сторы переносятся прямо. Обновлять SDK на обеих платформах синхронно. |
 | Асинхронность | kotlinx.coroutines, `StateFlow`/`SharedFlow` | `@MainActor @Observable` превращается в класс со `StateFlow`, мутации на `Dispatchers.Main.immediate` |
 | UI | Jetpack Compose, Material 3 | Material 3 целиком: каркас, схема и формы — стиль Google, шрифт Google Sans (один, без выбора); вёрстка и наполнение экранов — как на iOS (раздел 6) |
 | Адаптивность | `androidx.compose.material3.adaptive` (`ListDetailPaneScaffold`, `NavigationSuiteScaffold`) | Планшеты, складные телефоны, ChromeOS: аналог iPad/Mac, где список и чат стоят рядом |

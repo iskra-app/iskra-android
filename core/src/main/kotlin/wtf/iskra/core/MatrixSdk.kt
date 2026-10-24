@@ -9,11 +9,11 @@ package wtf.iskra.core
  * версии Kotlin-биндингов от номера Swift-пакета отличается, и сверить их можно только так.
  */
 object MatrixSdk {
-    /** Коммит, с которого собран Swift-пакет `26.06.06` в iskra/Core/Package.swift. */
-    const val EXPECTED_COMMIT = "1c44fb66214667c6d00acaf72ab592493653708b"
+    /** Коммит, с которого собран Swift-пакет `26.08.11` в iskra/Core/Package.swift. */
+    const val EXPECTED_COMMIT = "15a3ce2369a1e96fcad02cb2b1da3198ef23348a"
 
     /**
-     * Коммит библиотеки, которая на самом деле загрузилась, — сокращённый (`1c44fb662`), каким его
+     * Коммит библиотеки, которая на самом деле загрузилась, — сокращённый (`15a3ce236`), каким его
      * отдаёт сам SDK. Первый вызов грузит нативный код.
      */
     fun commit(): String = org.matrix.rustcomponents.sdk.sdkGitSha()

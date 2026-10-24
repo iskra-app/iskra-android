@@ -8,10 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.MsgLikeKind
-import org.matrix.rustcomponents.sdk.ProfileDetails
-import org.matrix.rustcomponents.sdk.SearchRoomFilter
 import org.matrix.rustcomponents.sdk.TimelineItemContent
 import wtf.iskra.core.rooms.MessagePreview
 import wtf.iskra.core.support.Log
@@ -37,9 +34,8 @@ data class SearchState(
  * его значило бы рассказать, что человек ищет.
  */
 class SearchStore internal constructor(
-    private val client: Client,
+    private val messages: MessageSearch,
     private val scope: CoroutineScope,
-    private val strings: Strings,
 ) {
     private val mutableState = MutableStateFlow(SearchState())
     val state: StateFlow<SearchState> = mutableState.asStateFlow()
@@ -59,15 +55,7 @@ class SearchStore internal constructor(
             // Дождаться паузы в наборе, а не дёргать индекс на каждую букву.
             delay(DEBOUNCE_MS)
             val hits = try {
-                withTimeLimit(LIMIT) {
-                    val iterator = client.searchMessages(trimmed, SearchRoomFilter.ROOMS, BATCH.toUInt())
-                    iterator.nextEvents().orEmpty().mapNotNull { result ->
-                        val event = result.result
-                        val excerpt = excerpt(event.content, strings) ?: return@mapNotNull null
-                        val name = (event.senderProfile as? ProfileDetails.Ready)?.displayName?.takeIf { it.isNotBlank() } ?: event.sender
-                        SearchHit(event.eventId, result.roomId, name, excerpt, MessagePreview.instant(event.timestamp.toULong()))
-                    }
-                }
+                withTimeLimit(LIMIT) { messages.hits(trimmed, BATCH) }
             } catch (error: Exception) {
                 if (error is CancellationException) throw error
                 Log.error(Log.Category.ROOMS, "поиск не удался: ${Log.describe(error)}")

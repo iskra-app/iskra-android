@@ -26,9 +26,9 @@ import org.matrix.rustcomponents.sdk.UserPowerLevelUpdate
 import org.matrix.rustcomponents.sdk.isRoomAliasFormatValid
 import org.matrix.rustcomponents.sdk.roomAliasNameFromRoomDisplayName
 import org.matrix.rustcomponents.sdk.suggestedPowerLevelForRole
-import org.matrix.rustcomponents.sdk.StateEventType
 import org.matrix.rustcomponents.sdk.TaskHandle
 import uniffi.matrix_sdk.RoomMemberRole
+import uniffi.ruma_events.StateEventType
 import wtf.iskra.core.R
 import wtf.iskra.core.notifications.RoomAlerts
 import wtf.iskra.core.support.Log

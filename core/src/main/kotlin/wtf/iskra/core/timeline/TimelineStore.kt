@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.ruma_events.MessageLikeEventType
+import wtf.iskra.core.search.MessageSearch
 import wtf.iskra.core.media.MediaSettings
 import wtf.iskra.core.mock.JsonValues
 import wtf.iskra.core.stickers.Sticker
@@ -26,7 +28,6 @@ import wtf.iskra.core.media.VideoPreparation
 import org.matrix.rustcomponents.sdk.ThumbnailInfo
 import org.matrix.rustcomponents.sdk.VideoInfo
 import wtf.iskra.core.search.SearchHit
-import wtf.iskra.core.search.SearchStore
 import wtf.iskra.core.rooms.MessagePreview
 import wtf.iskra.core.R
 import wtf.iskra.core.rooms.PrivacyStatus
@@ -56,8 +57,6 @@ import org.matrix.rustcomponents.sdk.QueueWedgeError
 import org.matrix.rustcomponents.sdk.SendHandle
 import org.matrix.rustcomponents.sdk.MembershipState
 import org.matrix.rustcomponents.sdk.Mentions
-import org.matrix.rustcomponents.sdk.MessageLikeEventType
-import org.matrix.rustcomponents.sdk.ProfileDetails
 import org.matrix.rustcomponents.sdk.ReceiptType
 import org.matrix.rustcomponents.sdk.Room
 import org.matrix.rustcomponents.sdk.RoomInfo
@@ -210,6 +209,8 @@ class TimelineStore internal constructor(
     private val privacy: () -> wtf.iskra.core.session.PrivacySettings = { wtf.iskra.core.session.PrivacySettings() },
     /** Спросить сервер, где человек (`UserSession.presenceOf`). Null — нечем; бросает [wtf.iskra.core.session.PresenceDeclined], если сервер молчит. */
     private val askPresence: (suspend (userId: String) -> wtf.iskra.core.session.Presence?)? = null,
+    /** Поиск по локальному индексу (`UserSession.messageSearch`). Null — искать нечем. */
+    private val searchMessages: MessageSearch? = null,
 ) {
     /** Имя от сервера — чтобы снять прозвище, пока экран открыт, не дожидаясь нового `RoomInfo`. */
     private var serverTitle: String? = null
@@ -1346,19 +1347,15 @@ class TimelineStore internal constructor(
     }
 
     /**
-     * Поиск внутри этой комнаты — по тому же локальному индексу, что и общий (`RoomSearchStore` на
-     * iOS), и с тем же правилом: результат — только живое сообщение (`SearchStore.excerpt`).
+     * Поиск внутри этой комнаты — по тому же локальному индексу и тем же сервисом, что и общий
+     * (`RoomSearchStore` на iOS): SDK ищет только по всем комнатам сразу, своё отбирает [MessageSearch].
      */
     suspend fun search(query: String): List<SearchHit> {
         val trimmed = query.trim()
         if (trimmed.length < 2) return emptyList()
         return try {
             withTimeLimit(SDK_LIMIT) {
-                room.searchMessages(trimmed, SEARCH_BATCH.toUInt()).nextEvents().orEmpty().mapNotNull { event ->
-                    val excerpt = SearchStore.excerpt(event.content, strings) ?: return@mapNotNull null
-                    val name = (event.senderProfile as? ProfileDetails.Ready)?.displayName?.takeIf { it.isNotBlank() } ?: event.sender
-                    SearchHit(event.eventId, roomId, name, excerpt, MessagePreview.instant(event.timestamp.toULong()))
-                }
+                searchMessages?.hits(trimmed, SEARCH_BATCH, roomId).orEmpty()
             }
         } catch (error: Exception) {
             if (error is CancellationException) throw error
