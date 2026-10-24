@@ -75,6 +75,7 @@ object Album {
             album = run.toList(),
             delivery = run.mapNotNull { it.delivery }.minByOrNull(::rank) ?: lead.delivery,
             carriesReadMark = run.any { it.carriesReadMark },
+            uploadProgress = run.mapNotNull { it.uploadProgress }.takeIf { it.isNotEmpty() }?.average(),
             isContinued = run.last().isContinued,
         )
     }

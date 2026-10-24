@@ -111,6 +111,7 @@ internal object TimelineMapper {
             timestamp = MessagePreview.instant(event.timestamp),
             delivery = if (event.isOwn) delivery(event, ownUserId) else null,
             readAt = if (event.isOwn) readAt(event, ownUserId) else null,
+            uploadProgress = if (event.isOwn) uploadProgress(event.localSendState) else null,
             isEdited = ((msgLike?.kind as? MsgLikeKind.Message)?.content?.isEdited) == true,
             replyTo = replyPreview(event.content, strings),
             reactions = reactions(event.content, ownUserId),
@@ -347,6 +348,15 @@ internal object TimelineMapper {
 
     /** Прочитал ли это кто-то *другой*. Свою квитанцию не считаем — иначе всё «прочитано» с открытия. */
     private fun hasForeignReceipt(event: EventTimelineItem, ownUserId: String) = event.readReceipts.keys.any { it != ownUserId }
+
+    /** Доля ушедшего; null, пока делить не на что. */
+    internal fun fraction(current: Long, total: Long): Double? = if (total > 0) minOf(1.0, current.toDouble() / total) else null
+
+    /** Докуда вложение своего ушло. Null, пока у SDK нет общего, на что делить: кольцо с выдуманного нуля, что потом прыгнет, хуже того, что появляется с правдой. */
+    private fun uploadProgress(state: EventSendState?): Double? {
+        val upload = (state as? EventSendState.NotSentYet)?.progress ?: return null
+        return fraction(upload.progress.current.toLong(), upload.progress.total.toLong())
+    }
 
     private fun delivery(event: EventTimelineItem, ownUserId: String): DeliveryStatus = when (val state = event.localSendState) {
         is EventSendState.NotSentYet -> DeliveryStatus.Sending

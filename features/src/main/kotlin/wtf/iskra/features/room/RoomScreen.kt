@@ -521,6 +521,7 @@ fun RoomScreen(
     CompositionLocalProvider(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
+        LocalDiscardUpload provides { id -> scope.launch { store.discard(id) } },
         LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
         LocalCompactLayout provides compactLayout,
         LocalShowSource provides if (showsSource) ({ id -> sourceOf = store.sourceJson(id) }) else null,
@@ -1413,12 +1414,14 @@ private fun BubbleBody(
     val album = message.album
     if (album != null) {
         Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
-            AlbumContent(
-                album,
-                onOpen = { if (interactive) onOpen(it) },
-                onDoubleTap = onDoubleTap,
-                onLongPress = onLongPress,
-            )
+            UploadOverlay(message) {
+                AlbumContent(
+                    album,
+                    onOpen = { if (interactive) onOpen(it) },
+                    onDoubleTap = onDoubleTap,
+                    onLongPress = onLongPress,
+                )
+            }
             message.albumCaption?.let { caption ->
                 Text(
                     caption,
@@ -1429,26 +1432,28 @@ private fun BubbleBody(
         }
     } else if (picture != null) {
         Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
-            MediaContent(
-                message.kind,
-                Modifier.bubbleGestures(
-                    interactive = interactive,
-                    onClickLabel = stringResource(
-                        if (message.kind is MessageKind.VideoNote) R.string.message_media_play else R.string.message_media_open_full_screen,
+            UploadOverlay(message) {
+                MediaContent(
+                    message.kind,
+                    Modifier.bubbleGestures(
+                        interactive = interactive,
+                        onClickLabel = stringResource(
+                            if (message.kind is MessageKind.VideoNote) R.string.message_media_play else R.string.message_media_open_full_screen,
+                        ),
+                        onClick = {
+                            when (message.kind) {
+                                is MessageKind.Image, is MessageKind.Video -> onOpen(message.id)
+                                is MessageKind.VideoNote -> onNoteTap()
+                                else -> Unit
+                            }
+                        },
+                        onDoubleClick = onDoubleTap,
+                        onLongClick = onLongPress,
                     ),
-                    onClick = {
-                        when (message.kind) {
-                            is MessageKind.Image, is MessageKind.Video -> onOpen(message.id)
-                            is MessageKind.VideoNote -> onNoteTap()
-                            else -> Unit
-                        }
-                    },
-                    onDoubleClick = onDoubleTap,
-                    onLongClick = onLongPress,
-                ),
-                messageId = message.id,
-                noteTaps = noteTaps,
-            )
+                    messageId = message.id,
+                    noteTaps = noteTaps,
+                )
+            }
             picture.caption?.takeIf { message.kind !is MessageKind.Sticker }?.let { caption ->
                 Text(
                     caption,
@@ -1507,6 +1512,7 @@ interactive = interactive,
                 fill = if (own) ink else accent.color,
                 onFill = if (own) accent.bubble else accent.foreground,
             )
+            message.uploadProgress?.let { UploadBar(it, Modifier.padding(top = Theme.Spacing.tight)) }
         } else if (words != null) {
             Text(
                 words.annotated(
@@ -1521,6 +1527,19 @@ interactive = interactive,
             )
         } else {
             Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
+        }
+    }
+}
+
+/** Кольцо загрузки поверх картинки своего сообщения, пока оно уходит (`UploadRing`). */
+@Composable
+private fun UploadOverlay(message: Message, content: @Composable () -> Unit) {
+    val progress = message.uploadProgress
+    val discard = LocalDiscardUpload.current
+    Box(contentAlignment = Alignment.Center) {
+        content()
+        if (progress != null) {
+            UploadRing(progress, onCancel = { message.members.forEach { discard?.invoke(it.id) } })
         }
     }
 }
