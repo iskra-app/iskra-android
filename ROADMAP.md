@@ -373,7 +373,7 @@
 
 - [x] `:tunnel` (Rust-крейт + uniffi, `cargo-ndk`), `LocalConnectProxy`, relay-пул без ожидания OK
 - [x] Пробуждение на переднем плане, `BridgeCheck`, экран «Подключение»
-- [ ] *Готово:* `BlindRouteTests` и вход + sync на телефоне через настоящий мост
+- [x] *Готово:* `BlindRouteTests` и вход + sync на телефоне через настоящий мост
 
 ## 10. Вне приложения
 
