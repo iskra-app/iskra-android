@@ -46,15 +46,22 @@ import wtf.iskra.features.support.RoomAvatar
  * открывается.
  */
 @Composable
-internal fun MatrixLinkScreen(conversations: Conversations, link: MatrixLink, onOpen: (String) -> Unit, onBack: () -> Unit) {
+internal fun MatrixLinkScreen(
+    conversations: Conversations,
+    link: MatrixLink,
+    onOpen: (String) -> Unit,
+    onBack: () -> Unit,
+    /** Блокировка человека со страницы его ссылки. Null — без неё. */
+    blocked: wtf.iskra.core.session.BlockStore? = null,
+) {
     when (link) {
-        is MatrixLink.User -> PersonLink(conversations, link.userId, onOpen, onBack)
+        is MatrixLink.User -> PersonLink(conversations, link.userId, onOpen, onBack, blocked)
         is MatrixLink.Room -> RoomLink(conversations, link.address, link.via, onOpen, onBack)
     }
 }
 
 @Composable
-private fun PersonLink(conversations: Conversations, userId: String, onOpen: (String) -> Unit, onBack: () -> Unit) {
+private fun PersonLink(conversations: Conversations, userId: String, onOpen: (String) -> Unit, onBack: () -> Unit, blocked: wtf.iskra.core.session.BlockStore?) {
     val scope = rememberCoroutineScope()
     var person by remember { mutableStateOf<PersonProfile?>(null) }
     var opening by remember { mutableStateOf(false) }
@@ -88,6 +95,9 @@ private fun PersonLink(conversations: Conversations, userId: String, onOpen: (St
                     enabled = !opening,
                     modifier = Modifier.fillMaxWidth().padding(top = Theme.Spacing.roomy),
                 ) { if (opening) Busy() else Text(stringResource(R.string.profile_message)) }
+                if (blocked != null) {
+                    wtf.iskra.features.settings.Group({ wtf.iskra.features.support.PersonBlockRow(blocked, shown.id, shown.name) })
+                }
             }
         }
     }

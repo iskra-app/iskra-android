@@ -112,7 +112,7 @@ fun NewConversationScreen(session: UserSession, onOpen: (roomId: String) -> Unit
         }
         Page.LINK -> {
             val link = scanned?.let(MatrixLink::parse)
-            if (link == null) page = Page.CHATS else MatrixLinkScreen(conversations, link, onOpen, onBack = { page = Page.CHATS })
+            if (link == null) page = Page.CHATS else MatrixLinkScreen(conversations, link, onOpen, onBack = { page = Page.CHATS }, blocked = session.blocked)
         }
         Page.CHATS -> Chats(session, conversations, onOpen, onBack = back, onNavigate = { page = it })
         Page.NEW_ROOM -> NewRoom(conversations, onCreated = onOpen, onBack = back)

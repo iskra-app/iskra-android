@@ -242,6 +242,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                     openRoom = it
                 },
                 onBack = { linked = null },
+                blocked = session.blocked,
             )
             // Баннер «старые сообщения заперты» ведёт сюда: тот же экран, что после входа.
             unlocking -> {
@@ -274,6 +275,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
             )
             details != null -> wtf.iskra.features.room.RoomDetailsScreen(
                 store = details,
+                blocked = session.blocked,
                 isOffline = rooms.isUnreachable,
                 onBack = { showingDetails = false },
                 onLeave = {

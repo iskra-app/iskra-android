@@ -66,7 +66,7 @@ internal fun roleTitle(role: RoomMemberSummary.Role): Int = when (role) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isOffline: Boolean, onDismiss: () -> Unit) {
+internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isOffline: Boolean, blocked: wtf.iskra.core.session.BlockStore? = null, onDismiss: () -> Unit) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     // Лист читает *текущее* состояние участника: роль сменилась — лист это видит.
@@ -117,6 +117,8 @@ internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isO
                 }
             }
             if (rows.isNotEmpty()) Group(*rows.toTypedArray())
+            // Блокировка аккаунта, последней и тем же рядом, что на странице человека (`PersonBlockRow`).
+            if (blocked != null) Group({ wtf.iskra.features.support.PersonBlockRow(blocked, current.userId, current.name, enabled = !isOffline) })
         }
     }
     if (confirmingBan) {

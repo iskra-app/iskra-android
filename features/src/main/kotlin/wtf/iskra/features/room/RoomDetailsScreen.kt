@@ -79,6 +79,8 @@ fun RoomDetailsScreen(
     isOffline: Boolean,
     onBack: () -> Unit,
     onLeave: () -> Unit,
+    /** Блокировка аккаунта (`ignore`) — человека личного чата и участника группы. Null — без неё. */
+    blocked: wtf.iskra.core.session.BlockStore? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -181,6 +183,11 @@ fun RoomDetailsScreen(
             if (!state.isDirect) {
                 BannedSection(store, state, isOffline)
             }
+            // Личный чат: «Заблокировать» человека, с которым он, — тот же ряд, что на странице человека.
+            val other = if (state.isDirect) state.members.firstOrNull { it.userId != wtf.iskra.features.support.LocalOwnUserId.current } else null
+            if (other != null && blocked != null) {
+                Group({ wtf.iskra.features.support.PersonBlockRow(blocked, other.userId, other.name, enabled = !isOffline) })
+            }
 
             Group({
                 ListItem(
@@ -206,7 +213,7 @@ fun RoomDetailsScreen(
             onDismiss = { showingCode = false },
         )
     }
-    picked?.let { member -> MemberSheet(store, member, isOffline, onDismiss = { picked = null }) }
+    picked?.let { member -> MemberSheet(store, member, isOffline, blocked, onDismiss = { picked = null }) }
     if (inviting) InviteSheet(store, onDismiss = { inviting = false })
 
     if (leaving) {
