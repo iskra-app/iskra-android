@@ -71,6 +71,16 @@ internal data class PendingAttachment(val uri: Uri, val kind: Kind) {
     val isFile: Boolean get() = kind == Kind.FILE
 
     companion object {
+        /** Из общего меню: картинка и видео идут через подготовку, всё прочее — файлом как есть. */
+        fun shared(context: Context, uri: Uri): PendingAttachment {
+            val type = context.contentResolver.getType(uri).orEmpty()
+            return PendingAttachment(uri, when {
+                type.startsWith("video/") -> Kind.VIDEO
+                type.startsWith("image/") && type != "image/svg+xml" -> Kind.PHOTO
+                else -> Kind.FILE
+            })
+        }
+
         /** Фото или видео — по типу, который называет тот, кто отдал адрес. */
         fun visual(context: Context, uri: Uri): PendingAttachment =
             PendingAttachment(uri, if (context.contentResolver.getType(uri)?.startsWith("video/") == true) Kind.VIDEO else Kind.PHOTO)

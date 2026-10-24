@@ -110,6 +110,9 @@ class AppGraph(
     /** Ссылки на людей и комнаты, открытые снаружи: `MainActivity` кладёт, корень забирает. */
     val linkRouter = LinkRouter()
 
+    /** Отправленное в Искру из общего меню Android: `MainActivity` кладёт, корень забирает. */
+    val shareRouter = ShareRouter()
+
     /** Задачи отправки медиа → хаб и сервис с уведомлением (`MediaSendService`). */
     private val mediaJobsChanged: (String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit = { account, jobs ->
         wtf.iskra.features.media.MediaSendHub.update(account, jobs)
@@ -119,7 +122,7 @@ class AppGraph(
     fun rootModel(scope: CoroutineScope, demo: Boolean, mockSignIn: String?): RootModel {
         if (mockSignIn == null || !MockSignIn.isAvailable) {
             return RootModel(authentication, scope, demo, settings, pushes = RootPushes(context, push, pushRouter, pushTargets), updates = updates,
-                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter)
+                librariesResource = librariesResource, mediaJobsChanged = mediaJobsChanged, links = linkRouter, shares = shareRouter)
         }
         val words = MockSignIn.words(mockSignIn)
         return RootModel(

@@ -60,6 +60,17 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- «Поделиться» из других приложений (ShareRouter): слова, один файл или несколько. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
             <!--
                 Возврат из браузера после входа: AppEnvironment.OAUTH_REDIRECT_URI. Схема — clientUri
                 задом наперёд, иначе сервер с MAS её не примет. singleTask — чтобы вернулась та же activity,

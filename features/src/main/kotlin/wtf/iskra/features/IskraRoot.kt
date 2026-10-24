@@ -237,6 +237,22 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
         }
     }
 
+    // Поделились из другого приложения: выбрать чат, и он откроется с этим в поле ввода. Раз взятое отдаётся комнате один раз.
+    var sharing by remember(session.sessionId) { mutableStateOf<SharedContent?>(null) }
+    var shareIntoRoom by remember(session.sessionId) { mutableStateOf<SharedContent?>(null) }
+    model.shares?.let { shares ->
+        val incoming by shares.request.collectAsStateWithLifecycle()
+        LaunchedEffect(incoming, session.sessionId) {
+            val content = shares.take() ?: return@LaunchedEffect
+            settingsPage = null
+            creating = false
+            linked = null
+            openRoom = null
+            openEvent = null
+            sharing = content
+        }
+    }
+
     // Точка на шестерёнке: есть версия новее. Не диалог и не уведомление — человек пришёл читать.
     val offer by (model.updates?.checker?.offer ?: remember { kotlinx.coroutines.flow.MutableStateFlow(null) }).collectAsStateWithLifecycle()
     val updateWaiting = offer is wtf.iskra.core.update.UpdateOffer.Available
@@ -254,6 +270,15 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 },
                 onBack = { linked = null },
                 blocked = session.blocked,
+            )
+            sharing != null -> wtf.iskra.features.rooms.ShareTargetScreen(
+                rooms = rooms.rooms,
+                onPick = { id ->
+                    shareIntoRoom = sharing
+                    sharing = null
+                    openRoom = id
+                },
+                onBack = { sharing = null },
             )
             // Баннер «старые сообщения заперты» ведёт сюда: тот же экран, что после входа.
             unlocking -> {
@@ -311,6 +336,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 stickers = session.stickers,
                 mediaJobs = session.mediaJobs,
                 blocked = session.blocked,
+                share = shareIntoRoom.takeIf { roomId != null },
+                onShareTaken = { shareIntoRoom = null },
             )
             creating -> wtf.iskra.features.rooms.NewConversationScreen(
                 session,

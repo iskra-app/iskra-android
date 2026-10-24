@@ -49,6 +49,8 @@ class RootModel(
     val librariesResource: Int = 0,
     /** Задачи отправки медиа сеанса изменились (аккаунт, задачи): уведомление foreground-сервиса. Null — без него. */
     val links: LinkRouter? = null,
+    /** Содержимое из общего меню Android, ждущее выбора чата. Null — без него. */
+    val shares: ShareRouter? = null,
     private val mediaJobsChanged: ((String, List<wtf.iskra.core.media.MediaSendJobs.Job>) -> Unit)? = null,
 ) {
     /** Адрес, который экран входа подставляет сам: сервер демо-входа. Пусто — человек вводит свой. */

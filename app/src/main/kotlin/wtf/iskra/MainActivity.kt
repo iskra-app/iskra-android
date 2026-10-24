@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import wtf.iskra.features.IskraRoot
 import wtf.iskra.features.Probes
+import wtf.iskra.features.Sharing
 import wtf.iskra.features.push.PushIntents
 import wtf.iskra.features.signin.CustomTabsAuthentication
 import wtf.iskra.features.signin.MockSignIn
@@ -68,6 +69,11 @@ class MainActivity : FragmentActivity() {
         if (browser.handle(intent.data)) return
         // Ссылка на человека или комнату из другого приложения, камеры, браузера (`MatrixLink`).
         if (intent.action == Intent.ACTION_VIEW && (application as IskraApplication).graph.linkRouter.opened(intent.dataString)) return
+        // «Поделиться» из другого приложения: слова и/или файлы ждут, пока корень предложит выбрать чат.
+        if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            (application as IskraApplication).graph.shareRouter.opened(Sharing.content(intent))
+            return
+        }
         // Нажали уведомление или ярлык разговора: в этот чат, в его аккаунт (PushRouter).
         intent.getStringExtra(PushIntents.EXTRA_ROOM)?.let { roomId ->
             (application as IskraApplication).graph.pushRouter.tapped(roomId, intent.getStringExtra(PushIntents.EXTRA_ACCOUNT))

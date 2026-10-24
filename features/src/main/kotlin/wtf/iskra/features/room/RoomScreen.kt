@@ -188,6 +188,9 @@ fun RoomScreen(
     mediaJobs: wtf.iskra.core.media.MediaSendJobs? = null,
     /** Блокировка аккаунта (`ignore`): личный чат с заблокированным показывает плашку вместо поля ввода. Null — без неё. */
     blocked: wtf.iskra.core.session.BlockStore? = null,
+    /** Чем поделились из другого приложения: ложится в поле ввода и под миниатюры, отправляет человек. */
+    share: wtf.iskra.features.SharedContent? = null,
+    onShareTaken: () -> Unit = {},
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -384,6 +387,17 @@ fun RoomScreen(
     LaunchedEffect(store) {
         if (field.text.isEmpty()) store.draft()?.let { field = TextFieldValue(it, TextRange(it.length)) }
         draftLoaded = true
+    }
+    // Общее меню: к черновику дописывается, а не затирает его; слова — в поле, файлы — под миниатюры.
+    LaunchedEffect(share, draftLoaded) {
+        val content = share ?: return@LaunchedEffect
+        if (!draftLoaded) return@LaunchedEffect
+        content.text?.let { words ->
+            val joined = if (field.text.isBlank()) words else field.text.trimEnd() + "\n" + words
+            field = TextFieldValue(joined, TextRange(joined.length))
+        }
+        attachments = (attachments + content.uris.map { PendingAttachment.shared(context, it) }).distinct().take(MAX_ATTACHMENTS)
+        onShareTaken()
     }
     val mentionQuery = field.selection.takeIf { it.collapsed }?.let { ComposerMentions.query(field.text, it.end) }
     // Участники — когда впервые набрали «@», а не при каждом открытии комнаты.
