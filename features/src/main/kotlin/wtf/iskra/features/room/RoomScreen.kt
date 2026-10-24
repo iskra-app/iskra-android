@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.LocalContentColor
+import wtf.iskra.core.timeline.ReplyPreview
 import wtf.iskra.core.timeline.caption
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.NearMe
@@ -1348,7 +1349,19 @@ private fun Bubble(
                             onAskDelete = { confirm = Confirm.DELETE },
                             onAskEndPoll = { confirm = Confirm.END_POLL },
                         ) {
-                            BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0, plain = compact)
+                            // В компактном виде у строки нет пузыря, а поднятое над затемнением слова без фона тонут в нём: подложка нужна только здесь.
+                            Box(
+                                if (compact) {
+                                    Modifier
+                                        .clip(RoundedCornerShape(Theme.Radius.bubble))
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                        .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close)
+                                } else {
+                                    Modifier
+                                },
+                            ) {
+                                BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0, plain = compact)
+                            }
                         }
                     }
                     confirm?.let { asked ->
@@ -1489,6 +1502,8 @@ private fun BubbleBody(
     val picture = message.kind.picture
     val album = message.album
     if (album != null) {
+        Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+        QuoteAbove(message, own, plain, interactive, onQuote)
         // Альбом — в пузыре, как слова (`AlbumBubble`): заливка, мозаика внутри с узким полем и подпись под ней. В компактном виде заливки нет.
         Column(
             Modifier
@@ -1521,8 +1536,23 @@ private fun BubbleBody(
                 )
             }
         }
+        }
     } else if (picture != null) {
+        // Фото или видео с подписью — альбом из одного (`AlbumBubble`): тот же пузырь с заливкой, подпись там, где были бы слова текста.
+        // Без подписи — голая картинка. Стикер и кружок — всегда голые.
+        val captioned = picture.caption != null && (message.kind is MessageKind.Image || message.kind is MessageKind.Video)
         Column(horizontalAlignment = if (own) Alignment.End else Alignment.Start) {
+        QuoteAbove(message, own, plain, interactive, onQuote)
+        Column(
+            Modifier.then(
+                if (captioned && !plain) {
+                    Modifier.clip(RoundedCornerShape(Theme.Radius.bubble)).background(if (own) accent.bubble else accent.incomingBubble).padding(Theme.Spacing.tight)
+                } else {
+                    Modifier
+                },
+            ),
+            horizontalAlignment = if (own) Alignment.End else Alignment.Start,
+        ) {
             UploadOverlay(message) {
                 MediaContent(
                     message.kind,
@@ -1549,9 +1579,11 @@ private fun BubbleBody(
                 Text(
                     caption,
                     style = MaterialTheme.typography.bodyLarge,
+                    color = if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble,
                     modifier = Modifier.padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
                 )
             }
+        }
         }
     } else Column(
         Modifier
@@ -1577,20 +1609,7 @@ interactive = interactive,
     ) {
         val ink = if (message.kind is MessageKind.Deleted) MaterialTheme.colorScheme.onSurfaceVariant else if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble
         message.replyTo?.let { reply ->
-            Row(
-                Modifier
-                    .padding(bottom = Theme.Spacing.tight)
-                    .then(if (interactive) Modifier.clickable(onClickLabel = reply.senderName) { onQuote(reply.eventId) } else Modifier),
-            ) {
-                Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(if (own) ink else accent.control))
-                Spacer(Modifier.width(Theme.Spacing.close))
-                Column {
-                    reply.senderName?.let {
-                        Text(it, style = MaterialTheme.typography.labelMedium, color = if (own) ink else accent.control, maxLines = 1)
-                    }
-                    Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
+            ReplyQuoteRow(reply, ink, if (own) ink else accent.control, interactive, onQuote, Modifier.padding(bottom = Theme.Spacing.tight))
         }
         val words = message.richText(ownUserId)
         val poll = (message.kind as? MessageKind.Poll)?.poll
@@ -1620,6 +1639,45 @@ interactive = interactive,
             Text(body(message), style = MaterialTheme.typography.bodyLarge, fontStyle = FontStyle.Italic, color = ink)
         }
     }
+}
+
+/** Цитата ответа: чёрточка, имя и первая строка. Нажатие ведёт к цитируемому. Порт `ReplyQuote`. */
+@Composable
+private fun ReplyQuoteRow(reply: ReplyPreview, ink: Color, bar: Color, interactive: Boolean, onQuote: (String) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.then(if (interactive) Modifier.clickable(onClickLabel = reply.senderName) { onQuote(reply.eventId) } else Modifier),
+    ) {
+        Box(Modifier.width(Theme.Size.quoteBar).height(Theme.Size.avatarSmall).background(bar))
+        Spacer(Modifier.width(Theme.Spacing.close))
+        Column {
+            reply.senderName?.let {
+                Text(it, style = MaterialTheme.typography.labelMedium, color = bar, maxLines = 1)
+            }
+            Text(reply.text, style = MaterialTheme.typography.bodySmall, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/**
+ * Ответ на что-то, написанный картинкой, видео или альбомом: цитата в собственном маленьком пузыре над картинкой (`quoted`).
+ * Раньше эти виды цитату теряли — ответ на фото фото без «ответа».
+ */
+@Composable
+private fun QuoteAbove(message: Message, own: Boolean, plain: Boolean, interactive: Boolean, onQuote: (String) -> Unit) {
+    val reply = message.replyTo ?: return
+    val accent = LocalAccent.current
+    val ink = if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble
+    ReplyQuoteRow(
+        reply, ink, if (own) ink else accent.control, interactive, onQuote,
+        Modifier
+            .padding(bottom = Theme.Spacing.tight)
+            .then(
+                if (plain) Modifier else Modifier
+                    .clip(RoundedCornerShape(Theme.Radius.bubble))
+                    .background(if (own) accent.bubble else accent.incomingBubble)
+                    .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+            ),
+    )
 }
 
 /** Кольцо загрузки поверх картинки своего сообщения, пока оно уходит (`UploadRing`). */
@@ -2391,7 +2449,7 @@ internal val LocalMessageTools = androidx.compose.runtime.compositionLocalOf<Mes
 
 /** Время во всех подробностях, как в `Message.Menu.sentAt`: «24 окт. 2026 г., 16:49:05». */
 private fun exactly(at: java.time.Instant): String =
-    java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT, java.time.format.FormatStyle.MEDIUM).format(at.atZone(java.time.ZoneId.systemDefault()))
+    java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT, java.time.format.FormatStyle.SHORT).format(at.atZone(java.time.ZoneId.systemDefault()))
 
 /** Сколько человек прочли сообщение (`TimelineStore.readerIds`). Null — не спрашиваем: личный чат, тред. */
 internal val LocalReaderCount = androidx.compose.runtime.compositionLocalOf<((String) -> Int)?> { null }
