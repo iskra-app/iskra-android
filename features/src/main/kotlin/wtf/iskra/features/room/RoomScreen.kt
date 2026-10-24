@@ -149,6 +149,7 @@ import wtf.iskra.core.timeline.TimelineState
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.rooms.IdentityChangeException
 import wtf.iskra.core.rooms.IdentityChangesStore
+import wtf.iskra.core.rooms.RoomDetailsStore
 import wtf.iskra.core.stickers.StickerLibrary
 import wtf.iskra.core.timeline.TimelineStore
 import wtf.iskra.design.LocalAccent
@@ -203,6 +204,10 @@ fun RoomScreen(
     /** Открыться сразу в поиске — «Поиск» в плитках «О чате». */
     startSearching: Boolean = false,
     onSearchStarted: () -> Unit = {},
+    /** Хранилище участников комнаты для карточки по нажатию на лицо (`UserSession.details`). Null — нажимать нечего. */
+    members: ((String) -> RoomDetailsStore?)? = null,
+    /** «Написать» в карточке: личный чат с этим человеком. Null — кнопки нет. */
+    onMessagePerson: ((String) -> Unit)? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -433,9 +438,33 @@ fun RoomScreen(
         )
     }
 
+    // Карточка человека, на чьё лицо или имя нажали. Хранилище участников открывается по первому нажатию и закрывается с экраном.
+    var profileOf by remember(store.roomId) { mutableStateOf<String?>(null) }
+    val memberStore = remember(store.roomId, profileOf != null) { if (profileOf != null) members?.invoke(store.roomId) else null }
+    DisposableEffect(memberStore) { onDispose { memberStore?.stop() } }
+    LaunchedEffect(memberStore) { memberStore?.load() }
+    val openProfile: ((String) -> Unit)? = if (members != null && !isThread) { id -> profileOf = id } else null
     Box(modifier.fillMaxSize()) {
     ChatWallpaper()
-    CompositionLocalProvider(LocalChatInk provides wallpaperInk()) {
+    val profileId = profileOf
+    if (profileId != null && memberStore != null) {
+        val memberState by memberStore.state.collectAsStateWithLifecycle()
+        val known = memberState.members.firstOrNull { it.userId == profileId }
+        // Ушедшего из комнаты в списке нет — карточка называет его по тому, что было у сообщения.
+        val shown = known ?: wtf.iskra.core.rooms.RoomMemberSummary(
+            userId = profileId,
+            name = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.senderId == profileId }?.senderName } ?: profileId,
+            avatarUrl = null,
+            role = wtf.iskra.core.rooms.RoomMemberSummary.Role.MEMBER,
+            isInvited = false,
+        )
+        MemberSheet(
+            memberStore, shown, isOffline, blocked,
+            onMessage = onMessagePerson?.takeIf { profileId != LocalOwnUserId.current }?.let { message -> { message(profileId); profileOf = null } },
+            onDismiss = { profileOf = null },
+        )
+    }
+    CompositionLocalProvider(LocalChatInk provides wallpaperInk(), LocalOpenProfile provides openProfile) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
@@ -905,7 +934,7 @@ private fun Conversation(
                             }
                         },
                     )
-                    is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()))
+                    is TimelineRow.EventRow -> ServiceLine(row.event.text(stringsOf()), row.event.people)
                     is TimelineRow.DayDividerRow -> DayLine(row.divider.date)
                     TimelineRow.UnreadDivider -> UnreadLine()
                 }
@@ -1096,7 +1125,11 @@ private fun Bubble(
                 // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
                 if (!own && showsSender) {
                     if (!message.isContinued) {
-                        Avatar(message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId)
+                        val openProfile = LocalOpenProfile.current
+                        Avatar(
+                            message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId,
+                            modifier = if (openProfile != null && message.senderId != null) Modifier.clip(CircleShape).clickable(role = Role.Button) { openProfile(message.senderId!!) } else Modifier,
+                        )
                     } else {
                         Spacer(Modifier.width(Theme.Size.avatarSmall))
                     }
@@ -1107,13 +1140,16 @@ private fun Bubble(
                     verticalArrangement = Arrangement.spacedBy(Theme.Spacing.withinRun),
                 ) {
                     if (showsSender && !own && !message.isContinuation) {
+                        val openProfile = LocalOpenProfile.current
                         Text(
                             message.senderName,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Medium,
                             color = quietInk(),
                             maxLines = 1,
-                            modifier = Modifier.padding(start = Theme.Spacing.close),
+                            modifier = Modifier
+                                .then(if (openProfile != null && message.senderId != null) Modifier.clickable(role = Role.Button) { openProfile(message.senderId!!) } else Modifier)
+                                .padding(start = Theme.Spacing.close),
                         )
                     }
                     val anchor = remember { AnchorBox() }
@@ -1572,12 +1608,32 @@ internal fun body(message: Message): String = when (val kind = message.kind) {
 }
 
 @Composable
-private fun ServiceLine(text: String) {
+private fun ServiceLine(text: String, people: List<wtf.iskra.core.timeline.RoomEventPerson> = emptyList()) {
+    val openProfile = LocalOpenProfile.current
+    val ink = quietInk()
+    // Имена людей в строке — полужирные и нажимаются (`RoomEventRow.linked` на iOS): первое вхождение каждого, по порядку.
+    val styled = remember(text, people, openProfile, ink) {
+        androidx.compose.ui.text.buildAnnotatedString {
+            append(text)
+            var cursor = 0
+            for (person in people) {
+                if (person.name.isEmpty()) continue
+                val at = text.indexOf(person.name, cursor)
+                if (at < 0) continue
+                val end = at + person.name.length
+                addStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold), at, end)
+                if (openProfile != null) {
+                    addLink(androidx.compose.ui.text.LinkAnnotation.Clickable("person-${person.userId}") { openProfile(person.userId) }, at, end)
+                }
+                cursor = end
+            }
+        }
+    }
     // `RoomEventRow` на iOS: caption по центру, поля normal и tight; воздух сверху даёт соседний ряд (`TimelineRows`).
     Text(
-        text,
+        styled,
         style = MaterialTheme.typography.bodySmall,
-        color = quietInk(),
+        color = ink,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.normal, vertical = Theme.Spacing.tight),
     )
@@ -1929,3 +1985,6 @@ private fun TypingBubble(modifier: Modifier = Modifier) {
 
 private const val TYPING_PERIOD_MS = 600
 private const val TYPING_STAGGER_MS = 180
+
+/** Нажатие на лицо или имя человека в ленте: карточка участника. Null — нажимать нечего (тред, демо). */
+internal val LocalOpenProfile = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }

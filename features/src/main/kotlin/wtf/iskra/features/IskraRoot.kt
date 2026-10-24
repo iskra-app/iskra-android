@@ -355,6 +355,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 onShareTaken = { shareIntoRoom = null },
                 isOffline = rooms.isOffline,
                 isUpdating = rooms.isUpdating,
+                members = session::details.takeIf { !session.isDemo || true },
+                onMessagePerson = { person -> rootScope.launch { runCatching { session.conversations.openDirectChat(person) }.onSuccess { openRoom = it } } },
                 startSearching = searchOnOpen,
                 onSearchStarted = { searchOnOpen = false },
             )

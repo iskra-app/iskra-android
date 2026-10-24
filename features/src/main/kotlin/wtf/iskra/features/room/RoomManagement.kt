@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,7 +67,7 @@ internal fun roleTitle(role: RoomMemberSummary.Role): Int = when (role) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isOffline: Boolean, blocked: wtf.iskra.core.session.BlockStore? = null, onDismiss: () -> Unit) {
+internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isOffline: Boolean, blocked: wtf.iskra.core.session.BlockStore? = null, onMessage: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     // Лист читает *текущее* состояние участника: роль сменилась — лист это видит.
@@ -83,6 +84,17 @@ internal fun MemberSheet(store: RoomDetailsStore, member: RoomMemberSummary, isO
                     Text(current.userId, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stringResource(roleTitle(current.role)), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+            // «Написать» — личный чат с этим человеком (`MemberProfileView`): только из ленты, где он ещё не открыт.
+            if (onMessage != null) {
+                Group({
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.profile_message)) },
+                        leadingContent = { Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null, tint = wtf.iskra.design.LocalAccent.current.control) },
+                        modifier = Modifier.clickable(onClick = onMessage),
+                        colors = rowColors(),
+                    )
+                })
             }
             if (roles.isNotEmpty()) {
                 SectionTitle(R.string.room_manage_role)
