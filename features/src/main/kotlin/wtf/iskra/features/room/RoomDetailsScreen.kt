@@ -94,6 +94,8 @@ fun RoomDetailsScreen(
     blocked: wtf.iskra.core.session.BlockStore? = null,
     /** «Поиск» в плитках: закрыть «О чате» и открыть поиск по переписке. Null — плитки нет. */
     onSearch: (() -> Unit)? = null,
+    /** Переписка комнаты — для вкладок «Фото», «Голосовые», «Кружки», «Файлы», «Ссылки». Null — их нет. */
+    content: wtf.iskra.core.timeline.TimelineStore? = null,
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -211,7 +213,18 @@ fun RoomDetailsScreen(
             )
             if (isOffline) Hint(R.string.room_manage_offline)
 
-            if (!state.isDirect && state.members.isNotEmpty()) {
+            // Что ещё лежит в чате: вкладки поверх участников (`RoomContentPicker`).
+            val tabs = remember(state.isDirect, content) {
+                buildList {
+                    if (!state.isDirect) add(RoomContentTab.MEMBERS)
+                    if (content != null) addAll(listOf(RoomContentTab.MEDIA, RoomContentTab.VOICE, RoomContentTab.VIDEO_NOTES, RoomContentTab.FILES, RoomContentTab.LINKS))
+                }
+            }
+            var tab by rememberSaveable(store.roomId) { mutableStateOf(RoomContentTab.MEMBERS) }
+            val shownTab = if (tab in tabs) tab else tabs.firstOrNull() ?: RoomContentTab.MEMBERS
+            if (tabs.size > 1) RoomContentPicker(tabs, shownTab) { tab = it }
+            if (content != null && shownTab != RoomContentTab.MEMBERS) RoomContent(shownTab, content)
+            if (!state.isDirect && state.members.isNotEmpty() && shownTab == RoomContentTab.MEMBERS) {
                 SectionTitle(R.string.room_tabs_members)
                 // Поиск — когда людей столько, что листать дольше, чем набрать.
                 if (state.members.size > SEARCH_FROM) {

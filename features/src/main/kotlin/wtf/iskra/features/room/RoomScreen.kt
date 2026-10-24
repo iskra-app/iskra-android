@@ -6,6 +6,7 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.ui.platform.LocalUriHandler
 import wtf.iskra.core.timeline.ReplyPreview
 import wtf.iskra.core.timeline.caption
 import androidx.compose.material.icons.filled.EmojiEmotions
@@ -501,6 +502,25 @@ fun RoomScreen(
     // «Бета → JSON сообщения»: событие так, как его прислал сервер.
     val showsSource by (LocalAppSettings.current?.showsSource ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     var sourceOf by remember(store.roomId) { mutableStateOf<String?>(null) }
+    // Куда на самом деле ведёт нажатая ссылка — целиком, до того как что-то откроется: слова сообщения могут лгать об адресе, и выбирают против
+    // адреса, а не против слов поверх него. Ссылка на человека или комнату Matrix — не страница, что прикидывается другой: она открывается в приложении.
+    var linkToConfirm by remember(store.roomId) { mutableStateOf<String?>(null) }
+    val systemLinks = androidx.compose.ui.platform.LocalUriHandler.current
+    val confirming = remember(systemLinks) {
+        object : androidx.compose.ui.platform.UriHandler {
+            override fun openUri(uri: String) {
+                if (uri.startsWith("matrix:") || uri.contains("://matrix.to/")) systemLinks.openUri(uri) else linkToConfirm = uri
+            }
+        }
+    }
+    linkToConfirm?.let { url ->
+        AlertDialog(
+            onDismissRequest = { linkToConfirm = null },
+            title = { Text(url, style = MaterialTheme.typography.titleSmall) },
+            confirmButton = { TextButton(onClick = { linkToConfirm = null; systemLinks.openUri(url) }) { Text(stringResource(R.string.message_link_open)) } },
+            dismissButton = { TextButton(onClick = { linkToConfirm = null }) { Text(stringResource(R.string.message_link_cancel)) } },
+        )
+    }
     // «Переслать…» и «Пожаловаться»: на каком сообщении открыты.
     var forwardOf by remember(store.roomId) { mutableStateOf<List<Message>?>(null) }
     // Выбор нескольких сообщений (`MessageSelection`): id отмеченных; null — не выбираем.
@@ -552,6 +572,7 @@ fun RoomScreen(
     CompositionLocalProvider(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
+        LocalUriHandler provides confirming,
         LocalDiscardUpload provides { id -> scope.launch { store.discard(id) } },
         LocalMessageTools provides MessageTools(
             offline = isOffline,

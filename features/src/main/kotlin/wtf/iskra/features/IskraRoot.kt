@@ -208,7 +208,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
             )
         }
     }
-    // «Поиск» из «О чата»: «О чате» закрывается, и комната открывается сразу в поиске.
+    // «Поиск» из «О чате»: «О чате» закрывается, и комната открывается сразу в поиске.
     var searchOnOpen by remember(session.sessionId) { mutableStateOf(false) }
     // Открытое пространство (ID и название): его комнаты — отдельным экраном поверх списка.
     var openSpace by remember(session.sessionId) { mutableStateOf<Pair<String, String>?>(null) }
@@ -218,6 +218,17 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     // Стор смены ключей одноразовый — его останавливает экран комнаты, когда уходит, — поэтому на возврате
     // из «О чате» (комната пересоздаётся) нужен новый.
     val identityChanges = remember(roomId, showingDetails) { roomId?.let(session::identityChanges) }
+    // Переписка для вкладок «О чате»: отдельный стор, закрывается вместе с экраном.
+    val detailsContent = remember(roomId, showingDetails) {
+        roomId?.takeIf { showingDetails }?.let { id ->
+            session.timeline(
+                id,
+                privacy = { settings?.privacy?.value ?: wtf.iskra.core.session.PrivacySettings() },
+                serviceEvents = { settings?.serviceEvents?.value ?: wtf.iskra.core.timeline.ServiceEventSettings() },
+            )
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(detailsContent) { onDispose { detailsContent?.close() } }
     val details = remember(roomId, showingDetails) { roomId?.takeIf { showingDetails }?.let(session::details) }
     val rooms by session.rooms.state.collectAsStateWithLifecycle()
     val rootScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -296,6 +307,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val detailsPane: @Composable (wtf.iskra.core.rooms.RoomDetailsStore) -> Unit = { details ->
     wtf.iskra.features.room.RoomDetailsScreen(
                     store = details,
+                    content = detailsContent,
                     blocked = session.blocked,
                     isOffline = rooms.isUnreachable,
                     onBack = { showingDetails = false },
