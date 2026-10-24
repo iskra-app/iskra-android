@@ -436,6 +436,8 @@ private fun Appearance(settings: AppSettings) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
+    val tints by settings.tintsInterface.collectAsStateWithLifecycle()
+    Group({ Toggle(R.string.appearance_tint_interface, null, tints, settings::setTintsInterface) })
 
     WallpaperSection(settings)
     AppIconSection()

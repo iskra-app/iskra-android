@@ -121,6 +121,13 @@ class AppSettings(context: Context) : UpdateStore {
         mutableAutoDownload.value = choice
     }
 
+    private val mutableTints = flag(TINTS_INTERFACE, false)
+
+    /** «Подкрасить интерфейс» (`appearance.tintsInterface`, как у iOS): окно слегка заливается цветом акцента. Выключено — как есть. */
+    val tintsInterface: StateFlow<Boolean> = mutableTints.asStateFlow()
+
+    fun setTintsInterface(on: Boolean) = save(TINTS_INTERFACE, on, mutableTints)
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -261,6 +268,7 @@ class AppSettings(context: Context) : UpdateStore {
         const val PRIVACY_TYPING = "privacy.hidesTyping"
         const val RECENT_REACTIONS = "reactions.recent"
         const val AUTO_DOWNLOAD = "media.autoDownload"
+        const val TINTS_INTERFACE = "appearance.tintsInterface"
         const val SHOWS_ALL_EVENTS = "beta.showsAllEvents"
         const val SHOWS_SOURCE = "beta.showsSource"
         const val HIDES_NAME_CHANGES = "chats.hidesNameChanges"

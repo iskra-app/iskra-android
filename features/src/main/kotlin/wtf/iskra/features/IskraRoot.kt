@@ -17,6 +17,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -71,11 +72,20 @@ fun IskraRoot(
     val phase by model.phase.collectAsStateWithLifecycle()
     val accentName by (model.settings?.accent ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
     val modeName by (model.settings?.appearance ?: kotlinx.coroutines.flow.MutableStateFlow(null)).collectAsStateWithLifecycle()
+    val tints by (model.settings?.tintsInterface ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     IskraTheme(
         accent = AccentTheme.fromStorage(accentName),
         appearance = AppearanceMode.fromStorage(modeName),
     ) {
-        Box(Modifier.fillMaxSize()) {
+        val wash = LocalAccent.current
+        val washAlpha = if (AccentTheme.fromStorage(accentName) == AccentTheme.MONO) wtf.iskra.design.Theme.Tint.MONO else wtf.iskra.design.Theme.Tint.INTERFACE
+        // Заливка поверх всего окна, не мешая нажатиям — `tintsInterface` на iOS: цвет акцента, слегка.
+        Box(
+            Modifier.fillMaxSize().drawWithContent {
+                drawContent()
+                if (tints) drawRect(wash.color.copy(alpha = washAlpha))
+            },
+        ) {
         CompositionLocalProvider(wtf.iskra.features.lock.LocalLock provides lock) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             when (val current = phase) {
