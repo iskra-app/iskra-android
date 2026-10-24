@@ -55,9 +55,7 @@ class Forwarding(private val session: UserSession, private val context: Context)
     private suspend fun forwardOne(target: wtf.iskra.core.timeline.TimelineStore, message: Message) {
         val caption = message.kind.caption
         when (val kind = message.kind) {
-            is MessageKind.Text -> target.send(kind.body)
-            is MessageKind.Notice -> target.send(kind.body)
-            is MessageKind.Emote -> target.send(kind.body)
+            is MessageKind.Text, is MessageKind.Notice, is MessageKind.Emote -> target.forwardWords(message)
             is MessageKind.Image -> target.sendPhoto(session.media.content(kind.attachment), kind.attachment.filename, MediaSettings.DEFAULT, caption)
             is MessageKind.Video -> {
                 val file = session.media.file(kind.attachment, File(context.cacheDir, FORWARD_DIR))

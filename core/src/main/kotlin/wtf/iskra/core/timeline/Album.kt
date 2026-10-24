@@ -61,6 +61,7 @@ object Album {
         size < LIMIT &&
             message.senderId == last.senderId &&
             message.replyTo == null &&
+            message.forwardedFrom == null &&
             // Подпись открывает альбом; подпись дальше — начало следующего.
             message.kind.caption == null &&
             abs(message.timestamp.toEpochMilli() - last.timestamp.toEpochMilli()) <= GAP_MS

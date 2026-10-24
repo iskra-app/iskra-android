@@ -202,6 +202,8 @@ data class Message(
      * Telegram: фото, что минуту висит с часами рядом, неотличимо от застрявшего, а двигающееся кольцо — отличимо.
      */
     val uploadProgress: Double? = null,
+    /** Откуда пересланное (`m.forwarded`); null — не пересылка. */
+    val forwardedFrom: ForwardOrigin? = null,
 ) {
     /** Все сообщения, за которые стоит эта строка: альбома или только оно само. */
     val members: List<Message> get() = album ?: listOf(this)

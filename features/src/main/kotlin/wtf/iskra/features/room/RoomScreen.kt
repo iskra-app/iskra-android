@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.platform.LocalUriHandler
+import wtf.iskra.core.timeline.ForwardOrigin
 import wtf.iskra.core.timeline.ReplyPreview
 import wtf.iskra.core.timeline.caption
 import androidx.compose.material.icons.filled.EmojiEmotions
@@ -1629,6 +1630,7 @@ interactive = interactive,
             .then(if (plain) Modifier else Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close + Theme.Spacing.withinRun)),
     ) {
         val ink = if (message.kind is MessageKind.Deleted) MaterialTheme.colorScheme.onSurfaceVariant else if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble
+        message.forwardedFrom?.let { ForwardedLabel(it, ink, Modifier.padding(bottom = Theme.Spacing.tight)) }
         message.replyTo?.let { reply ->
             ReplyQuoteRow(reply, ink, if (own) ink else accent.control, interactive, onQuote, Modifier.padding(bottom = Theme.Spacing.tight))
         }
@@ -1685,11 +1687,12 @@ private fun ReplyQuoteRow(reply: ReplyPreview, ink: Color, bar: Color, interacti
  */
 @Composable
 private fun QuoteAbove(message: Message, own: Boolean, plain: Boolean, interactive: Boolean, onQuote: (String) -> Unit) {
-    val reply = message.replyTo ?: return
+    val reply = message.replyTo
+    val origin = message.forwardedFrom
+    if (reply == null && origin == null) return
     val accent = LocalAccent.current
     val ink = if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble
-    ReplyQuoteRow(
-        reply, ink, if (own) ink else accent.control, interactive, onQuote,
+    Column(
         Modifier
             .padding(bottom = Theme.Spacing.tight)
             .then(
@@ -1698,8 +1701,31 @@ private fun QuoteAbove(message: Message, own: Boolean, plain: Boolean, interacti
                     .background(if (own) accent.bubble else accent.incomingBubble)
                     .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
             ),
-    )
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
+    ) {
+        origin?.let { ForwardedLabel(it, ink) }
+        reply?.let { ReplyQuoteRow(it, ink, if (own) ink else accent.control, interactive, onQuote) }
+    }
 }
+
+/** «Переслано от Ани» — или просто «Переслано», когда имени нет. Порт `forwarded` в `MessageContent`. */
+@Composable
+private fun ForwardedLabel(origin: ForwardOrigin, ink: Color, modifier: Modifier = Modifier) {
+    val name = origin.displayName
+    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight)) {
+        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = ink.copy(alpha = FORWARDED_ALPHA), modifier = Modifier.size(Theme.Size.rowMark))
+        Text(
+            if (name != null) stringResource(R.string.message_forwarded_from, name) else stringResource(R.string.message_forwarded),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = ink.copy(alpha = FORWARDED_ALPHA),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private const val FORWARDED_ALPHA = 0.75f
 
 /** Кольцо загрузки поверх картинки своего сообщения, пока оно уходит (`UploadRing`). */
 @Composable

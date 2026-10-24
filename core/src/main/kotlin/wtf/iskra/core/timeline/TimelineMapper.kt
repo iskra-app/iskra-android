@@ -112,6 +112,7 @@ internal object TimelineMapper {
             delivery = if (event.isOwn) delivery(event, ownUserId) else null,
             readAt = if (event.isOwn) readAt(event, ownUserId) else null,
             uploadProgress = if (event.isOwn) uploadProgress(event.localSendState) else null,
+            forwardedFrom = forwardOrigin(event, kind),
             isEdited = ((msgLike?.kind as? MsgLikeKind.Message)?.content?.isEdited) == true,
             replyTo = replyPreview(event.content, strings),
             reactions = reactions(event.content, ownUserId),
@@ -352,6 +353,16 @@ internal object TimelineMapper {
 
     /** Доля ушедшего; null, пока делить не на что. */
     internal fun fraction(current: Long, total: Long): Double? = if (total > 0) minOf(1.0, current.toDouble() / total) else null
+
+    /** `m.forwarded` события, если оно пересылка, — только для видов, что пересылаются, и один раз на событие (`Forwarded.origin`). */
+    private fun forwardOrigin(event: EventTimelineItem, kind: MessageKind): ForwardOrigin? {
+        when (kind) {
+            is MessageKind.Text, is MessageKind.Notice, is MessageKind.Emote, is MessageKind.Image, is MessageKind.Video, is MessageKind.File -> Unit
+            else -> return null
+        }
+        val id = (event.eventOrTransactionId as? EventOrTransactionId.EventId)?.eventId ?: return null
+        return Forwarded.origin(id) { runCatching { event.lazyProvider.debugInfo().originalJson }.getOrNull() }
+    }
 
     /** Докуда вложение своего ушло. Null, пока у SDK нет общего, на что делить: кольцо с выдуманного нуля, что потом прыгнет, хуже того, что появляется с правдой. */
     private fun uploadProgress(state: EventSendState?): Double? {

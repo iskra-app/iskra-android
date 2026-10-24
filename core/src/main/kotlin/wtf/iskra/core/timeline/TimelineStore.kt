@@ -1011,6 +1011,32 @@ class TimelineStore internal constructor(
     suspend fun sendSticker(sticker: Sticker, replyingTo: String? = null): Boolean =
         if (isKnownUnencrypted()) sendRawSticker(sticker, replyingTo) else sendSealedSticker(sticker, replyingTo)
 
+    /**
+     * Слова пересылки — помеченные `m.forwarded`, где можно: только в комнату без шифрования и по той же причине, что стикер (см.
+     * [sendSticker]): поле не из тех, что очередь отправки умеет нести, — идёт `Room.sendRaw` мимо очереди, а в зашифрованной комнате
+     * этот путь подвёл стикеры, и пересылка, что не пришла, хуже той, что пришла без пометки. Там — обычное сообщение.
+     */
+    suspend fun forwardWords(message: Message) {
+        val body = when (val kind = message.kind) {
+            is MessageKind.Text -> kind.body
+            is MessageKind.Notice -> kind.body
+            is MessageKind.Emote -> kind.body
+            else -> return
+        }
+        val marked = if (isKnownUnencrypted()) Forwarded.content(message) else null
+        if (marked == null) {
+            send(body)
+            return
+        }
+        try {
+            withTimeLimit(SDK_LIMIT) { room.sendRaw("m.room.message", marked) }
+        } catch (error: Exception) {
+            if (error is CancellationException) throw error
+            Log.error(Log.Category.TIMELINE, "помеченная пересылка не ушла: ${Log.describe(error)}")
+            fail(TimelineFailure.SEND)
+        }
+    }
+
     /** Только «точно нет»: «наверное нет» — не ответ на вопрос, можно ли картинке уйти открытой. Спрашивается у сервера. */
     private suspend fun isKnownUnencrypted(): Boolean = try {
         withTimeLimit(SDK_LIMIT) { room.latestEncryptionState() } == EncryptionState.NOT_ENCRYPTED
