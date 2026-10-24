@@ -198,12 +198,15 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val creatures by (settings?.creatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
+    // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
+    var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
     // Широкий экран (планшет, ChromeOS, развёрнутый складной): список — колонка слева, комната — справа.
     val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
     // Лента привязана и к раскладке: экран комнаты закрывает свою ленту, уходя, а при повороте или складывании комната переезжает в другое
     // место дерева — это новый экран, и ему нужна новая лента, а не закрытая прежняя («Не получилось открыть чат»).
-    val timeline = remember(roomId, wide) {
-        roomId?.let { id ->
+    // Так же с «О чате»: оно встаёт на место комнаты, та уходит и закрывает ленту, и на возврате нужна новая.
+    val timeline = remember(roomId, wide, showingDetails) {
+        roomId?.takeIf { !showingDetails }?.let { id ->
             session.timeline(
                 id,
                 threadSettings = { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() },
@@ -217,8 +220,6 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     // Открытое пространство (ID и название): его комнаты — отдельным экраном поверх списка.
     var openSpace by remember(session.sessionId) { mutableStateOf<Pair<String, String>?>(null) }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
-    // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.
-    var showingDetails by rememberSaveable(session.sessionId, roomId) { mutableStateOf(false) }
     // Стор смены ключей одноразовый — его останавливает экран комнаты, когда уходит, — поэтому на возврате
     // из «О чате» (комната пересоздаётся) нужен новый.
     val identityChanges = remember(roomId, showingDetails) { roomId?.let(session::identityChanges) }

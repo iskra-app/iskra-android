@@ -129,7 +129,7 @@ private fun Address(model: SignInModel<*>, state: SignInModel.State) {
         EntryField(
             value = state.address,
             onValueChange = model::setAddress,
-            placeholder = stringResource(R.string.sign_in_address_placeholder),
+            placeholder = stringResource(R.string.sign_in_server_address_placeholder),
             enabled = !state.isBusy,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next, autoCorrectEnabled = false),
             keyboardActions = KeyboardActions(onNext = { model.findServer() }),

@@ -58,4 +58,5 @@
     <string name="location_show_map">地図を表示</string>
     <string name="location_open_in_maps">地図アプリで開く</string>
     <string name="map_attribution">地図データ © OpenStreetMap contributors、タイル: OpenFreeMap</string>
+    <string name="sign_in_server_address_placeholder">サーバーのアドレス</string>
 </resources>

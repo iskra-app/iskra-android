@@ -58,4 +58,5 @@
     <string name="location_show_map">Показать карту</string>
     <string name="location_open_in_maps">Открыть в картах</string>
     <string name="map_attribution">Данные карты © участники OpenStreetMap, тайлы OpenFreeMap</string>
+    <string name="sign_in_server_address_placeholder">Адрес сервера</string>
 </resources>

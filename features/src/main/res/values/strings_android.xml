@@ -78,4 +78,6 @@
     <string name="location_show_map">Show map</string>
     <string name="location_open_in_maps">Open in maps</string>
     <string name="map_attribution">Map data © OpenStreetMap contributors, tiles OpenFreeMap</string>
+    <!-- Подсказка в поле адреса на входе: на iOS там «matrix.org», здесь словами. -->
+    <string name="sign_in_server_address_placeholder">Server address</string>
 </resources>

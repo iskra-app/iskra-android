@@ -58,4 +58,5 @@
     <string name="location_show_map">Afficher la carte</string>
     <string name="location_open_in_maps">Ouvrir dans Plans</string>
     <string name="map_attribution">Données cartographiques © contributeurs OpenStreetMap, tuiles OpenFreeMap</string>
+    <string name="sign_in_server_address_placeholder">Adresse du serveur</string>
 </resources>

@@ -58,4 +58,5 @@
     <string name="location_show_map">Mostrar mapa</string>
     <string name="location_open_in_maps">Abrir en mapas</string>
     <string name="map_attribution">Datos del mapa © colaboradores de OpenStreetMap, teselas de OpenFreeMap</string>
+    <string name="sign_in_server_address_placeholder">Dirección del servidor</string>
 </resources>

@@ -58,4 +58,5 @@
     <string name="location_show_map">显示地图</string>
     <string name="location_open_in_maps">在地图中打开</string>
     <string name="map_attribution">地图数据 © OpenStreetMap 贡献者，瓦片由 OpenFreeMap 提供</string>
+    <string name="sign_in_server_address_placeholder">服务器地址</string>
 </resources>
