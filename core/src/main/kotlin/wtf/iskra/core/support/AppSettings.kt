@@ -165,6 +165,13 @@ class AppSettings(context: Context) : UpdateStore {
 
     fun setNamesAccountInNotifications(on: Boolean) = save(NAMES_ACCOUNT, on, mutableNamesAccount)
 
+    private val mutableCompact = flag(COMPACT_LAYOUT, false)
+
+    /** Лента строками (аватар, имя, слова) вместо пузырей — «Компактный вид» (`messages.layout` у iOS: `compact` / `bubbles`). */
+    val compactLayout: StateFlow<Boolean> = mutableCompact.asStateFlow()
+
+    fun setCompactLayout(on: Boolean) = save(COMPACT_LAYOUT, on, mutableCompact)
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -306,6 +313,7 @@ class AppSettings(context: Context) : UpdateStore {
         const val RECENT_REACTIONS = "reactions.recent"
         const val AUTO_DOWNLOAD = "media.autoDownload"
         const val TINTS_INTERFACE = "appearance.tintsInterface"
+        const val COMPACT_LAYOUT = "messages.layout.compact"
         const val SHARE_ACCOUNT = "chats.shareAccount"
         const val WIDGET_ACCOUNT = "chats.widgetAccount"
         const val NAMES_ACCOUNT = "chats.namesAccountInNotifications"

@@ -459,6 +459,7 @@ fun RoomScreen(
         )
     }
 
+    val compactLayout by (LocalAppSettings.current?.compactLayout ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     // «Бета → JSON сообщения»: событие так, как его прислал сервер.
     val showsSource by (LocalAppSettings.current?.showsSource ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
     var sourceOf by remember(store.roomId) { mutableStateOf<String?>(null) }
@@ -499,6 +500,7 @@ fun RoomScreen(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
         LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
+        LocalCompactLayout provides compactLayout,
         LocalShowSource provides if (showsSource) ({ id -> sourceOf = store.sourceJson(id) }) else null,
     ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
@@ -554,7 +556,17 @@ fun RoomScreen(
         // причина «скачущей ленты» на iOS). Поэтому только у конца переписки; выше — в шапке.
         if (state.typing.isNotEmpty() && atLiveEnd) {
             // Три точки в пузыре, а имя — в заголовке (`headerSubtitle`): две подачи одного факта, одна из них без слов, лишние.
-            TypingBubble(Modifier.padding(horizontal = Theme.Spacing.normal).padding(top = Theme.Spacing.withinRun))
+            if (compactLayout) {
+                // Строкой, как всё остальное в компактном виде (`CompactTypingRow`): кто пишет, словами.
+                Text(
+                    if (state.typing.size == 1 && !state.header.isOneToOne) stringResource(R.string.room_typing_by, state.typing[0]) else stringResource(R.string.room_typing),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = quietInk(),
+                    modifier = Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.tight),
+                )
+            } else {
+                TypingBubble(Modifier.padding(horizontal = Theme.Spacing.normal).padding(top = Theme.Spacing.withinRun))
+            }
         }
         // Личный чат с тем, кого заблокировали: плашка вместо поля ввода. В группе один заблокированный не мешает писать остальным.
         val blockedId = state.header.counterpartId?.takeIf { state.header.isOneToOne && blocked != null }
@@ -1131,13 +1143,16 @@ private fun Bubble(
     val quickReaction by (LocalAppSettings.current?.quickReaction ?: remember { kotlinx.coroutines.flow.MutableStateFlow("❤️") }).collectAsStateWithLifecycle()
     val accent = LocalAccent.current
     val own = message.isOwn
-    val top = if (message.isContinuation) Theme.Spacing.withinRun else Theme.Spacing.betweenSenders / 2
+    val top = if (message.isContinuation) (if (LocalCompactLayout.current) Theme.Spacing.withinCompactRun else Theme.Spacing.withinRun) else Theme.Spacing.betweenSenders / 2
     var menuAnchor by remember { mutableStateOf<Rect?>(null) }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var revealed by remember(message.id) { mutableStateOf(false) }
     var noteTaps by remember(message.id) { mutableIntStateOf(0) }
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
     val ownUserId = LocalOwnUserId.current
+    // «Компактный вид»: все строкой слева направо, без пузырей и без деления на своё и чужое (`CompactMessageRow`).
+    val compact = LocalCompactLayout.current
+    val atEnd = own && !compact
 
     val wash by animateColorAsState(
         if (highlighted) LocalAccent.current.control.copy(alpha = Theme.Opacity.SELECTED_TAB) else Color.Transparent,
@@ -1145,23 +1160,23 @@ private fun Bubble(
     )
     // Один корень: элемент ленты из двух корней кладёт их друг на друга в обратном порядке.
     Column(Modifier.background(wash)) {
-        SwipeToReply(towardStart = own, enabled = message.canReply, onReply = { onReply(message) }) {
+        SwipeToReply(towardStart = atEnd, enabled = message.canReply, onReply = { onReply(message) }) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(start = Theme.Spacing.close, end = Theme.Spacing.close, top = top),
-                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close, if (own) Alignment.End else Alignment.Start),
-                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close, if (atEnd) Alignment.End else Alignment.Start),
+                verticalAlignment = if (compact) Alignment.Top else Alignment.Bottom,
             ) {
                 // Время — снаружи пузыря, со стороны, противоположной краю переписки: столбец времён
                 // тихо стоит рядом с сообщениями, а не режет их, и не спорит с последней строкой за место.
-                if (own) {
+                if (atEnd) {
                     (message.delivery as? DeliveryStatus.Failed)?.let { failed ->
                         FailedBadge(failed.reason, onUnsent, Modifier.align(Alignment.CenterVertically))
                     }
                     MessageMarks(message)
                 }
-                // Лицо — у последнего сообщения захода, у его подножия, как в Telegram.
-                if (!own && showsSender) {
-                    if (!message.isContinued) {
+                // Лицо — у последнего сообщения захода, у его подножия, как в Telegram; в компактном виде — у первого, у всех.
+                if ((!own || compact) && (showsSender || compact)) {
+                    if (if (compact) !message.isContinuation else !message.isContinued) {
                         val openProfile = LocalOpenProfile.current
                         Avatar(
                             message.senderName, message.senderAvatarUrl, Theme.Size.avatarSmall, seed = message.senderId,
@@ -1172,11 +1187,11 @@ private fun Bubble(
                     }
                 }
                 Column(
-                    modifier = Modifier.weight(1f, fill = false),
-                    horizontalAlignment = if (own) Alignment.End else Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(Theme.Spacing.withinRun),
+                    modifier = Modifier.weight(1f, fill = compact),
+                    horizontalAlignment = if (atEnd) Alignment.End else Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(if (compact) Theme.Spacing.tight else Theme.Spacing.withinRun),
                 ) {
-                    if (showsSender && !own && !message.isContinuation) {
+                    if ((showsSender || compact) && (!own || compact) && !message.isContinuation) {
                         val openProfile = LocalOpenProfile.current
                         Text(
                             message.senderName,
@@ -1203,6 +1218,7 @@ private fun Bubble(
                             onDoubleTap = { if (message.canReact) onReact(quickReaction) },
                             onLongPress = { menuAnchor = anchor.rect },
                             onQuote = onQuote,
+                            plain = compact,
                         )
                     }
                     menuAnchor?.let { rect ->
@@ -1219,7 +1235,7 @@ private fun Bubble(
                             onAskDelete = { confirm = Confirm.DELETE },
                             onAskEndPoll = { confirm = Confirm.END_POLL },
                         ) {
-                            BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0)
+                            BubbleBody(message, interactive = false, revealed = revealed, noteTaps = 0, plain = compact)
                         }
                     }
                     confirm?.let { asked ->
@@ -1239,7 +1255,7 @@ private fun Bubble(
                     val thread = message.thread
                     if (thread != null && onOpenThread != null) ThreadLine(thread) { onOpenThread(message) }
                 }
-                if (!own) MessageMarks(message)
+                if (!atEnd) MessageMarks(message)
             }
         }
         if (message.reactions.isNotEmpty()) Reactions(message, onReact)
@@ -1334,9 +1350,11 @@ private fun BubbleBody(
     onDoubleTap: () -> Unit = {},
     onLongPress: () -> Unit = {},
     onQuote: (String) -> Unit = {},
+    /** Без пузыря: слова прямо на странице (компактный вид, `BubbleStyle.plain`). */
+    plain: Boolean = false,
 ) {
     val accent = LocalAccent.current
-    val own = message.isOwn
+    val own = message.isOwn && !plain
     val maxWidth = (LocalConfiguration.current.screenWidthDp * Theme.Size.BUBBLE_WIDTH_FRACTION).toInt()
     val ownUserId = LocalOwnUserId.current
     val picture = message.kind.picture
@@ -1389,12 +1407,13 @@ private fun BubbleBody(
         }
     } else Column(
         Modifier
-            .widthIn(max = Dp(maxWidth.toFloat()))
-            .clip(RoundedCornerShape(Theme.Radius.bubble))
+            .then(if (plain) Modifier.fillMaxWidth() else Modifier.widthIn(max = Dp(maxWidth.toFloat())).clip(RoundedCornerShape(Theme.Radius.bubble)))
             // Удалённое — без заливки, пунктирным контуром (`deletedBubble` на iOS): заливка весила бы, как всё, что в чате ещё есть,
             // а пунктир — старейший способ нарисовать то, чего нет. Контур тише слов внутри.
             .then(
-                if (message.kind is MessageKind.Deleted) {
+                if (plain) {
+                    Modifier
+                } else if (message.kind is MessageKind.Deleted) {
                     Modifier.deletedOutline(MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     Modifier.background(if (own) accent.bubble else accent.incomingBubble)
@@ -1406,9 +1425,9 @@ interactive = interactive,
                 onDoubleClick = onDoubleTap,
                 onLongClick = onLongPress,
             )
-            .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close + Theme.Spacing.withinRun),
+            .then(if (plain) Modifier else Modifier.padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close + Theme.Spacing.withinRun)),
     ) {
-        val ink = if (message.kind is MessageKind.Deleted) MaterialTheme.colorScheme.onSurfaceVariant else if (own) accent.onBubble else accent.onIncomingBubble
+        val ink = if (message.kind is MessageKind.Deleted) MaterialTheme.colorScheme.onSurfaceVariant else if (plain) MaterialTheme.colorScheme.onSurface else if (own) accent.onBubble else accent.onIncomingBubble
         message.replyTo?.let { reply ->
             Row(
                 Modifier
@@ -2091,3 +2110,6 @@ private fun Modifier.deletedOutline(color: Color): Modifier = this.drawBehind {
 }
 
 private const val DELETED_OUTLINE_ALPHA = 0.5f
+
+/** «Компактный вид» ленты (`MessageLayout.compact`): строки вместо пузырей. */
+internal val LocalCompactLayout = androidx.compose.runtime.compositionLocalOf { false }

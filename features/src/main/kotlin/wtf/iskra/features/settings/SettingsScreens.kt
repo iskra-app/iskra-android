@@ -66,6 +66,8 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -437,7 +439,12 @@ private fun Appearance(settings: AppSettings) {
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
     val tints by settings.tintsInterface.collectAsStateWithLifecycle()
-    Group({ Toggle(R.string.appearance_tint_interface, null, tints, settings::setTintsInterface) })
+    val compact by settings.compactLayout.collectAsStateWithLifecycle()
+    Group(
+        { Toggle(R.string.appearance_compact, null, compact, settings::setCompactLayout) },
+        { Toggle(R.string.appearance_tint_interface, null, tints, settings::setTintsInterface) },
+    )
+    LayoutPreview(compact)
 
     WallpaperSection(settings)
     AppIconSection()
@@ -950,4 +957,65 @@ private fun AccountPicker(title: Int, help: Int, accounts: RootModel.Accounts, s
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(Theme.Spacing.roomy),
     )
+}
+
+/** Живое превью ленты под переключателем «Компактный вид» (`AppearanceView.preview`): четыре строки так, как они лягут. */
+@Composable
+private fun LayoutPreview(compact: Boolean) {
+    val accent = LocalAccent.current
+    val label = stringResource(R.string.appearance_preview_label)
+    val sender = stringResource(R.string.appearance_preview_sender)
+    val you = stringResource(R.string.message_spoken_you)
+    val ask = stringResource(R.string.appearance_preview_ask)
+    val answer = stringResource(R.string.appearance_preview_answer)
+    val reply = stringResource(R.string.appearance_preview_reply)
+    val followUp = stringResource(R.string.appearance_preview_follow_up)
+    Column(
+        Modifier
+            .padding(Theme.Spacing.roomy)
+            .fillMaxWidth()
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.card))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(Theme.Spacing.normal)
+            .semantics { contentDescription = label },
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.close),
+    ) {
+        if (compact) {
+            PreviewLine(ask, sender)
+            PreviewLine(answer, you)
+            PreviewLine(reply, sender)
+            PreviewLine(followUp, null)
+        } else {
+            PreviewBubble(ask, own = false, accent)
+            PreviewBubble(answer, own = true, accent)
+            PreviewBubble(reply, own = false, accent)
+            PreviewBubble(followUp, own = false, accent)
+        }
+    }
+}
+
+@Composable
+private fun PreviewBubble(text: String, own: Boolean, accent: wtf.iskra.design.AccentColors) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (own) Arrangement.End else Arrangement.Start) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (own) accent.onBubble else accent.onIncomingBubble,
+            modifier = Modifier
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.bubble))
+                .background(if (own) accent.bubble else accent.incomingBubble)
+                .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
+        )
+    }
+}
+
+@Composable
+private fun PreviewLine(text: String, from: String?) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.close)) {
+        Spacer(Modifier.size(Theme.Size.avatarSmall))
+        Column {
+            if (from != null) Text(from, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
