@@ -41,6 +41,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LargeTopAppBar
@@ -108,7 +109,7 @@ import wtf.iskra.features.R
 import wtf.iskra.features.support.Avatar
 
 /** Куда ведут настройки. Навигации-фреймворка нет: экран — состояние, «назад» — шаг по стеку. */
-enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
+enum class SettingsPage { MAIN, PROFILE, SECURITY, DEVICES, PRIVACY, BLOCKED, STORAGE, NOTIFICATIONS, APPEARANCE, CHATS, FOLDERS, MEDIA, BETA, ABOUT, LIBRARIES }
 
 /**
  * Настройки (`SettingsView` на iOS, docs/PROMPT.md, 12.8). Пока — то, что можно сделать без
@@ -128,6 +129,8 @@ fun SettingsScreen(
     /** Аккаунты устройства и что с ними можно сделать — всё делает корень (`RootModel`). */
     accounts: RootModel.Accounts = RootModel.Accounts(),
     onSwitchAccount: (String) -> Unit = {},
+    /** Кэш очищен: клиент этого сеанса кончен, и приложение открывает сеанс заново (`RootModel.reopenAfterClearing`). */
+    onStorageCleared: () -> Unit = {},
     onAddAccount: () -> Unit = {},
     onSignOutOther: (String) -> Unit = {},
     /** Браузер для входа — «Бета → Демо-вход» проходит тот же вход, что настоящий. */
@@ -172,6 +175,7 @@ fun SettingsScreen(
                 SettingsPage.DEVICES -> R.string.devices_title
                 SettingsPage.PRIVACY -> R.string.privacy_title
                 SettingsPage.BLOCKED -> R.string.settings_blocked
+                SettingsPage.STORAGE -> R.string.storage_title
                 SettingsPage.NOTIFICATIONS -> R.string.notifications_title
                 SettingsPage.BETA -> R.string.beta_title
                 SettingsPage.ABOUT -> R.string.about_title
@@ -199,6 +203,7 @@ fun SettingsScreen(
                 SettingsPage.DEVICES -> DevicesPage(session)
                 SettingsPage.PRIVACY -> PrivacyPage(settings) { onNavigate(SettingsPage.BLOCKED) }
                 SettingsPage.BLOCKED -> BlockedPage(session)
+                SettingsPage.STORAGE -> StoragePage(session, onStorageCleared)
                 SettingsPage.NOTIFICATIONS -> Notifications(session, settings, pushes)
                 SettingsPage.BETA -> Beta(settings, session.isDemo, onDemo, browser, appVersion)
                 SettingsPage.LIBRARIES -> Libraries(librariesResource)
@@ -309,6 +314,7 @@ private fun Main(
         { Link(Icons.Outlined.Forum, R.string.settings_chats) { onNavigate(SettingsPage.CHATS) } },
         { Link(Icons.Outlined.Folder, R.string.folders_title) { onNavigate(SettingsPage.FOLDERS) } },
         { Link(Icons.Outlined.PhotoLibrary, R.string.settings_media) { onNavigate(SettingsPage.MEDIA) } },
+        { Link(Icons.Outlined.Storage, R.string.settings_storage) { onNavigate(SettingsPage.STORAGE) } },
     )
     Group(
         { Link(Icons.Outlined.Science, R.string.beta_title) { onNavigate(SettingsPage.BETA) } },

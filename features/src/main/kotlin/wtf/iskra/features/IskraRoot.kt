@@ -274,6 +274,7 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                     openRoom = null
                     model.switchTo(id)
                 },
+                onStorageCleared = model::reopenAfterClearing,
                 onAddAccount = model::addAccount,
                 onSignOutOther = model::signOutOther,
                 browser = browser,

@@ -69,6 +69,13 @@ class AuthenticationService(
     internal val networkWatch: wtf.iskra.core.support.NetworkWatch? = null,
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
+    /** Где на диске лежит то, что хранит этот сеанс, — для экрана «Хранилище». */
+    internal fun storageLocations(sessionId: String): Map<wtf.iskra.core.storage.StorageKind, java.io.File> = mapOf(
+        wtf.iskra.core.storage.StorageKind.SESSION to environment.sessionDataDir(sessionId),
+        wtf.iskra.core.storage.StorageKind.CACHE to environment.sessionCacheDir(sessionId),
+        wtf.iskra.core.storage.StorageKind.SEARCH to environment.searchIndexDir(sessionId),
+    )
+
     internal fun localNamesOf(sessionId: String): LocalNames.Account? = localNames?.of(sessionId)
 
     /** Состояние входа меняется только под этим замком — аналог `actor` в iOS. */

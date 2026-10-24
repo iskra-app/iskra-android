@@ -125,6 +125,18 @@ class UserSession internal constructor(
         )
     }
 
+    /**
+     * Что приложение держит на устройстве, для экрана «Хранилище». Свой на каждый вход на экран. После очистки клиент этого сеанса кончен
+     * ([wtf.iskra.core.storage.StorageStore.clearCache]), и приложение обязано открыть сеанс заново (`RootModel.reopenAfterClearing`).
+     */
+    fun storage(): wtf.iskra.core.storage.StorageStore = wtf.iskra.core.storage.StorageStore(
+        client,
+        syncService = {
+            rooms.runningSyncService ?: runCatching { withTimeLimit(PROFILE_LIMIT) { client.syncService().withOfflineMode().finish() } }.getOrNull()
+        },
+        locations = if (isDemo) emptyMap() else authentication.storageLocations(sessionId),
+    )
+
     /** Заблокированные (`ignore` Matrix): подписка живёт с сеансом, экран только читает. */
     val blocked = BlockStore(client, scope)
 

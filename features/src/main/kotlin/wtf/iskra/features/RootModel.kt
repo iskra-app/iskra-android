@@ -329,6 +329,17 @@ class RootModel(
         session.shutDown()
     }
 
+    /**
+     * Кэш или индекс очищены, и клиент этого сеанса кончен (`StorageStore.clearCache`): закрыть сеанс и открыть заново из хранилища
+     * секретов. Выхода нет — токены и ключи нетронуты, ушло только то, что можно скачать снова.
+     */
+    fun reopenAfterClearing() {
+        scope.launch {
+            closeForUpdate()
+            restore()
+        }
+    }
+
     /** Установка не случилась — открыть то, что закрыли ради неё. */
     fun reopenAfterUpdate() {
         if (mutablePhase.value != Phase.Starting) return
