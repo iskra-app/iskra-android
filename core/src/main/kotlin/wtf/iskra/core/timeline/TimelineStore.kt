@@ -77,6 +77,7 @@ import org.matrix.rustcomponents.sdk.UploadSource
 import org.matrix.rustcomponents.sdk.messageEventContentFromMarkdown
 import uniffi.matrix_sdk_ui.TimelineReadReceiptTracking
 import java.time.Duration
+import java.time.Instant
 import kotlin.time.Duration.Companion.seconds
 
 /** Шапка переписки — то, что ей нужно, и не больше. Остальное — экран «О чате». */
@@ -144,7 +145,10 @@ data class TimelineState(
 
 /** Что человек попросил у комнаты, и это не случилось. */
 /** Один человек и его реакция — строка листа «Кто отреагировал». */
-data class Reactor(val key: String, val userId: String, val name: String, val avatarUrl: String?)
+data class Reactor(val key: String, val userId: String, val name: String, val avatarUrl: String?, val reactedAt: Instant? = null)
+
+/** Кто прочёл сообщение. [readAt] — только у квитанции на нём самом: у прочитавшего дальше времени на *этом* сообщении нет. */
+data class Reader(val userId: String, val name: String, val avatarUrl: String?, val readAt: Instant?)
 
 enum class TimelineFailure(val message: Int) {
     SEND(R.string.timeline_send_failed),
@@ -892,10 +896,36 @@ class TimelineStore internal constructor(
                     val avatar = runCatching { withTimeLimit(SDK_LIMIT) { room.memberAvatarUrl(userId) } }.getOrNull()
                     name to avatar
                 }
-                people += Reactor(reaction.key, userId, name, avatar)
+                people += Reactor(reaction.key, userId, name, avatar, reaction.times[userId])
             }
         }
         return people
+    }
+
+    /**
+     * Кто прочёл сообщение: все, чья квитанция на нём или *ниже* (прочитал дальше — прочитал и это), кроме вас и автора. Время —
+     * только у квитанции на самом сообщении. Считается по запросу, от новейшего к этому, а не хранится в строке: квитанция
+     * сдвигается с каждым прочтением, и строка, что менялась бы с ней, перерисовывалась бы зря. Порт `readerIDs(of:)`.
+     */
+    fun readerIds(messageId: String): List<Pair<String, Instant?>> {
+        val readers = ArrayList<Pair<String, Instant?>>()
+        val own = ownUserId
+        for (item in items.asReversed()) {
+            val event = item.asEvent() ?: continue
+            val isThis = TimelineMapper.identifier(event.eventOrTransactionId) == messageId
+            event.readReceipts.filterKeys { it != own }.entries
+                .sortedByDescending { it.value.timestamp?.toLong() ?: 0L }
+                .forEach { (userId, receipt) -> readers += userId to if (isThis) receipt.timestamp?.let(MessagePreview::instant) else null }
+            if (isThis) return readers.filter { it.first != event.sender }
+        }
+        // В загруженной ленте его нет совсем: сказать нечего.
+        return emptyList()
+    }
+
+    suspend fun readers(messageId: String): List<Reader> = readerIds(messageId).map { (userId, readAt) ->
+        val name = runCatching { withTimeLimit(SDK_LIMIT) { room.memberDisplayName(userId) } }.getOrNull() ?: userId
+        val avatar = runCatching { withTimeLimit(SDK_LIMIT) { room.memberAvatarUrl(userId) } }.getOrNull()
+        Reader(userId, name, avatar, readAt)
     }
 
     suspend fun sendPoll(draft: PollDraft): Boolean {

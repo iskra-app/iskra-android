@@ -129,6 +129,8 @@ data class MessageReaction(
     val isMine: Boolean,
     /** Кто оставил, по Matrix ID, ранние первыми. */
     val senders: List<String> = emptyList(),
+    /** Когда кто оставил — для листа «Кто отреагировал». */
+    val times: Map<String, Instant> = emptyMap(),
 )
 
 /**

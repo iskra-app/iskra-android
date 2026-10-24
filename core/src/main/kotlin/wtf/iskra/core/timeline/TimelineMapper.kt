@@ -226,6 +226,7 @@ internal object TimelineMapper {
                     count = reaction.senders.size,
                     isMine = reaction.senders.any { it.senderId == ownUserId },
                     senders = reaction.senders.sortedBy { it.timestamp }.map { it.senderId },
+                    times = reaction.senders.associate { it.senderId to MessagePreview.instant(it.timestamp) },
                 )
             }
     }

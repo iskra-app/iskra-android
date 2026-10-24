@@ -1,5 +1,6 @@
 package wtf.iskra.features.room
 
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
@@ -498,7 +499,12 @@ fun RoomScreen(
     sourceOf?.let { json -> EventSourceSheet(json, onDismiss = { sourceOf = null }) }
     reactorsOf?.let { (messageId, key) ->
         val reactions = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }?.reactions.orEmpty()
-        ReactorsSheet(reactions, key, load = { store.reactors(messageId) }, onDismiss = { reactorsOf = null })
+        ReactorsSheet(
+            reactions, key,
+            load = { store.reactors(messageId) },
+            onDismiss = { reactorsOf = null },
+            loadReaders = if (state.header.isOneToOne) null else ({ store.readers(messageId) }),
+        )
     }
     val profileId = profileOf
     if (profileId != null && memberStore != null) {
@@ -522,6 +528,7 @@ fun RoomScreen(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
         LocalDiscardUpload provides { id -> scope.launch { store.discard(id) } },
+        LocalReaderCount provides if (isThread || state.header.isOneToOne) null else { id -> store.readerIds(id).size },
         LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
         LocalCompactLayout provides compactLayout,
         LocalShowSource provides if (showsSource) ({ id -> sourceOf = store.sourceJson(id) }) else null,
@@ -1674,6 +1681,24 @@ private fun MessageMenu(
             add(MenuAction(stringResource(if (isPinned) R.string.message_menu_unpin else R.string.message_menu_pin), Icons.Filled.PushPin) { onPin(!isPinned) })
         }
         if (message.canEndPoll) add(MenuAction(stringResource(R.string.poll_end), Icons.Filled.Done, run = onAskEndPoll))
+        // «12 прочитали · 5 реакций» — в группе: кто прочёл и кто что оставил, чего пилюля чисел и две галочки не скажут.
+        val showReactors = LocalShowReactors.current
+        val countReaders = LocalReaderCount.current
+        if (showReactors != null && countReaders != null && message.canReact) {
+            val reactions = message.reactions.sumOf { it.count }
+            val seen = countReaders(message.id)
+            val title = when {
+                seen > 0 && reactions > 0 -> stringResource(
+                    R.string.message_menu_seen_and_reacted,
+                    pluralStringResource(R.plurals.message_menu_seen, seen, seen),
+                    pluralStringResource(R.plurals.message_menu_reactors, reactions, reactions),
+                )
+                seen > 0 -> pluralStringResource(R.plurals.message_menu_seen, seen, seen)
+                reactions > 0 -> pluralStringResource(R.plurals.message_menu_reactors, reactions, reactions)
+                else -> null
+            }
+            if (title != null) add(0, MenuAction(title, if (seen > 0) Icons.Filled.DoneAll else Icons.Filled.EmojiEmotions) { showReactors(message.id, null) })
+        }
         LocalShowSource.current?.let { show -> add(MenuAction(stringResource(R.string.beta_view_source), Icons.Filled.Code) { show(message.id) }) }
         if (message.canDelete) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
     }
@@ -2147,6 +2172,8 @@ private const val TYPING_STAGGER_MS = 180
 internal val LocalOpenProfile = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }
 
 /** Долгое нажатие на пилюлю реакции: сообщение и эмодзи, с которого начать лист. Null — листа нет (тред). */
+/** Сколько человек прочли сообщение (`TimelineStore.readerIds`). Null — не спрашиваем: личный чат, тред. */
+internal val LocalReaderCount = androidx.compose.runtime.compositionLocalOf<((String) -> Int)?> { null }
 internal val LocalShowReactors = androidx.compose.runtime.compositionLocalOf<((String, String?) -> Unit)?> { null }
 
 /** «Бета → JSON»: показать событие сообщения. Null — не включено. */
