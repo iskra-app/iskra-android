@@ -460,6 +460,36 @@ private fun accentName(theme: AccentTheme): Int = when (theme) {
 @Composable
 private fun Media(settings: AppSettings) {
     val media by settings.media.collectAsStateWithLifecycle()
+    // Первой: она про то, что *приходит*, и с ней приходят на этот экран при роуминге (`MediaSettingsView`).
+    val autoDownload by settings.autoDownload.collectAsStateWithLifecycle()
+    SectionTitle(R.string.media_auto_download)
+    Group(
+        *wtf.iskra.core.media.MediaAutoDownload.entries.map { option ->
+            @Composable {
+                Choice(
+                    title = when (option) {
+                        wtf.iskra.core.media.MediaAutoDownload.ALWAYS -> R.string.media_auto_download_always
+                        wtf.iskra.core.media.MediaAutoDownload.WIFI -> R.string.media_auto_download_wifi
+                        wtf.iskra.core.media.MediaAutoDownload.NEVER -> R.string.media_auto_download_never
+                    },
+                    selected = option == autoDownload,
+                ) { settings.setAutoDownload(option) }
+            }
+        }.toTypedArray(),
+    )
+    // Одна подпись, та, что про выбранное: «Только Wi-Fi» не говорит, что показывают вместо картинки.
+    Text(
+        stringResource(
+            when (autoDownload) {
+                wtf.iskra.core.media.MediaAutoDownload.ALWAYS -> R.string.media_auto_download_always_help
+                wtf.iskra.core.media.MediaAutoDownload.WIFI -> R.string.media_auto_download_wifi_help
+                wtf.iskra.core.media.MediaAutoDownload.NEVER -> R.string.media_auto_download_never_help
+            },
+        ),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(Theme.Spacing.roomy),
+    )
     Group(
         { Toggle(R.string.media_strip_metadata, null, media.stripsMetadata, { settings.setMedia(media.copy(stripsMetadata = it)) }) },
         { Toggle(R.string.media_compress, null, media.compresses, { settings.setMedia(media.copy(compresses = it)) }) },

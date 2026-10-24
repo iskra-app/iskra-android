@@ -58,7 +58,8 @@ internal fun AlbumContent(
         items.zip(frames).forEach { (message, frame) ->
             val attachment = message.kind.picture ?: return@forEach
             val tile = maxOf(frame.width, frame.height).dp
-            val image = rememberThumbnail(attachment, tile)
+            val thumbnail = rememberThumbnailState(attachment, tile, obeysAutoDownload = true)
+            val image = thumbnail.image
             Box(
                 Modifier
                     .offset(frame.x.dp, frame.y.dp)
@@ -73,7 +74,8 @@ internal fun AlbumContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (image != null) Image(image, contentDescription = attachment.caption, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                if (message.kind is MessageKind.Video) {
+                if (thumbnail.waiting) DownloadPlate(thumbnail, attachment.mediaId, Modifier.fillMaxSize())
+                if (!thumbnail.waiting && message.kind is MessageKind.Video) {
                     Icon(
                         Icons.Filled.PlayArrow,
                         contentDescription = null,

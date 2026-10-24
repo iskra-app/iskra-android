@@ -16,6 +16,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import wtf.iskra.features.R
+import androidx.compose.ui.res.stringResource
+import wtf.iskra.features.support.LocalAppSettings
+import androidx.compose.foundation.clickable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import wtf.iskra.features.support.ManualDownloads
+import wtf.iskra.features.support.NetworkCost
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,7 +77,8 @@ internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier, mess
         is MessageKind.Sticker -> RoundedCornerShape(Theme.Radius.control)
         else -> RoundedCornerShape(Theme.Radius.picture)
     }
-    val image = rememberThumbnail(attachment, maxOf(size.width, size.height))
+    val thumbnail = rememberThumbnailState(attachment, maxOf(size.width, size.height), obeysAutoDownload = kind !is MessageKind.Sticker)
+    val image = thumbnail.image
     Box(
         modifier
             .size(size)
@@ -85,7 +94,8 @@ internal fun MediaContent(kind: MessageKind, modifier: Modifier = Modifier, mess
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        if (kind is MessageKind.Video || kind is MessageKind.VideoNote) {
+        if (thumbnail.waiting) DownloadPlate(thumbnail, attachment.mediaId, Modifier.fillMaxSize())
+        if (!thumbnail.waiting && (kind is MessageKind.Video || kind is MessageKind.VideoNote)) {
             Icon(
                 Icons.Filled.PlayArrow,
                 contentDescription = null,
@@ -117,19 +127,60 @@ private const val MAX_RATIO = 3f
  * текст, и на диск приложения он не пишется — кэш на диске один, зашифрованный стор SDK.
  */
 @Composable
-internal fun rememberThumbnail(attachment: Attachment, side: Dp): ImageBitmap? {
+internal fun rememberThumbnail(attachment: Attachment, side: Dp): ImageBitmap? = rememberThumbnailState(attachment, side, obeysAutoDownload = false).image
+
+/** Миниатюра и то, что она ждёт: нажатия, когда автозагрузка не разрешает качать (`MediaThumbnail` на iOS). */
+internal class ThumbnailState(val image: ImageBitmap?, val waiting: Boolean, val blur: ImageBitmap?)
+
+/**
+ * С [obeysAutoDownload] миниатюра качается, только если настройка «Автозагрузка» позволяет при этой сети или человек нажал кнопку
+ * (`ManualDownloads`); иначе — размытый контур по blurhash и кнопка. Аватарки, стикеры и всё, что человек открыл сам, — без неё.
+ */
+@Composable
+internal fun rememberThumbnailState(attachment: Attachment, side: Dp, obeysAutoDownload: Boolean): ThumbnailState {
     val loader = LocalMediaLoader.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val pixels = with(LocalDensity.current) { side.roundToPx() }
     val key = "${attachment.mediaId}@$pixels"
     var image by remember(key) { mutableStateOf(Thumbnails.get(key)) }
-    LaunchedEffect(key, loader) {
-        if (image != null || loader == null) return@LaunchedEffect
+    val setting by (LocalAppSettings.current?.autoDownload ?: remember { kotlinx.coroutines.flow.MutableStateFlow(wtf.iskra.core.media.MediaAutoDownload.DEFAULT) }).collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { NetworkCost.watch(context) }
+    val expensive by NetworkCost.isExpensive.collectAsStateWithLifecycle()
+    val mayFetch = !obeysAutoDownload || ManualDownloads.contains(attachment.mediaId) || setting.allows(expensive)
+    val blur = remember(attachment.blurhash) { attachment.blurhash?.let(::decodeBlur) }
+    LaunchedEffect(key, loader, mayFetch) {
+        if (image != null || loader == null || !mayFetch) return@LaunchedEffect
         val bytes = runCatching { loader.thumbnail(attachment, pixels) }.getOrNull() ?: return@LaunchedEffect
         val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() ?: return@LaunchedEffect
         Thumbnails.put(key, bitmap)
         image = bitmap
     }
-    return image
+    return ThumbnailState(image, waiting = image == null && !mayFetch, blur = blur)
+}
+
+/** Размытый контур по blurhash: 32×32, растягивается на место картинки. */
+private fun decodeBlur(hash: String): ImageBitmap? {
+    val pixels = wtf.iskra.core.media.Blurhash.decode(hash, BLUR_SIDE, BLUR_SIDE) ?: return null
+    return android.graphics.Bitmap.createBitmap(pixels, BLUR_SIDE, BLUR_SIDE, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+}
+
+private const val BLUR_SIDE = 32
+
+/** Плашка вместо картинки, пока автозагрузка стоит: размытый контур и кнопка «скачать». */
+@Composable
+internal fun DownloadPlate(state: ThumbnailState, mediaId: String, modifier: Modifier = Modifier) {
+    val label = stringResource(R.string.media_download)
+    Box(modifier, contentAlignment = Alignment.Center) {
+        state.blur?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()) }
+        Box(
+            Modifier
+                .size(Theme.Size.composerControl)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = Theme.Backdrop.PLATE))
+                .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = label) { ManualDownloads.ask(mediaId) },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.ArrowDownward, contentDescription = label, tint = Color.White) }
+    }
 }
 
 private object Thumbnails {

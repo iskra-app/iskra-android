@@ -96,6 +96,16 @@ class AppSettings(context: Context) : UpdateStore {
         mutableServiceEvents.value = settings
     }
 
+    private val mutableAutoDownload = MutableStateFlow(wtf.iskra.core.media.MediaAutoDownload.of(preferences.getString(AUTO_DOWNLOAD, null)))
+
+    /** Само ли качаются фото и видео в ленте (ключ — как у iOS, `MediaSettings.autoDownloadKey`). */
+    val autoDownload: StateFlow<wtf.iskra.core.media.MediaAutoDownload> = mutableAutoDownload.asStateFlow()
+
+    fun setAutoDownload(choice: wtf.iskra.core.media.MediaAutoDownload) {
+        preferences.edit().putString(AUTO_DOWNLOAD, choice.storageName).apply()
+        mutableAutoDownload.value = choice
+    }
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -235,6 +245,7 @@ class AppSettings(context: Context) : UpdateStore {
         const val PRIVACY_PRESENCE = "privacy.hidesPresence"
         const val PRIVACY_TYPING = "privacy.hidesTyping"
         const val RECENT_REACTIONS = "reactions.recent"
+        const val AUTO_DOWNLOAD = "media.autoDownload"
         const val HIDES_NAME_CHANGES = "chats.hidesNameChanges"
         const val HIDES_MEMBERSHIP_CHANGES = "chats.hidesMembershipChanges"
         const val QUICK_REACTION = "reactions.quick"
