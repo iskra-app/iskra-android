@@ -5,6 +5,7 @@ import wtf.iskra.core.mock.demoServers
 import wtf.iskra.core.security.InMemorySecrets
 import wtf.iskra.core.security.SessionStore
 import wtf.iskra.core.session.AuthenticationService
+import wtf.iskra.core.session.KnownDevices
 import wtf.iskra.core.support.AppEnvironment
 import wtf.iskra.core.support.DeviceDescription
 import wtf.iskra.core.support.Strings
@@ -60,6 +61,8 @@ object MockSignIn {
             deviceName = context.getString(wtf.iskra.core.R.string.device_android),
             userAgent = DeviceDescription.userAgent(appVersion),
             strings = Strings.of(context),
+            // Какие сеансы аккаунта видели — тоже в памяти, как его секреты: следующий запуск без флага найдёт настоящее, каким оно было.
+            knownDevices = KnownDevices(InMemoryKnown()),
         ).also { service = it }
     }
 
@@ -70,4 +73,15 @@ object MockSignIn {
     fun start(words: Collection<String> = emptySet()): String? = demoServers?.startSignIn(words)
 
     private const val SCRATCH = "IskraMockServer"
+}
+
+/** Память `KnownDevices` для демо-входа: живёт, пока процесс. */
+private class InMemoryKnown : KnownDevices.Store {
+    private val values = HashMap<String, Set<String>>()
+
+    override fun get(account: String): Set<String>? = values[account]
+
+    override fun put(account: String, fingerprints: Set<String>?) {
+        if (fingerprints == null) values.remove(account) else values[account] = fingerprints
+    }
 }

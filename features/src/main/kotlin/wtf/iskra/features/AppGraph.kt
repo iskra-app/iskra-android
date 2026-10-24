@@ -71,6 +71,7 @@ class AppGraph(
         pushTargets = pushTargets,
         localNames = LocalNames.of(context),
         networkWatch = wtf.iskra.core.support.NetworkWatch(context),
+        knownDevices = wtf.iskra.core.session.KnownDevices(context),
     )
 
     /** Нажатия на уведомления и чат на экране — один на процесс (см. [PushRouter]). */

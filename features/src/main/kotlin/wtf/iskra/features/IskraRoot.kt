@@ -333,7 +333,12 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                 settingsDot = updateWaiting,
                 folders = session.folders,
                 onEditFolders = { settingsPage = SettingsPage.FOLDERS },
-                banner = { RecoveryBanner(session) { unlocking = true } },
+                banner = {
+                    Column {
+                        RecoveryBanner(session) { unlocking = true }
+                        session.newSignIns?.let { wtf.iskra.features.rooms.NewSignIns(it) }
+                    }
+                },
                 accountMenu = if (accounts.isAvailable) {
                     { expanded, onDismiss ->
                         AccountMenu(expanded, accounts, onDismiss, onSwitch = model::switchTo, onAdd = model::addAccount)

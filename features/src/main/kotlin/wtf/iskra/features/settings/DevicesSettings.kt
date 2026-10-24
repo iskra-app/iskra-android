@@ -248,7 +248,7 @@ private fun Seen(device: AccountDevice) {
  * чтобы плитки сидели правильно в обеих темах.
  */
 @Composable
-private fun PlatformTile(platform: DevicePlatform, side: androidx.compose.ui.unit.Dp) {
+internal fun PlatformTile(platform: DevicePlatform, side: androidx.compose.ui.unit.Dp) {
     val scheme = MaterialTheme.colorScheme
     val (icon, container, content) = when (platform) {
         DevicePlatform.IPHONE -> Triple(Icons.Outlined.PhoneIphone, scheme.primaryContainer, scheme.onPrimaryContainer)
@@ -341,4 +341,25 @@ private fun DeviceSheet(device: AccountDevice, store: DevicesStore, ending: Bool
             dismissButton = { TextButton(onClick = { confirming = false }) { Text(stringResource(R.string.devices_cancel)) } },
         )
     }
+}
+
+/**
+ * Карточка одного сеанса поверх чего угодно — баннера «новый вход» ([wtf.iskra.features.rooms.NewSignInBanner]): сама читает список, показывает сеанс
+ * и закрывается, когда он пропал из списка после завершения, — это и значит «завершён»: сервер согласился, а не кнопка нажата. Порт `DeviceDetailSheet`
+ * в роли, где её зовут не с экрана «Устройства».
+ */
+@Composable
+internal fun DeviceCard(device: AccountDevice, store: DevicesStore, onEnded: () -> Unit, onDismiss: () -> Unit) {
+    val state by store.state.collectAsStateWithLifecycle()
+    LaunchedEffect(store) { store.load() }
+    val current = state.devices.firstOrNull { it.id == device.id }
+    // Пока список не пришёл, показывается то, что баннер уже знает; пропал после загрузки — завершён.
+    LaunchedEffect(current, state.hasLoaded) {
+        if (current == null && state.hasLoaded) {
+            onEnded()
+            onDismiss()
+        }
+    }
+    DeviceSheet(current ?: device, store, ending = device.id in state.ending, onDismiss = onDismiss)
+    EndingDialogs(store, state)
 }

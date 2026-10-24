@@ -104,25 +104,34 @@ class UserSession internal constructor(
      * Сессии аккаунта для экрана «Устройства». Заново на каждый вход на экран: список — правда сервера в этот момент.
      * Вошли через OAuth — сессии заканчиваются на странице самого сервера (`accountUrl`), и экран её откроет.
      */
-    fun devices(): DevicesStore {
+    fun devices(): DevicesStore = DevicesStore(accountDevices())
+
+    private fun accountDevices(): AccountDevices {
         val requests = AuthorisedRequests(client)
         val managed = runCatching { client.session().oauthData != null }.getOrDefault(false)
-        return DevicesStore(
-            AccountDevices(
-                userId = userId,
-                currentDeviceId = client.deviceId(),
-                isManagedByServer = managed,
-                send = requests::send,
-                serverPage = { deviceId ->
-                    val action = if (deviceId != null) {
-                        org.matrix.rustcomponents.sdk.AccountManagementAction.DeviceDelete(deviceId)
-                    } else {
-                        org.matrix.rustcomponents.sdk.AccountManagementAction.DevicesList
-                    }
-                    runCatching { withTimeLimit(PROFILE_LIMIT) { client.accountUrl(action) } }.getOrNull()
-                },
-            ),
+        return AccountDevices(
+            userId = userId,
+            currentDeviceId = client.deviceId(),
+            isManagedByServer = managed,
+            send = requests::send,
+            serverPage = { deviceId ->
+                val action = if (deviceId != null) {
+                    org.matrix.rustcomponents.sdk.AccountManagementAction.DeviceDelete(deviceId)
+                } else {
+                    org.matrix.rustcomponents.sdk.AccountManagementAction.DevicesList
+                }
+                runCatching { withTimeLimit(PROFILE_LIMIT) { client.accountUrl(action) } }.getOrNull()
+            },
         )
+    }
+
+    /**
+     * Баннер «новый вход» над списком чатов (`NewSignInsStore`). Null — не для демо: оно не аккаунт этого устройства, и спрашивать о его сеансах нечего.
+     * Один на сеанс: помнит, что уже показывал.
+     */
+    val newSignIns: NewSignInsStore? by lazy {
+        val known = authentication.knownDevices
+        if (isDemo || known == null) null else NewSignInsStore(accountDevices(), sessionId, known)
     }
 
     /**

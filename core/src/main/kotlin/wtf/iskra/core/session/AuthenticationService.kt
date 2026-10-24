@@ -67,6 +67,8 @@ class AuthenticationService(
     private val localNames: LocalNames? = null,
     /** Сеть устройства: возврат её будит синхронизацию без паузы. Null — не следим (тесты). */
     internal val networkWatch: wtf.iskra.core.support.NetworkWatch? = null,
+    /** Какие сеансы аккаунта это устройство уже видело — для баннера «новый вход»; выход забывает. */
+    internal val knownDevices: KnownDevices? = null,
 ) : SignInFlow<UserSession> {
     /** Прозвища аккаунта — для его сеанса и для пуша. */
     /** Где на диске лежит то, что хранит этот сеанс, — для экрана «Хранилище». */
@@ -453,6 +455,7 @@ class AuthenticationService(
             session.close()
             environment.sessionDirs(session.sessionId).forEach { it.deleteRecursively() }
             localNames?.forget(session.sessionId)
+            knownDevices?.forget(session.sessionId)
             return
         }
         // Pusher — до `logout()`: запросу нужен живой сеанс, а без него сервер продолжал бы слать пуши
@@ -467,6 +470,7 @@ class AuthenticationService(
     fun forgetSession(sessionId: String) {
         runCatching { sessionStore.remove(sessionId, environment) }
         localNames?.forget(sessionId)
+        knownDevices?.forget(sessionId)
     }
 
     // ---------------------------------------------------------------------------- частное
@@ -481,6 +485,7 @@ class AuthenticationService(
         if (existing != null && !isOpen(existing)) {
             runCatching { sessionStore.remove(existing.sessionId, environment) }
             localNames?.forget(existing.sessionId)
+            knownDevices?.forget(existing.sessionId)
         } else if (existing != null) {
             runCatching { withTimeLimit(LOGOUT_TIMEOUT) { client.logout() } }
             abandonPendingLocked()

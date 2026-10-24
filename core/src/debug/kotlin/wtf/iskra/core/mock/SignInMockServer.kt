@@ -52,6 +52,9 @@ class SignInMockServer(val configuration: Configuration = Configuration()) {
     /** Токен доступа → ID устройства, для whoami. OIDC кладёт устройство в scope. */
     private val devices = mutableMapOf<String, String>()
 
+    /** Имя, с каким сеанс вошёл (`initial_device_display_name`), по токену. */
+    private val deviceNames = mutableMapOf<String, String>()
+
     /** Код авторизации → устройство, которое клиент назвал в scope. */
     private val codeDevices = mutableMapOf<String, String>()
     private val requestLog = mutableListOf<String>()
@@ -187,6 +190,17 @@ class SignInMockServer(val configuration: Configuration = Configuration()) {
             } else {
                 synchronized(lock) { accountData[path] }?.let(::raw) ?: NOT_FOUND
             }
+        }
+        // Сеансы аккаунта — по токенам, что выданы ему, и по имени, с каким вошли. Чтобы экран «Устройства» и баннер «новый вход» было на чём пробовать.
+        if (method == "GET" && path.endsWith("/_matrix/client/v3/devices") && user != null) {
+            val own = synchronized(lock) { tokens.filterValues { it == user }.keys.map { devices[it] to deviceNames[it] } }
+            return ok(
+                json(
+                    "devices" to own.map { (id, name) ->
+                        json("device_id" to (id ?: "MOCKDEVICE"), "display_name" to (name ?: ""), "last_seen_ts" to System.currentTimeMillis(), "last_seen_ip" to "127.0.0.1")
+                    },
+                ),
+            )
         }
         if ("/presence/" in path && path.endsWith("/status")) {
             return if (method == "PUT") ok(json()) else ok(json("presence" to "online"))
@@ -324,7 +338,9 @@ class SignInMockServer(val configuration: Configuration = Configuration()) {
             else -> return error(400, "M_UNKNOWN", "Unsupported login type")
         }
         val device = request["device_id"].str() ?: mint("MOCK", 6)
-        return ok(json("user_id" to user, "access_token" to issueToken(user, device), "device_id" to device, "home_server" to configuration.serverName))
+        val token = issueToken(user, device)
+        request["initial_device_display_name"].str()?.let { name -> synchronized(lock) { deviceNames[token] = name } }
+        return ok(json("user_id" to user, "access_token" to token, "device_id" to device, "home_server" to configuration.serverName))
     }
 
     // MARK: OIDC
