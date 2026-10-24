@@ -24,6 +24,8 @@
     -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Android 14+: загрузка видео и скачивание обновления идут user-initiated data transfer job (BackgroundTransfer). -->
+    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
     <!--
         Обновления изнутри приложения (docs/PROMPT.md, 19.1): магазина нет, APK из GitHub Releases ставит
         сама Искра через PackageInstaller — после проверки хэша и сертификата.
@@ -109,6 +111,12 @@
         <receiver
             android:name="wtf.iskra.features.update.UpdateInstallReceiver"
             android:exported="false" />
+
+        <!-- Android 14+: то же самое user-initiated data transfer job — система выбирает её для того, что человек начал сам. -->
+        <service
+            android:name="wtf.iskra.features.media.TransferJobService"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
 
         <!-- Скачивание обновления, когда ушли из приложения (UpdateService). -->
         <service

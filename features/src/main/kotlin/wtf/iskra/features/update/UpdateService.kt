@@ -92,11 +92,14 @@ class UpdateService : Service() {
     }
 
     companion object {
-        private const val ID = 71_002
+        internal const val ID = 71_002
         private const val PERCENT = 100
 
         /** Из видимого приложения — иначе Android откажет: человек только что нажал «Установить». */
-        fun start(context: Context) {
+        fun start(context: Context) = wtf.iskra.features.media.BackgroundTransfer.start(context, wtf.iskra.features.media.BackgroundTransfer.Kind.UPDATE)
+
+        /** Сервис переднего плана — путь до Android 14 и откат, когда задачу система не приняла. */
+        internal fun startService(context: Context) {
             try {
                 ContextCompat.startForegroundService(context, Intent(context, UpdateService::class.java))
             } catch (error: Exception) {
@@ -106,7 +109,7 @@ class UpdateService : Service() {
         }
 
         /** [fraction] — доля скачанного; null — идёт проверка или установка, и полосе нечего мерить. */
-        private fun notification(context: Context, fraction: Float?): Notification {
+        internal fun notification(context: Context, fraction: Float?): Notification {
             val open = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent()
             return NotificationCompat.Builder(context, MediaSendService.CHANNEL)
                 .setSmallIcon(MediaSendHub.smallIcon)

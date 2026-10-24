@@ -89,10 +89,7 @@ class MediaSendService : Service() {
     @SuppressLint("MissingPermission")
     private fun render(state: MediaSendHub.State) {
         val manager = NotificationManagerCompat.from(this)
-        // Не отправилось насовсем — отдельное уведомление, что переживёт сервис.
-        state.jobs.filter { it.phase == MediaSendJobs.Phase.FAILED && failedNotified.add(it.id) }.forEach { job ->
-            runCatching { manager.notify(failedId(job.id), notification(this, state.accountId, job)) }
-        }
+        postFailures(this, state, failedNotified)
         val active = state.jobs.firstOrNull { !it.isFinished }
         if (active == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -126,14 +123,26 @@ class MediaSendService : Service() {
     }
 
     companion object {
-        private const val ID = 71_001
+        internal const val ID = 71_001
         private const val FAILED_BASE = 71_100
         const val CHANNEL = "background_tasks"
 
         private fun failedId(jobId: String) = FAILED_BASE + (jobId.hashCode() and 0xFFF)
 
+        /** Не отправилось насовсем — отдельное уведомление, что переживёт и сервис, и задачу. Общее для сервиса и [TransferJobService]. */
+        @SuppressLint("MissingPermission")
+        internal fun postFailures(context: Context, state: MediaSendHub.State, notified: MutableSet<String>) {
+            val manager = NotificationManagerCompat.from(context)
+            state.jobs.filter { it.phase == MediaSendJobs.Phase.FAILED && notified.add(it.id) }.forEach { job ->
+                runCatching { manager.notify(failedId(job.id), notification(context, state.accountId, job)) }
+            }
+        }
+
         /** Запустить (или оставить запущенным): задачи уже в [MediaSendHub]. Из видимого приложения — иначе Android откажет. */
-        fun start(context: Context) {
+        fun start(context: Context) = BackgroundTransfer.start(context, BackgroundTransfer.Kind.MEDIA)
+
+        /** Сервис переднего плана — путь до Android 14 и откат, когда задачу система не приняла. */
+        internal fun startService(context: Context) {
             try {
                 ContextCompat.startForegroundService(context, Intent(context, MediaSendService::class.java))
             } catch (error: Exception) {
