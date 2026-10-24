@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MarkChatRead
 import androidx.compose.material.icons.outlined.MarkChatUnread
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -139,6 +140,9 @@ fun RoomListScreen(
     onNewConversation: (() -> Unit)? = null,
     /** Открытая рядом комната (широкий экран, список — колонка): её строка выделена. Null — список во весь экран. */
     selectedId: String? = null,
+    /** Лента комнаты для заглядывания по долгому нажатию (`ChatPeek`). Null — по долгому нажатию обычное меню. */
+    peek: ((String) -> wtf.iskra.core.timeline.TimelineStore?)? = null,
+    ownUserId: String = "",
 ) {
     val state by store.state.collectAsStateWithLifecycle()
     val found by (search?.state ?: remember { kotlinx.coroutines.flow.MutableStateFlow(SearchState()) }).collectAsStateWithLifecycle()
@@ -167,6 +171,8 @@ fun RoomListScreen(
         val needle = query.trim()
         if (needle.isEmpty()) source else source.filter { it.name.contains(needle, ignoreCase = true) }
     }
+    // Заглядывание: комната, на строку которой нажали и держат (`ChatPeek`).
+    var peeking by remember { mutableStateOf<RoomSummary?>(null) }
     val actions = RoomActions(
         onRead = { scope.launch { store.markRead(it.id) } },
         onUnread = { scope.launch { store.markUnread(it.id) } },
@@ -175,6 +181,24 @@ fun RoomListScreen(
         onLeave = { leaving = it },
         onFolders = if (folderState.folders.isNotEmpty()) ({ filing = it }) else null,
     )
+
+    peeking?.let { room ->
+        val timeline = remember(room.id) { peek?.invoke(room.id) }
+        if (timeline != null) {
+            val peekActions = buildList {
+                add(wtf.iskra.features.room.PeekAction(R.string.room_list_peek_open, Icons.AutoMirrored.Outlined.OpenInNew) { onOpen(room.id) })
+                if (room.hasUnread) add(wtf.iskra.features.room.PeekAction(R.string.room_list_swipe_mark_read, Icons.Outlined.MarkChatRead) { actions.onRead(room) })
+                else add(wtf.iskra.features.room.PeekAction(R.string.room_list_peek_mark_unread, Icons.Outlined.MarkChatUnread) { actions.onUnread(room) })
+                add(wtf.iskra.features.room.PeekAction(if (room.isPinned) R.string.room_list_swipe_unpin else R.string.room_list_swipe_pin, Icons.Outlined.PushPin) { actions.onPin(room) })
+                add(wtf.iskra.features.room.PeekAction(if (room.isArchived) R.string.room_list_swipe_unarchive else R.string.room_list_swipe_archive, Icons.Outlined.Archive) { actions.onArchive(room) })
+                actions.onFolders?.let { toFolders -> add(wtf.iskra.features.room.PeekAction(R.string.folders_add_to_folder, Icons.Outlined.Folder) { toFolders(room) }) }
+                add(wtf.iskra.features.room.PeekAction(R.string.room_list_swipe_delete, Icons.Outlined.Delete) { actions.onLeave(room) })
+            }
+            wtf.iskra.features.room.ChatPeek(room, timeline, ownUserId, peekActions, onOpen = { peeking = null; onOpen(room.id) }, onDismiss = { peeking = null })
+        } else {
+            peeking = null
+        }
+    }
 
     // Панель тонирует себя, когда под неё уезжает список: так Material показывает, что выше есть ещё.
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
@@ -250,7 +274,7 @@ fun RoomListScreen(
                                 onDecline = { scope.launch { store.decline(room.id) } },
                             )
                         } else {
-                            RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, selected = room.id == selectedId, onOpen = { onOpen(room.id) })
+                            RoomRow(room = room, now = now, typing = room.id in typing, actions = actions, selected = room.id == selectedId, onHold = if (peek != null) ({ peeking = room }) else null, onOpen = { onOpen(room.id) })
                         }
                     }
                     // Сообщения — под названиями: сначала «где», потом «что сказано».
@@ -406,7 +430,7 @@ private fun rowDescription(room: RoomSummary): String {
 }
 
 @Composable
-private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onOpen: () -> Unit) {
+private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onHold: (() -> Unit)? = null, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
@@ -442,7 +466,7 @@ private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: R
             .fillMaxWidth()
             .background(if (selected) scheme.secondaryContainer else Color.Transparent)
             .semantics(mergeDescendants = true) { contentDescription = description }
-            .combinedClickable(onClick = onOpen, onClickLabel = room.name, onLongClick = { menu = true })
+            .combinedClickable(onClick = onOpen, onClickLabel = room.name, onLongClick = { if (onHold != null) onHold() else menu = true })
             .padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
         verticalAlignment = Alignment.CenterVertically,

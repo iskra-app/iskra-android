@@ -363,6 +363,8 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
                     session.rooms,
                     modifier = listModifier,
                     selectedId = roomId.takeIf { wide },
+                    peek = { id -> session.timeline(id) },
+                    ownUserId = session.userId,
                     onOpen = { id ->
                         // Пространство открывается не перепиской, а своим экраном — комнаты внутри него.
                         val space = (rooms.rooms + rooms.archivedRooms).firstOrNull { it.id == id && it.isSpace }

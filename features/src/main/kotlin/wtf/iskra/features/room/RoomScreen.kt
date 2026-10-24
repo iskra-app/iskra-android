@@ -133,6 +133,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -1342,7 +1344,14 @@ private fun Bubble(
                         )
                     }
                     val anchor = remember { AnchorBox() }
-                    Box(Modifier.onGloballyPositioned { anchor.rect = it.boundsInWindow() }) {
+                    val spoken = spokenLabel(message)
+                    Box(
+                        Modifier
+                            .onGloballyPositioned { anchor.rect = it.boundsInWindow() }
+                            // Одним предложением: «Аня: книгу дочитала». Нажимаемое (голос, фото, файл) остаётся доступным по частям,
+                            // иначе слепой не доберётся до кнопки «играть»: у него только описание.
+                            .semantics(mergeDescendants = !message.hasPressableContent) { contentDescription = spoken },
+                    ) {
                         BubbleBody(
                             message = message,
                             interactive = true,
@@ -1503,7 +1512,7 @@ private fun Modifier.bubbleGestures(
  * нажатия (`interactive = false`), поэтому всё, что он делает, приходит снаружи.
  */
 @Composable
-private fun BubbleBody(
+internal fun BubbleBody(
     message: Message,
     interactive: Boolean,
     revealed: Boolean,
@@ -2484,6 +2493,42 @@ private fun SelectionBar(
             Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.message_menu_delete), tint = if (canDelete && count > 0) MaterialTheme.colorScheme.error else LocalContentColor.current)
         }
     }
+}
+
+/** Есть ли в сообщении то, что нажимают: проигрыватель, фото, файл. Порт `hasPressableContent`. */
+private val Message.hasPressableContent: Boolean
+    get() = when (kind) {
+        is MessageKind.Voice, is MessageKind.Audio, is MessageKind.Image, is MessageKind.Video, is MessageKind.VideoNote, is MessageKind.File -> true
+        else -> false
+    }
+
+/**
+ * Что TalkBack читает про сообщение: «кто: что». Слова человека — как написаны; всё остальное — описание того, что он сделал, и оно
+ * переводится. Если не ушло — причина тут же: строка одна, и кнопка «не отправлено» в ней не получает своего фокуса, а слепой не
+ * должен быть единственным, кто не узнает, почему ничего не доставлено. Порт `spokenLabel`.
+ */
+@Composable
+private fun spokenLabel(message: Message): String {
+    val who = if (message.isOwn) stringResource(R.string.message_spoken_you) else message.senderName
+    val what = when (val kind = message.kind) {
+        is MessageKind.Text -> kind.body
+        is MessageKind.Notice -> kind.body
+        is MessageKind.Emote -> kind.body
+        is MessageKind.Image -> stringResource(R.string.message_spoken_sent_photo)
+        is MessageKind.Sticker -> kind.attachment.caption?.let { stringResource(R.string.message_spoken_sent_sticker_named, it) } ?: stringResource(R.string.message_spoken_sent_sticker)
+        is MessageKind.Video -> stringResource(R.string.message_spoken_sent_video)
+        is MessageKind.VideoNote -> stringResource(R.string.message_spoken_sent_video_note)
+        is MessageKind.Voice -> stringResource(R.string.message_spoken_sent_voice)
+        is MessageKind.Audio -> stringResource(R.string.message_spoken_sent_audio)
+        is MessageKind.File -> stringResource(R.string.message_spoken_sent_file)
+        is MessageKind.Location -> stringResource(R.string.message_spoken_sent_location)
+        is MessageKind.Poll -> stringResource(R.string.message_spoken_sent_poll, kind.poll.question)
+        is MessageKind.Unreadable -> stringResource(R.string.message_spoken_sent_unreadable)
+        is MessageKind.Deleted -> stringResource(R.string.message_spoken_deleted_message)
+        is MessageKind.Unsupported -> stringResource(R.string.message_spoken_sent_unsupported)
+    }
+    val failed = message.delivery as? DeliveryStatus.Failed
+    return if (failed != null) "$who: $what. ${stringResource(R.string.message_delivery_failed)}. ${stringResource(failed.reason.explanation)}" else "$who: $what"
 }
 
 /** Что меню сообщения может, помимо своего: переслать, пожаловаться, оставить стикер, забрать голос; и без сети ли комната. */
