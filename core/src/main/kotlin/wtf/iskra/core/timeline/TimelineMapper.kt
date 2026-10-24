@@ -78,9 +78,12 @@ internal object TimelineMapper {
         // Один раз: это дорогой вызов — вся запись, поднятая из Rust.
         val event = item.asEvent() ?: return Mapped(Mapped.Body.Nothing)
         val foreign = hasForeignReceipt(event, ownUserId)
+        // Остальное не выбрасывается, а получает имя: показывать ли его, решает `ServiceEventSettings` («Бета → все события»).
         val body = roomEvent(event)?.let { Mapped.Body.EventBody(it) }
             ?: message(event, ownUserId, strings)?.let { Mapped.Body.MessageBody(it) }
-            ?: Mapped.Body.Nothing
+            ?: Mapped.Body.EventBody(
+                RoomEvent(identifier(event.eventOrTransactionId), RoomEventKind.Hidden(hiddenDescription(event.content, event.sender)), MessagePreview.instant(event.timestamp), event.sender),
+            )
         return Mapped(
             body = body,
             hasForeignReceipt = foreign,
@@ -123,6 +126,23 @@ internal object TimelineMapper {
      * правила входа, ACL), — null и выбрасывается: переписка — не журнал аудита. Смена одной лишь
      * аватарки — тоже: новое лицо видно на следующем сообщении.
      */
+    /** Событие словами протокола: тип, подробность, если она говорит больше типа, и кто отправил. */
+    private fun hiddenDescription(content: TimelineItemContent, sender: String): String {
+        val what = when (content) {
+            is TimelineItemContent.RoomMembership -> "m.room.member · ${content.userId} · ${content.change}"
+            is TimelineItemContent.ProfileChange -> "m.room.member · profile"
+            is TimelineItemContent.State -> content.content::class.simpleName.orEmpty().let { name ->
+                if (content.stateKey.isEmpty()) name else "$name · ${content.stateKey}"
+            }
+            is TimelineItemContent.CallInvite -> "m.call.invite"
+            is TimelineItemContent.RtcNotification -> "org.matrix.msc4075.rtc.notification"
+            is TimelineItemContent.FailedToParseMessageLike -> "${content.eventType} · ${content.error}"
+            is TimelineItemContent.FailedToParseState -> "${content.eventType} · ${content.stateKey} · ${content.error}"
+            is TimelineItemContent.MsgLike -> content.content.kind::class.simpleName.orEmpty()
+        }
+        return "$what — $sender"
+    }
+
     private fun roomEvent(event: EventTimelineItem): RoomEvent? {
         val kind = roomEventKind(event.content) ?: return null
         return RoomEvent(identifier(event.eventOrTransactionId), kind, MessagePreview.instant(event.timestamp), event.sender)

@@ -866,6 +866,18 @@ class TimelineStore internal constructor(
      * (порт `send(location:)`).
      */
     /** Создать опрос (`send(poll:)`). Много ответов — столько выборов, сколько вариантов; один — один. */
+    /** Событие так, как его прислал сервер, и последняя правка, если была, — для «Бета → JSON сообщения» (`sourceJSON(of:)`). */
+    fun sourceJson(messageId: String): String? {
+        val event = items.firstNotNullOfOrNull { item -> item.asEvent()?.takeIf { TimelineMapper.identifier(it.eventOrTransactionId) == messageId } } ?: return null
+        val info = event.lazyProvider.debugInfo()
+        val parts = listOfNotNull(info.originalJson, info.latestEditJson).map(::pretty)
+        return parts.takeIf { it.isNotEmpty() }?.joinToString("\n\n")
+    }
+
+    private fun pretty(json: String): String = runCatching {
+        prettyJson.encodeToString(kotlinx.serialization.json.JsonElement.serializer(), prettyJson.parseToJsonElement(json))
+    }.getOrDefault(json)
+
     /** Кто оставил какую реакцию — для листа «Кто отреагировал» (`reactors(of:)`). Имя и лицо — из комнаты, а нет их — Matrix ID. */
     suspend fun reactors(messageId: String): List<Reactor> {
         val message = state.value.rows.firstNotNullOfOrNull { row ->
@@ -1496,6 +1508,8 @@ class TimelineStore internal constructor(
         isTellingThemWeType = false
         scope.launch { runCatching { withTimeLimit(SDK_LIMIT) { room.typingNotice(false) } } }
     }
+
+    private val prettyJson = kotlinx.serialization.json.Json { prettyPrint = true }
 
     private companion object {
         const val PAGE_SIZE = 25

@@ -235,6 +235,9 @@ sealed interface RoomEventKind {
     data object RoomCreated : RoomEventKind
     data object EncryptionEnabled : RoomEventKind
 
+    /** То, что приложение обычно не показывает (права, правила входа, звонки, не разобранное): серая строка с типом и отправителем — только при «Бета → все события». */
+    data class Hidden(val description: String) : RoomEventKind
+
     /** Названные люди — у видов, которые называют людей; null у остальных, и тогда сливать нечего. */
     val people: List<RoomEventPerson>? get() = null
 
@@ -278,6 +281,7 @@ data class RoomEvent(val id: String, val kind: RoomEventKind, val timestamp: Ins
         RoomEventKind.RoomPictureChanged -> strings[R.string.room_event_room_picture_changed]
         RoomEventKind.RoomCreated -> strings[R.string.room_event_room_created]
         RoomEventKind.EncryptionEnabled -> strings[R.string.room_event_encryption_enabled]
+        is RoomEventKind.Hidden -> kind.description
     }
 
     /** Один — имя; двое — оба; трое и больше — первое и счёт: строка из одиннадцати имён — абзац. */

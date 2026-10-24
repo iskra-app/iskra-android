@@ -108,6 +108,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Poll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.sizeIn
@@ -451,6 +452,9 @@ fun RoomScreen(
         )
     }
 
+    // «Бета → JSON сообщения»: событие так, как его прислал сервер.
+    val showsSource by (LocalAppSettings.current?.showsSource ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsStateWithLifecycle()
+    var sourceOf by remember(store.roomId) { mutableStateOf<String?>(null) }
     // Лист «Кто отреагировал»: сообщение и эмодзи, с которого он начинается.
     var reactorsOf by remember(store.roomId) { mutableStateOf<Pair<String, String?>?>(null) }
     // Карточка человека, на чьё лицо или имя нажали. Хранилище участников открывается по первому нажатию и закрывается с экраном.
@@ -461,6 +465,7 @@ fun RoomScreen(
     val openProfile: ((String) -> Unit)? = if (members != null && !isThread) { id -> profileOf = id } else null
     Box(modifier.fillMaxSize()) {
     ChatWallpaper()
+    sourceOf?.let { json -> EventSourceSheet(json, onDismiss = { sourceOf = null }) }
     reactorsOf?.let { (messageId, key) ->
         val reactions = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }?.reactions.orEmpty()
         ReactorsSheet(reactions, key, load = { store.reactors(messageId) }, onDismiss = { reactorsOf = null })
@@ -487,6 +492,7 @@ fun RoomScreen(
         LocalChatInk provides wallpaperInk(),
         LocalOpenProfile provides openProfile,
         LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
+        LocalShowSource provides if (showsSource) ({ id -> sourceOf = store.sourceJson(id) }) else null,
     ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
@@ -1563,6 +1569,7 @@ private fun MessageMenu(
             add(MenuAction(stringResource(if (isPinned) R.string.message_menu_unpin else R.string.message_menu_pin), Icons.Filled.PushPin) { onPin(!isPinned) })
         }
         if (message.canEndPoll) add(MenuAction(stringResource(R.string.poll_end), Icons.Filled.Done, run = onAskEndPoll))
+        LocalShowSource.current?.let { show -> add(MenuAction(stringResource(R.string.beta_view_source), Icons.Filled.Code) { show(message.id) }) }
         if (message.canDelete) add(MenuAction(stringResource(R.string.message_menu_delete), Icons.Filled.Delete, destructive = true, run = onAskDelete))
     }
     MessageMenuOverlay(
@@ -2030,3 +2037,6 @@ internal val LocalOpenProfile = androidx.compose.runtime.compositionLocalOf<((St
 
 /** Долгое нажатие на пилюлю реакции: сообщение и эмодзи, с которого начать лист. Null — листа нет (тред). */
 internal val LocalShowReactors = androidx.compose.runtime.compositionLocalOf<((String, String?) -> Unit)?> { null }
+
+/** «Бета → JSON»: показать событие сообщения. Null — не включено. */
+internal val LocalShowSource = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }

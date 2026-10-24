@@ -566,6 +566,13 @@ private fun Beta(settings: AppSettings, isDemo: Boolean, onDemo: (Boolean) -> Un
         { Toggle(R.string.beta_blobatar, R.string.beta_blobatar_help, creatures, settings::setCreatures) },
         { Toggle(R.string.beta_blobatar_force, R.string.beta_blobatar_force_help, forced, enabled = creatures, onChange = settings::setForceCreatures) },
     )
+    // Для того, кто спрашивает «почему эта комната так себя ведёт»: JSON события в меню и все события в ленте (`BetaView`).
+    val events by settings.serviceEvents.collectAsStateWithLifecycle()
+    val source by settings.showsSource.collectAsStateWithLifecycle()
+    Group(
+        { Toggle(R.string.beta_shows_all_events, R.string.beta_shows_all_events_help, events.showsEverything, settings::setShowsAllEvents) },
+        { Toggle(R.string.beta_shows_source, R.string.beta_shows_source_help, source, settings::setShowsSource) },
+    )
     // Демо-сервер и демо-вход — только в debug (`DemoServers`), как `#if DEBUG` на iOS.
     if (!MockSignIn.isAvailable) return
     SectionTitle(R.string.beta_developers)

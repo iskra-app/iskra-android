@@ -85,6 +85,7 @@ class AppSettings(context: Context) : UpdateStore {
         wtf.iskra.core.timeline.ServiceEventSettings(
             hidesNameChanges = preferences.getBoolean(HIDES_NAME_CHANGES, false),
             hidesMembershipChanges = preferences.getBoolean(HIDES_MEMBERSHIP_CHANGES, false),
+            showsEverything = preferences.getBoolean(SHOWS_ALL_EVENTS, false),
         ),
     )
 
@@ -92,9 +93,23 @@ class AppSettings(context: Context) : UpdateStore {
     val serviceEvents: StateFlow<wtf.iskra.core.timeline.ServiceEventSettings> = mutableServiceEvents.asStateFlow()
 
     fun setServiceEvents(settings: wtf.iskra.core.timeline.ServiceEventSettings) {
-        preferences.edit().putBoolean(HIDES_NAME_CHANGES, settings.hidesNameChanges).putBoolean(HIDES_MEMBERSHIP_CHANGES, settings.hidesMembershipChanges).apply()
+        preferences.edit()
+            .putBoolean(HIDES_NAME_CHANGES, settings.hidesNameChanges)
+            .putBoolean(HIDES_MEMBERSHIP_CHANGES, settings.hidesMembershipChanges)
+            .putBoolean(SHOWS_ALL_EVENTS, settings.showsEverything)
+            .apply()
         mutableServiceEvents.value = settings
     }
+
+    /** «Бета → все события в чатах» (ключ — как у iOS, `BetaFeatures.showsAllEventsKey`). */
+    fun setShowsAllEvents(on: Boolean) = setServiceEvents(mutableServiceEvents.value.copy(showsEverything = on))
+
+    private val mutableShowsSource = flag(SHOWS_SOURCE, false)
+
+    /** «Бета → JSON сообщения в меню»: событие так, как его прислал сервер. */
+    val showsSource: StateFlow<Boolean> = mutableShowsSource.asStateFlow()
+
+    fun setShowsSource(on: Boolean) = save(SHOWS_SOURCE, on, mutableShowsSource)
 
     private val mutableAutoDownload = MutableStateFlow(wtf.iskra.core.media.MediaAutoDownload.of(preferences.getString(AUTO_DOWNLOAD, null)))
 
@@ -246,6 +261,8 @@ class AppSettings(context: Context) : UpdateStore {
         const val PRIVACY_TYPING = "privacy.hidesTyping"
         const val RECENT_REACTIONS = "reactions.recent"
         const val AUTO_DOWNLOAD = "media.autoDownload"
+        const val SHOWS_ALL_EVENTS = "beta.showsAllEvents"
+        const val SHOWS_SOURCE = "beta.showsSource"
         const val HIDES_NAME_CHANGES = "chats.hidesNameChanges"
         const val HIDES_MEMBERSHIP_CHANGES = "chats.hidesMembershipChanges"
         const val QUICK_REACTION = "reactions.quick"
