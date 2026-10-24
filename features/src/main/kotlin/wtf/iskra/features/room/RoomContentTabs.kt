@@ -138,7 +138,7 @@ private fun MediaGrid(items: List<Message>) {
 
 @Composable
 private fun MonthHeader(month: YearMonth) {
-    val locale = Locale.getDefault()
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
     val label = month.month.getDisplayName(TextStyle.FULL_STANDALONE, locale).replaceFirstChar { it.titlecase(locale) } +
         if (month.year != LocalDate.now().year) " ${month.year}" else ""
     Text(
