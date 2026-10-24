@@ -143,6 +143,9 @@ data class TimelineState(
 }
 
 /** Что человек попросил у комнаты, и это не случилось. */
+/** Один человек и его реакция — строка листа «Кто отреагировал». */
+data class Reactor(val key: String, val userId: String, val name: String, val avatarUrl: String?)
+
 enum class TimelineFailure(val message: Int) {
     SEND(R.string.timeline_send_failed),
     REACTION(R.string.timeline_reaction_failed),
@@ -863,6 +866,26 @@ class TimelineStore internal constructor(
      * (порт `send(location:)`).
      */
     /** Создать опрос (`send(poll:)`). Много ответов — столько выборов, сколько вариантов; один — один. */
+    /** Кто оставил какую реакцию — для листа «Кто отреагировал» (`reactors(of:)`). Имя и лицо — из комнаты, а нет их — Matrix ID. */
+    suspend fun reactors(messageId: String): List<Reactor> {
+        val message = state.value.rows.firstNotNullOfOrNull { row ->
+            (row as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId || m.members.any { it.id == messageId } }
+        } ?: return emptyList()
+        val faces = HashMap<String, Pair<String, String?>>()
+        val people = ArrayList<Reactor>()
+        for (reaction in message.reactions) {
+            for (userId in reaction.senders) {
+                val (name, avatar) = faces.getOrPut(userId) {
+                    val name = runCatching { withTimeLimit(SDK_LIMIT) { room.memberDisplayName(userId) } }.getOrNull() ?: userId
+                    val avatar = runCatching { withTimeLimit(SDK_LIMIT) { room.memberAvatarUrl(userId) } }.getOrNull()
+                    name to avatar
+                }
+                people += Reactor(reaction.key, userId, name, avatar)
+            }
+        }
+        return people
+    }
+
     suspend fun sendPoll(draft: PollDraft): Boolean {
         val timeline = timeline ?: run {
             fail(TimelineFailure.SEND)

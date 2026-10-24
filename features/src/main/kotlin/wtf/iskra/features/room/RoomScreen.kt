@@ -451,6 +451,8 @@ fun RoomScreen(
         )
     }
 
+    // Лист «Кто отреагировал»: сообщение и эмодзи, с которого он начинается.
+    var reactorsOf by remember(store.roomId) { mutableStateOf<Pair<String, String?>?>(null) }
     // Карточка человека, на чьё лицо или имя нажали. Хранилище участников открывается по первому нажатию и закрывается с экраном.
     var profileOf by remember(store.roomId) { mutableStateOf<String?>(null) }
     val memberStore = remember(store.roomId, profileOf != null) { if (profileOf != null) members?.invoke(store.roomId) else null }
@@ -459,6 +461,10 @@ fun RoomScreen(
     val openProfile: ((String) -> Unit)? = if (members != null && !isThread) { id -> profileOf = id } else null
     Box(modifier.fillMaxSize()) {
     ChatWallpaper()
+    reactorsOf?.let { (messageId, key) ->
+        val reactions = state.rows.firstNotNullOfOrNull { (it as? TimelineRow.MessageRow)?.message?.takeIf { m -> m.id == messageId } }?.reactions.orEmpty()
+        ReactorsSheet(reactions, key, load = { store.reactors(messageId) }, onDismiss = { reactorsOf = null })
+    }
     val profileId = profileOf
     if (profileId != null && memberStore != null) {
         val memberState by memberStore.state.collectAsStateWithLifecycle()
@@ -477,7 +483,11 @@ fun RoomScreen(
             onDismiss = { profileOf = null },
         )
     }
-    CompositionLocalProvider(LocalChatInk provides wallpaperInk(), LocalOpenProfile provides openProfile) {
+    CompositionLocalProvider(
+        LocalChatInk provides wallpaperInk(),
+        LocalOpenProfile provides openProfile,
+        LocalShowReactors provides if (isThread) null else { id, key -> reactorsOf = id to key },
+    ) {
     Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()) {
         Header(state, isThread, onBack, onSearch = { searching = true }, onOpenDetails = onOpenDetails, isOffline = isOffline, isUpdating = isUpdating)
         // По одному человеку, самому давнему: ответ на него поднимает следующего.
@@ -1571,9 +1581,10 @@ private fun MessageMenu(
     )
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun Reactions(message: Message, onReact: (String) -> Unit) {
-    val accent = LocalAccent.current
+    val showReactors = LocalShowReactors.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.withinRun),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight, if (message.isOwn) Alignment.End else Alignment.Start),
@@ -1593,7 +1604,12 @@ private fun Reactions(message: Message, onReact: (String) -> Unit) {
                             Modifier
                         },
                     )
-                    .clickable(enabled = message.canReact) { onReact(reaction.key) }
+                    // Нажатие — своя реакция снимается или ставится; долгое — кто отреагировал (`ReactionPill`).
+                    .combinedClickable(
+                        enabled = message.canReact || showReactors != null,
+                        onClick = { if (message.canReact) onReact(reaction.key) },
+                        onLongClick = showReactors?.let { show -> { show(message.id, reaction.key) } },
+                    )
                     .padding(horizontal = Theme.Spacing.close, vertical = Theme.Spacing.tight),
             )
         }
@@ -2011,3 +2027,6 @@ private const val TYPING_STAGGER_MS = 180
 
 /** Нажатие на лицо или имя человека в ленте: карточка участника. Null — нажимать нечего (тред, демо). */
 internal val LocalOpenProfile = androidx.compose.runtime.compositionLocalOf<((String) -> Unit)?> { null }
+
+/** Долгое нажатие на пилюлю реакции: сообщение и эмодзи, с которого начать лист. Null — листа нет (тред). */
+internal val LocalShowReactors = androidx.compose.runtime.compositionLocalOf<((String, String?) -> Unit)?> { null }
