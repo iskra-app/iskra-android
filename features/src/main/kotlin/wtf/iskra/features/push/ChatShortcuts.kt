@@ -24,6 +24,52 @@ class ChatShortcuts(private val context: Context) {
 
     private data class Key(val id: String, val name: String, val avatarUrl: String?)
 
+    /**
+     * Ярлыки для выбора «Чьи чаты в меню „Поделиться“» (`ChatDirectory.shareAccount`): открытый аккаунт — из его списка, остальные — из снимков, что
+     * они оставили в виджете (`WidgetChats`), пока были открыты. Чьих чатов не просили — тех ярлыков в меню нет.
+     */
+    suspend fun apply(accountId: String, choice: String, rooms: List<RoomSummary>, loader: MediaLoader?) {
+        val snapshots = wtf.iskra.features.widget.WidgetChats(context)
+        if (wtf.iskra.core.support.AccountChoice.includes(choice, accountId, accountId)) {
+            publish(accountId, rooms, loader)
+        } else {
+            published = emptyList()
+            forget(accountId)
+        }
+        for (other in snapshots.accounts().filter { it != accountId }) {
+            if (wtf.iskra.core.support.AccountChoice.includes(choice, other, accountId)) publishSnapshot(other, snapshots) else forget(other)
+        }
+    }
+
+    /** Ярлыки аккаунта, которого сейчас нет на экране: имя и лицо — из снимка. */
+    private fun publishSnapshot(accountId: String, snapshots: wtf.iskra.features.widget.WidgetChats) {
+        for (chat in snapshots.chatsOf(accountId).take(MAX)) {
+            val id = ShortcutIds.room(accountId, chat.roomId)
+            val face = snapshots.face(chat) ?: continue
+            val intent = (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent())
+                .setAction(Intent.ACTION_VIEW)
+                .putExtra(PushIntents.EXTRA_ROOM, chat.roomId)
+                .putExtra(PushIntents.EXTRA_ACCOUNT, accountId)
+            val shortcut = ShortcutInfoCompat.Builder(context, id)
+                .setShortLabel(chat.name.ifEmpty { chat.roomId })
+                .setLongLived(true)
+                .setIcon(IconCompat.createWithAdaptiveBitmap(face))
+                .setIntent(intent)
+                .setLocusId(LocusIdCompat(id))
+                .setCategories(setOf(CATEGORY))
+                .build()
+            runCatching { ShortcutManagerCompat.pushDynamicShortcut(context, shortcut) }
+        }
+    }
+
+    /** Убрать из меню «Поделиться» ярлыки аккаунта — только свои (с нашей категорией), ярлыки уведомлений остаются. */
+    private fun forget(accountId: String) {
+        val prefix = ShortcutIds.prefix(accountId)
+        val ids = runCatching { ShortcutManagerCompat.getDynamicShortcuts(context) }.getOrNull().orEmpty()
+            .filter { it.id.startsWith(prefix) && it.categories?.contains(CATEGORY) == true }.map { it.id }
+        if (ids.isNotEmpty()) runCatching { ShortcutManagerCompat.removeDynamicShortcuts(context, ids) }
+    }
+
     /** Верх списка — столько, сколько лаунчер покажет; закреплённые уже идут выше в самом списке. */
     suspend fun publish(accountId: String, rooms: List<RoomSummary>, loader: MediaLoader?) {
         val limit = minOf(MAX, runCatching { ShortcutManagerCompat.getMaxShortcutCountPerActivity(context) }.getOrDefault(MAX))

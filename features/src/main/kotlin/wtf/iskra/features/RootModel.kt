@@ -231,7 +231,7 @@ class RootModel(
             try {
                 authentication.signOutInBackground(sessionId)
                 pushes?.signedOut(sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
-                widgets?.forget()
+                widgets?.forget(sessionId)
             } finally {
                 mutableAccounts.value = mutableAccounts.value.copy(signingOut = mutableAccounts.value.signingOut - sessionId)
                 reloadAccounts()
@@ -312,8 +312,9 @@ class RootModel(
                 .distinctUntilChanged()
                 .debounce(SHORTCUT_QUIET_MS)
                 .collect {
-                    shortcuts.publish(session.sessionId, it, session.media)
+                    // Сначала снимок виджета: ярлыки других аккаунтов берутся из него же.
                     widgets?.publish(session.sessionId, session.rooms.state.value.rooms, session.media)
+                    shortcuts.apply(session.sessionId, settings?.shareAccount?.value ?: wtf.iskra.core.support.AccountChoice.ACTIVE, it, session.media)
                 }
         }
         mediaJobsChanged?.let { changed ->
@@ -395,7 +396,7 @@ class RootModel(
             pushRegistration?.cancel()
             session.signOut()
             if (!session.isDemo) pushes?.signedOut(session.sessionId, anyoneLeft = authentication.accounts().isNotEmpty())
-            widgets?.forget()
+            widgets?.forget(session.sessionId)
             mutablePhase.value = Phase.SignedOut()
             reloadAccounts()
             // Если на устройстве есть ещё аккаунты — открыть следующий, а не показывать вход.

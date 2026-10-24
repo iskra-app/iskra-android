@@ -205,7 +205,7 @@ fun SettingsScreen(
                 SettingsPage.PROFILE -> ProfileEdit(session)
                 SettingsPage.APPEARANCE -> Appearance(settings)
                 SettingsPage.MEDIA -> Media(settings)
-                SettingsPage.CHATS -> Chats(settings)
+                SettingsPage.CHATS -> Chats(settings, accounts)
                 SettingsPage.REACTIONS -> ReactionsPage(settings)
                 SettingsPage.FOLDERS -> FoldersPage(session)
                 SettingsPage.SECURITY -> Security(session, onNavigate)
@@ -518,7 +518,7 @@ private fun Media(settings: AppSettings) {
 
 /** «Чаты»: где треды и уходят ли ответы из ленты (`ThreadSettings`). Действует со следующего открытия чата. */
 @Composable
-private fun Chats(settings: AppSettings) {
+private fun Chats(settings: AppSettings, accounts: RootModel.Accounts) {
     val threads by settings.threads.collectAsStateWithLifecycle()
     SectionTitle(R.string.chats_threads)
     Group(
@@ -550,6 +550,15 @@ private fun Chats(settings: AppSettings) {
         val ctrl by settings.sendsWithCtrlReturn.collectAsStateWithLifecycle()
         SectionTitle(R.string.chats_ctrl_return_section)
         Group({ Toggle(R.string.chats_ctrl_return, if (ctrl) R.string.chats_ctrl_return_on_help else R.string.chats_ctrl_return_off_help, ctrl, settings::setSendsWithCtrlReturn) })
+    }
+    // Чьи чаты в «Поделиться», в виджете и в заголовке уведомления — только когда есть между кем выбирать (`ChatSettingsView`).
+    if (accounts.isAvailable && accounts.hasSeveral) {
+        val share by settings.shareAccount.collectAsStateWithLifecycle()
+        val widget by settings.widgetAccount.collectAsStateWithLifecycle()
+        val names by settings.namesAccountInNotifications.collectAsStateWithLifecycle()
+        AccountPicker(R.string.chats_share_section, R.string.chats_share_help, accounts, share, settings::setShareAccount)
+        AccountPicker(R.string.chats_widget_section, R.string.chats_widget_help, accounts, widget, settings::setWidgetAccount)
+        Group({ Toggle(R.string.chats_names_account, R.string.chats_names_account_help, names, settings::setNamesAccountInNotifications) })
     }
     val service by settings.serviceEvents.collectAsStateWithLifecycle()
     SectionTitle(R.string.chats_service_section)
@@ -921,3 +930,24 @@ private fun Modifier.tripleTap(action: () -> Unit): Modifier = this.pointerInput
 }
 
 private const val TRIPLE_TAP_WINDOW_MS = 500L
+
+/** «Активный», каждый аккаунт по имени и «Все» — выбор из трёх видов ответа (`ChatDirectory.ShareAccount`). */
+@Composable
+private fun AccountPicker(title: Int, help: Int, accounts: RootModel.Accounts, selected: String, onSelect: (String) -> Unit) {
+    SectionTitle(title)
+    Group(
+        { Choice(R.string.chats_share_active, selected == wtf.iskra.core.support.AccountChoice.ACTIVE) { onSelect(wtf.iskra.core.support.AccountChoice.ACTIVE) } },
+        *accounts.all.map { account ->
+            @Composable {
+                ChoiceText(account.displayName ?: account.userId, selected == account.sessionId) { onSelect(account.sessionId) }
+            }
+        }.toTypedArray(),
+        { Choice(R.string.chats_share_all, selected == wtf.iskra.core.support.AccountChoice.ALL) { onSelect(wtf.iskra.core.support.AccountChoice.ALL) } },
+    )
+    Text(
+        stringResource(help),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(Theme.Spacing.roomy),
+    )
+}

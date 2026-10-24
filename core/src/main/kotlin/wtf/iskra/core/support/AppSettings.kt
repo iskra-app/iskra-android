@@ -138,6 +138,33 @@ class AppSettings(context: Context) : UpdateStore {
 
     fun setSendsWithCtrlReturn(on: Boolean) = save(SENDS_WITH_CTRL_RETURN, on, mutableCtrlReturn)
 
+    private val mutableShareAccount = MutableStateFlow(preferences.getString(SHARE_ACCOUNT, null) ?: ACCOUNT_ACTIVE)
+
+    /** Чьи чаты предлагает меню «Поделиться»: `active` (открытый), `all` или ID аккаунта (`ChatDirectory.shareAccount`). */
+    val shareAccount: StateFlow<String> = mutableShareAccount.asStateFlow()
+
+    fun setShareAccount(choice: String) {
+        preferences.edit().putString(SHARE_ACCOUNT, choice).apply()
+        mutableShareAccount.value = choice
+    }
+
+    private val mutableWidgetAccount = MutableStateFlow(preferences.getString(WIDGET_ACCOUNT, null) ?: ACCOUNT_ACTIVE)
+
+    /** Чьи чаты показывает виджет — те же три ответа. */
+    val widgetAccount: StateFlow<String> = mutableWidgetAccount.asStateFlow()
+
+    fun setWidgetAccount(choice: String) {
+        preferences.edit().putString(WIDGET_ACCOUNT, choice).apply()
+        mutableWidgetAccount.value = choice
+    }
+
+    private val mutableNamesAccount = flag(NAMES_ACCOUNT, true)
+
+    /** Показывать в уведомлении, на какой из аккаунтов оно пришло, — когда их несколько. Включено, пока не выключат (как у iOS). */
+    val namesAccountInNotifications: StateFlow<Boolean> = mutableNamesAccount.asStateFlow()
+
+    fun setNamesAccountInNotifications(on: Boolean) = save(NAMES_ACCOUNT, on, mutableNamesAccount)
+
     private val mutableThreads = MutableStateFlow(
         ThreadSettings(
             shown = ThreadSettings.Shown.of(preferences.getString(THREADS_SHOWN, null)) ?: ThreadSettings.SHOWN_BY_DEFAULT,
@@ -279,6 +306,11 @@ class AppSettings(context: Context) : UpdateStore {
         const val RECENT_REACTIONS = "reactions.recent"
         const val AUTO_DOWNLOAD = "media.autoDownload"
         const val TINTS_INTERFACE = "appearance.tintsInterface"
+        const val SHARE_ACCOUNT = "chats.shareAccount"
+        const val WIDGET_ACCOUNT = "chats.widgetAccount"
+        const val NAMES_ACCOUNT = "chats.namesAccountInNotifications"
+        const val ACCOUNT_ACTIVE = "active"
+        const val ACCOUNT_ALL = "all"
         const val SENDS_WITH_CTRL_RETURN = "composer.sendsWithCommandReturn"
         const val SHOWS_ALL_EVENTS = "beta.showsAllEvents"
         const val SHOWS_SOURCE = "beta.showsSource"

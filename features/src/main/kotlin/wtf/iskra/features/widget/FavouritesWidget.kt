@@ -51,7 +51,7 @@ class FavouritesWidget : GlanceAppWidget() {
         val store = WidgetChats(context)
         val graph = (context.applicationContext as? AppGraphOwner)?.graph
         val locked = graph?.appLock?.let { it.isEnabled.value && it.isLocked.value } ?: false
-        val chats = if (locked) emptyList() else store.load()
+        val chats = if (locked) emptyList() else store.load(graph?.settings?.widgetAccount?.value ?: WidgetChats.CHOICE_ACTIVE)
         val faces = chats.associateWith { store.face(it) }
         val words = Words(
             locked = context.getString(CoreR.string.widget_locked),

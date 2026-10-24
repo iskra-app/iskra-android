@@ -20,7 +20,7 @@ class WidgetPublisher(private val context: Context) {
         val picked = WidgetChats.pick(rooms)
         val chats = picked.map { WidgetChat(it.id, accountId, it.name.ifEmpty { it.id }, it.unreadMessageCount > 0 || it.isMarkedUnread) }
         val print = WidgetChats.fingerprint(chats, picked.map { it.avatarUrl })
-        if (print == store.fingerprint()) return
+        if (print == store.fingerprint(accountId)) return
         val faces = chats.zip(picked).associate { (chat, room) ->
             val photo = room.avatarUrl?.let { url ->
                 try {
@@ -32,13 +32,13 @@ class WidgetPublisher(private val context: Context) {
             }
             chat to WidgetChats.circle(photo ?: BlobatarBitmap.render(room.avatarSeed, FACE), FACE)
         }
-        store.save(chats, faces, print)
+        store.save(accountId, chats, faces, print)
         redraw()
     }
 
-    /** Выход из аккаунта: чужие лица и имена с экрана блокировки не остаются. */
-    suspend fun forget() {
-        store.clear()
+    /** Выход из аккаунта: его лица и имена с экрана блокировки не остаются. */
+    suspend fun forget(accountId: String) {
+        store.forget(accountId)
         redraw()
     }
 

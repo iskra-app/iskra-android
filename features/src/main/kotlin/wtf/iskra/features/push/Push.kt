@@ -23,7 +23,7 @@ class Push(
     private val actions: NotificationActions,
     private val router: PushRouter,
     private val targets: PushTargets,
-    settings: AppSettings,
+    private val settings: AppSettings,
     /** Транспорт этого flavor'а — из `:app`. */
     val transport: PushTransport,
     smallIcon: Int,
@@ -55,7 +55,7 @@ class Push(
                     if (!isRetry && router.shouldPresent(notification.roomId, notification.accountId)) presenter.showFallback(roomId, payload.accountId)
                 } else if (router.shouldPresent(notification.roomId, notification.accountId)) {
                     // Повтор встаёт на место заглушки, которая уже прозвенела: второй раз — молча.
-                    presenter.show(notification, payload.unread, decoder.accountLabel(notification.accountId), alert = !isRetry)
+                    presenter.show(notification, payload.unread, decoder.accountLabel(notification.accountId)?.takeIf { settings.namesAccountInNotifications.value }, alert = !isRetry)
                 }
             }
             // Решили не показывать. Если на это место встала заглушка — она больше не нужна.

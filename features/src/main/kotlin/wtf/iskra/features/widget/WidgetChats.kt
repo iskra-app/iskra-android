@@ -24,37 +24,76 @@ class WidgetChats(private val context: Context) {
     private val preferences get() = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
     private val faces get() = File(context.filesDir, "faces").also { it.mkdirs() }
 
-    fun load(): List<WidgetChat> = preferences.getString(KEY, null).orEmpty().lines().mapNotNull { line ->
+    /** Снимок одного аккаунта; пусто, если аккаунт ещё не записывал. */
+    fun chatsOf(accountId: String): List<WidgetChat> = preferences.getString(KEY + accountId, null).orEmpty().lines().mapNotNull { line ->
         val parts = line.split(SEPARATOR)
         if (parts.size != 4) null else WidgetChat(parts[0], parts[1], parts[2], parts[3] == "1")
     }
 
-    fun fingerprint(): String? = preferences.getString(PRINT, null)
+    /** Аккаунты, чей снимок лежит здесь. */
+    fun accounts(): List<String> = preferences.getStringSet(ACCOUNTS, emptySet()).orEmpty().toList()
 
-    /** Записать снимок; лица — уже нарисованные кружки. Старые, которых в снимке больше нет, убираются. */
-    fun save(chats: List<WidgetChat>, images: Map<WidgetChat, Bitmap>, print: String) {
-        val keep = HashSet<String>()
-        for ((chat, bitmap) in images) {
-            val name = faceName(chat)
-            keep += name
-            File(faces, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    /** Аккаунт, что был на экране последним, — «Активный» в настройках. */
+    fun active(): String? = preferences.getString(ACTIVE, null)
+
+    /**
+     * Что показать при выборе [choice] (`ChatDirectory.ShareAccount`): `active` — последний открытый, `all` — все по очереди (у каждого свои
+     * верхние чаты, друг за другом), иначе — конкретный. Выбранный, которого здесь нет, не рисует ничего.
+     */
+    fun load(choice: String = CHOICE_ACTIVE): List<WidgetChat> = when (choice) {
+        CHOICE_ACTIVE -> active()?.let(::chatsOf).orEmpty()
+        CHOICE_ALL -> {
+            val lists = accounts().sorted().map(::chatsOf)
+            buildList { for (i in 0 until (lists.maxOfOrNull { it.size } ?: 0)) lists.forEach { l -> l.getOrNull(i)?.let(::add) } }
         }
-        faces.listFiles()?.filter { it.name !in keep }?.forEach { it.delete() }
+        else -> chatsOf(choice)
+    }
+
+    fun fingerprint(accountId: String): String? = preferences.getString(PRINT + accountId, null)
+
+    /** Записать снимок аккаунта; лица — уже нарисованные кружки. Лица, которых нет ни в чьём снимке, убираются. */
+    fun save(accountId: String, chats: List<WidgetChat>, images: Map<WidgetChat, Bitmap>, print: String) {
+        for ((chat, bitmap) in images) {
+            File(faces, faceName(chat)).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        }
         val text = chats.joinToString("\n") { listOf(it.roomId, it.accountId, it.name.clean(), if (it.unread) "1" else "0").joinToString(SEPARATOR) }
-        preferences.edit().putString(KEY, text).putString(PRINT, print).apply()
+        preferences.edit()
+            .putString(KEY + accountId, text)
+            .putString(PRINT + accountId, print)
+            .putString(ACTIVE, accountId)
+            .putStringSet(ACCOUNTS, accounts().toSet() + accountId)
+            .apply()
+        sweepFaces()
+    }
+
+    private fun sweepFaces() {
+        val keep = accounts().flatMap(::chatsOf).map(::faceName).toSet()
+        faces.listFiles()?.filter { it.name !in keep }?.forEach { it.delete() }
     }
 
     fun face(chat: WidgetChat): Bitmap? = File(faces, faceName(chat)).takeIf { it.exists() }?.let { BitmapFactory.decodeFile(it.path) }
 
-    fun clear() {
-        preferences.edit().clear().apply()
-        faces.deleteRecursively()
+    /** Вышли из аккаунта: его чатов и лиц здесь больше нет. */
+    fun forget(accountId: String) {
+        val remaining = accounts().toSet() - accountId
+        preferences.edit()
+            .remove(KEY + accountId)
+            .remove(PRINT + accountId)
+            .putStringSet(ACCOUNTS, remaining)
+            .apply { if (active() == accountId) putString(ACTIVE, remaining.firstOrNull()) }
+            .apply()
+        sweepFaces()
     }
 
     companion object {
         private const val FILE = "widget_chats"
-        private const val KEY = "chats"
-        private const val PRINT = "print"
+        private const val KEY = "chats:"
+        private const val PRINT = "print:"
+        private const val ACCOUNTS = "accounts"
+        private const val ACTIVE = "active"
+
+        const val CHOICE_ACTIVE = "active"
+        const val CHOICE_ALL = "all"
         private const val SEPARATOR = "\t"
 
         /** Столько плиток помещает самый большой размер. */
