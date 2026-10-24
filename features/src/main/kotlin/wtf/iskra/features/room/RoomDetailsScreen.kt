@@ -34,6 +34,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
@@ -165,6 +167,30 @@ fun RoomDetailsScreen(
                 }
             }
 
+            // Matrix ID собеседника — полем с «Скопировать» (`MatrixIDField`): по нему человека находят и ему пишут снаружи.
+            if (state.isDirect) {
+                state.members.firstOrNull { it.userId != own }?.let { other ->
+                    val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+                    var copied by remember(other.userId) { mutableStateOf(false) }
+                    LaunchedEffect(copied) { if (copied) { kotlinx.coroutines.delay(COPIED_MS); copied = false } }
+                    Group({
+                        ListItem(
+                            overlineContent = { Text(stringResource(R.string.profile_matrix_id)) },
+                            headlineContent = { Text(other.userId, color = wtf.iskra.design.LocalAccent.current.control) },
+                            trailingContent = {
+                                IconButton(onClick = { clipboard.setText(androidx.compose.ui.text.AnnotatedString(other.userId)); copied = true }) {
+                                    Icon(
+                                        if (copied) Icons.Filled.Check else Icons.Outlined.ContentCopy,
+                                        contentDescription = stringResource(R.string.message_menu_copy),
+                                        tint = wtf.iskra.design.LocalAccent.current.control,
+                                    )
+                                }
+                            },
+                            colors = rowColors(),
+                        )
+                    })
+                }
+            }
             if (state.isDirect) LocalName(store)
 
             SectionTitle(R.string.room_manage_alerts)
@@ -392,3 +418,5 @@ private fun ProfileTile(title: Int, icon: androidx.compose.ui.graphics.vector.Im
 }
 
 private const val DISABLED = 0.4f
+
+private const val COPIED_MS = 1_500L
