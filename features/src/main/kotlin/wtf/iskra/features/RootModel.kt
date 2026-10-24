@@ -243,6 +243,8 @@ class RootModel(
         // Обновления — при выходе на передний план, не на холодном старте под сплэшем; раз в сутки решает
         // сама проверка. Демо — не проверяет: это не запуск человека.
         if (foreground && !session.isDemo) updates?.let { scope.launch { it.checker.checkInBackground() } }
+        // Сервер, что считает sync за «в сети», уже вернул статус: на возвращении он говорится заново (`applyPresence`).
+        if (foreground && !session.isDemo) settings?.let { scope.launch { session.applyPresence(it.privacy.value) } }
         scope.launch { if (foreground) session.rooms.resume() else session.rooms.pause() }
     }
 
@@ -266,6 +268,9 @@ class RootModel(
     /** Подписка сеанса на адрес пушей; у следующего сеанса — своя. */
     private var pushRegistration: kotlinx.coroutines.Job? = null
 
+    /** Присутствие аккаунта следует за переключателем «Скрыть, когда был(а) в сети»; у следующего сеанса — своё. */
+    private var presenceJob: kotlinx.coroutines.Job? = null
+
     /**
      * Сеанс открыт — и синхронизация запускается *здесь*, явным вызовом, а не `LaunchedEffect` на
      * экране списка, который кто-нибудь разумно уберёт (docs/PROMPT.md, 4.2).
@@ -284,6 +289,10 @@ class RootModel(
                 pushes.target.collect { target -> if (target != null) session.registerPush(target, pushes.language()) }
             }
         }
+        // Кто заблокирован — подписка живёт с сеансом; присутствие говорится на старте и каждый раз, как переключатель сдвинулся.
+        session.blocked.start()
+        presenceJob?.cancel()
+        presenceJob = if (session.isDemo) null else settings?.let { s -> scope.launch { s.privacy.collect { session.applyPresence(it) } } }
         mediaJobsChanged?.let { changed ->
             if (!session.isDemo) scope.launch { session.mediaJobs.jobs.collect { changed(session.sessionId, it) } }
         }

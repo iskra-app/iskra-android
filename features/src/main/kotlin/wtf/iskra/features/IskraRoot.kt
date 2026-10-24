@@ -172,7 +172,13 @@ private fun SignedIn(session: UserSession, model: RootModel, browser: WebAuthent
     val forced by (settings?.forceCreatures ?: kotlinx.coroutines.flow.MutableStateFlow(false)).collectAsStateWithLifecycle()
     val roomId = openRoom
     val timeline = remember(roomId) {
-        roomId?.let { id -> session.timeline(id) { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() } }
+        roomId?.let { id ->
+            session.timeline(
+                id,
+                threadSettings = { settings?.threads?.value ?: wtf.iskra.core.timeline.ThreadSettings() },
+                privacy = { settings?.privacy?.value ?: wtf.iskra.core.session.PrivacySettings() },
+            )
+        }
     }
     var unlocking by rememberSaveable(session.sessionId) { mutableStateOf(false) }
     // «О чате» открытой комнаты — поверх её переписки, «назад» возвращает в неё.

@@ -111,6 +111,8 @@ data class TimelineState(
     val canPost: Boolean = true,
     /** Кто печатает, по имени в этой комнате. Себя нет никогда. */
     val typing: List<String> = emptyList(),
+    /** Где собеседник личного чата, по словам сервера. Null — сказать нечего: присутствие выключено или скрыто своё. */
+    val counterpartPresence: wtf.iskra.core.session.Presence? = null,
     /** Закреплённые события комнаты, в порядке закрепления: последнее — самое свежее. */
     val pinnedIds: List<String> = emptyList(),
     val failure: TimelineFailure? = null,
@@ -188,6 +190,10 @@ class TimelineStore internal constructor(
     private val localNames: wtf.iskra.core.rooms.LocalNames.Account? = null,
     /** Скачать картинку по `mxc://` — стикеру из пака в зашифрованной комнате (`sendSticker`). Null — нечем. */
     private val downloadMedia: (suspend (url: String) -> ByteArray)? = null,
+    /** Что другие узнают о нас: набор и присутствие. Читается в момент нажатия и опроса, не при открытии. */
+    private val privacy: () -> wtf.iskra.core.session.PrivacySettings = { wtf.iskra.core.session.PrivacySettings() },
+    /** Спросить сервер, где человек (`UserSession.presenceOf`). Null — нечем; бросает [wtf.iskra.core.session.PresenceDeclined], если сервер молчит. */
+    private val askPresence: (suspend (userId: String) -> wtf.iskra.core.session.Presence?)? = null,
 ) {
     /** Имя от сервера — чтобы снять прозвище, пока экран открыт, не дожидаясь нового `RoomInfo`. */
     private var serverTitle: String? = null
@@ -1362,6 +1368,42 @@ class TimelineStore internal constructor(
         onDraftChanged(null)
     }
 
+    // MARK: Присутствие
+
+    /**
+     * Держит [TimelineState.counterpartPresence] свежим, пока вызвавшая корутина не отменена, — экран комнаты запускает её на собеседнике,
+     * то есть только пока кто-то смотрит на ответ.
+     *
+     * **Опрос, и другого пути нет.** Присутствие приходит клиенту Matrix в блоке `m.presence` в `/sync`, который читает SDK, но в
+     * биндингах не отдаёт, — потока нет, есть вопрос, который задают снова.
+     *
+     * Не вовсе, пока своё «был(а)» скрыто ([wtf.iskra.core.session.PrivacySettings.seesOthersPresence]). Отказ (присутствие выключено или
+     * нет общих комнат) постоянен, пока комната открыта, — на нём цикл останавливается. Таймаут или обрыв оставляют прошлый ответ:
+     * «был(а) 5 мин назад», на минуту устаревшее, лучше, чем мигание при каждом туннеле.
+     */
+    suspend fun watchPresence() {
+        val ask = askPresence
+        val user = counterpartId
+        if (ask == null || user == null || !privacy().seesOthersPresence) {
+            mutableState.update { it.copy(counterpartPresence = null) }
+            return
+        }
+        while (true) {
+            try {
+                val presence = withTimeLimit(PRESENCE_LIMIT) { ask(user) }
+                if (user != counterpartId) return
+                mutableState.update { it.copy(counterpartPresence = presence) }
+            } catch (error: wtf.iskra.core.session.PresenceDeclined) {
+                mutableState.update { it.copy(counterpartPresence = null) }
+                return
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                // Прошлый ответ остаётся на экране.
+            }
+            delay(PRESENCE_INTERVAL)
+        }
+    }
+
     // MARK: «Печатает»
 
     private suspend fun adoptTyping(userIds: List<String>) {
@@ -1377,6 +1419,8 @@ class TimelineStore internal constructor(
      * Аня ушла обедать.
      */
     fun typed() {
+        // Набор остаётся между человеком и полем ввода: ни «печатает…» наружу, ни круга до сервера.
+        if (privacy().hidesTyping) return
         typingStopper?.cancel()
         if (!isTellingThemWeType) {
             isTellingThemWeType = true
@@ -1413,5 +1457,7 @@ class TimelineStore internal constructor(
         /** Сколько участников читается за раз из стора SDK. */
         const val MEMBER_CHUNK = 200
         val TYPING_LULL = 4.seconds
+        val PRESENCE_INTERVAL = 60.seconds
+        val PRESENCE_LIMIT = 10.seconds
     }
 }

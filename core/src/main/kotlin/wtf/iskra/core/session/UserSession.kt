@@ -125,6 +125,37 @@ class UserSession internal constructor(
         )
     }
 
+    /** Заблокированные (`ignore` Matrix): подписка живёт с сеансом, экран только читает. */
+    val blocked = BlockStore(client, scope)
+
+    /**
+     * Сообщает серверу, в сети ли этот аккаунт, — или, когда в «Конфиденциальности» скрыто «был(а)», что нет, чем бы он ни занимался.
+     *
+     * В биндингах вызова присутствия нет, поэтому это `PUT /presence/{userId}/status` самого приложения, тем же путём, что и всё прочее
+     * ([AuthorisedRequests]). Говорится на старте, на каждом возвращении на передний план — сервер, что считает sync за «в сети», уже
+     * вернул статус, — и ещё раз, когда переключатель сдвинулся. Сервер с выключенным присутствием ответит 403 или 404, а прятать там нечего,
+     * поэтому ответ не смотрят.
+     */
+    suspend fun applyPresence(privacy: PrivacySettings) {
+        if (isDemo || closed) return
+        val body = """{"presence":"${if (privacy.hidesPresence) "offline" else "online"}"}"""
+        runCatching { AuthorisedRequests(client).send(HomeserverRequest("PUT", "/_matrix/client/v3/presence/${pathSegment(userId)}/status", body)) }
+    }
+
+    /** Что сервер говорит о том, где человек. Null — сказать нечего; [PresenceDeclined] — сервер молчит, спрашивать дальше незачем. */
+    private suspend fun presenceOf(userId: String): Presence? {
+        val response = AuthorisedRequests(client).send(HomeserverRequest("GET", "/_matrix/client/v3/presence/${pathSegment(userId)}/status"))
+        if (response.status != 200) throw PresenceDeclined(response.status)
+        return Presence.parse(response.body)?.takeIf { it.isWorthShowing }
+    }
+
+    /** Matrix ID в пути запроса: `@` и `:` остаются, `/` и всё прочее — нет. */
+    private fun pathSegment(id: String): String = buildString {
+        for (char in id) {
+            if (char.isLetterOrDigit() || char in "-._~@:!$'()*,=") append(char) else append(java.net.URLEncoder.encode(char.toString(), "UTF-8"))
+        }
+    }
+
     /** Папки чатов: правила в account data, общие для устройств аккаунта (`ChatFolders`). */
     val folders = wtf.iskra.core.rooms.ChatFolders(
         readAccountData = { type -> client.accountData(type) },
@@ -228,7 +259,11 @@ class UserSession internal constructor(
      * закрывает его [TimelineStore.close], когда экран уходит. Null для комнаты, которой клиент не знает.
      * [threadSettings] — из `AppSettings`, читается при открытии.
      */
-    fun timeline(roomId: String, threadSettings: () -> ThreadSettings = { ThreadSettings() }): TimelineStore? {
+    fun timeline(
+        roomId: String,
+        threadSettings: () -> ThreadSettings = { ThreadSettings() },
+        privacy: () -> PrivacySettings = { PrivacySettings() },
+    ): TimelineStore? {
         val room = runCatching { client.getRoom(roomId) }.getOrNull() ?: return null
         return TimelineStore(
             room = room,
@@ -241,6 +276,8 @@ class UserSession internal constructor(
             threadSettings = threadSettings,
             localNames = localNames,
             downloadMedia = downloadMedia,
+            privacy = privacy,
+            askPresence = if (isDemo) null else ::presenceOf,
         )
     }
 
@@ -317,6 +354,7 @@ class UserSession internal constructor(
         if (closed) return
         closed = true
         mediaJobs.stop()
+        blocked.stop()
         scope.cancel()
         // Клиент в аренде (`AuthenticationService.leaseClient`): закроется, когда отдаст и пуш, если тот
         // ещё расшифровывает. У демо аренды нет — он только здесь.

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import wtf.iskra.core.media.MediaCompression
 import wtf.iskra.core.media.MediaSettings
+import wtf.iskra.core.session.PrivacySettings
 import wtf.iskra.core.timeline.ThreadSettings
 import wtf.iskra.core.update.UpdateStore
 
@@ -88,6 +89,24 @@ class AppSettings(context: Context) : UpdateStore {
         mutableThreads.value = settings
     }
 
+    private val mutablePrivacy = MutableStateFlow(
+        PrivacySettings(
+            hidesPresence = preferences.getBoolean(PRIVACY_PRESENCE, PrivacySettings.HIDES_PRESENCE_BY_DEFAULT),
+            hidesTyping = preferences.getBoolean(PRIVACY_TYPING, PrivacySettings.HIDES_TYPING_BY_DEFAULT),
+        ),
+    )
+
+    /** Что другие узнают о вас без вашего слова (`PrivacySettings`). Читается в момент, когда это важно. */
+    val privacy: StateFlow<PrivacySettings> = mutablePrivacy.asStateFlow()
+
+    fun setPrivacy(settings: PrivacySettings) {
+        preferences.edit()
+            .putBoolean(PRIVACY_PRESENCE, settings.hidesPresence)
+            .putBoolean(PRIVACY_TYPING, settings.hidesTyping)
+            .apply()
+        mutablePrivacy.value = settings
+    }
+
     /** Что делать с фото и видео по дороге наружу. Читается в момент отправки. */
     val media: StateFlow<MediaSettings> = mutableMedia.asStateFlow()
 
@@ -167,6 +186,9 @@ class AppSettings(context: Context) : UpdateStore {
         const val MEDIA_STRIPS = "media.stripsMetadata"
         const val MEDIA_COMPRESSES = "media.compresses"
         const val MEDIA_COMPRESSION = "media.compression"
+        // Ключи — те же, что у iOS (`PrivacySettings.*Key`).
+        const val PRIVACY_PRESENCE = "privacy.hidesPresence"
+        const val PRIVACY_TYPING = "privacy.hidesTyping"
         const val RECENT_REACTIONS = "reactions.recent"
         const val THREADS_SHOWN = "chats.threads.shown"
         const val THREADS_HIDE_REPLIES = "chats.threads.hidesReplies"

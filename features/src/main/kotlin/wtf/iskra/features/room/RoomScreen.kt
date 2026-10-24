@@ -213,6 +213,9 @@ fun RoomScreen(
 
     // Открытие — вызов стора: первую страницу он просит сам, в `open()` (docs/PROMPT.md, 4.2).
     LaunchedEffect(store) { store.start() }
+    // «в сети» / «был(а) …» у собеседника личного чата — пока кто-то смотрит: опрос, потока нет (`TimelineStore.watchPresence`).
+    val counterpart = state.header.isOneToOne && !isThread
+    LaunchedEffect(store, counterpart, state.header.name) { if (counterpart) store.watchPresence() }
     DisposableEffect(store) { onDispose { store.close() } }
     if (identityChanges != null) {
         LaunchedEffect(identityChanges) { identityChanges.start() }
@@ -721,6 +724,7 @@ private fun Header(state: TimelineState, isThread: Boolean, onBack: () -> Unit, 
                     val status = when {
                         isThread -> header.name
                         state.typing.isNotEmpty() -> stringResource(R.string.room_typing)
+                        state.counterpartPresence?.let { presenceText(it) } != null -> presenceText(state.counterpartPresence!!)
                         !header.isOneToOne && header.memberCount > 0 ->
                             pluralStringResource(R.plurals.room_participants, header.memberCount, header.memberCount)
                         else -> null
@@ -1707,3 +1711,25 @@ private const val COMPOSER_LINES = 6
 
 /** Цитата в сообщении — тише слов вокруг. */
 private const val QUOTE_ALPHA = 0.7f
+
+/** «в сети» · «был(а) 5 мин назад» · «был(а) в 10:20» · «был(а) 12.07.25». Null — сказать нечего: шапка рисует то, что рисовала. */
+@Composable
+private fun presenceText(presence: wtf.iskra.core.session.Presence): String? {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val label = wtf.iskra.core.session.PresenceLabel.of(presence) ?: return null
+    return when (label) {
+        wtf.iskra.core.session.PresenceLabel.Online -> stringResource(R.string.presence_online)
+        wtf.iskra.core.session.PresenceLabel.JustNow -> stringResource(R.string.presence_just_now)
+        is wtf.iskra.core.session.PresenceLabel.MinutesAgo -> stringResource(R.string.presence_minutes_ago, label.minutes)
+        is wtf.iskra.core.session.PresenceLabel.HoursAgo -> stringResource(R.string.presence_hours_ago, label.hours)
+        is wtf.iskra.core.session.PresenceLabel.AtTime -> stringResource(
+            R.string.presence_at_time,
+            android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(label.at.toEpochMilli())),
+        )
+        wtf.iskra.core.session.PresenceLabel.Yesterday -> stringResource(R.string.presence_yesterday)
+        is wtf.iskra.core.session.PresenceLabel.OnDate -> stringResource(
+            R.string.presence_at,
+            java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(label.at.toEpochMilli())),
+        )
+    }
+}
