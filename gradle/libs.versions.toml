@@ -39,6 +39,8 @@ media3 = "1.11.1"
 camerax = "1.6.1"
 # Блокировка приложения (docs/PROMPT.md, раздел 12): BiometricPrompt с откатом на пин устройства. Apache 2.0.
 biometric = "1.1.0"
+# biometric тянет fragment 1.2.5, а он отвергает коды запросов activity 1.13 («lower 16 bits») — любое окно разрешений вешало приложение
+fragment = "1.8.9"
 # Чтение QR (docs/PROMPT.md, 5): только декодер ZXing, без ML Kit и сервисов Google. Apache 2.0.
 zxing = "3.5.3"
 # Тональные палитры Material 3 из цвета акцента (HCT, схемы TonalSpot/Monochrome). Порт на Kotlin
@@ -85,6 +87,7 @@ media3-transformer = { module = "androidx.media3:media3-transformer", version.re
 media3-effect = { module = "androidx.media3:media3-effect", version.ref = "media3" }
 
 androidx-glance = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "biometric" }
 androidx-camera-core = { module = "androidx.camera:camera-core", version.ref = "camerax" }
 androidx-camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
