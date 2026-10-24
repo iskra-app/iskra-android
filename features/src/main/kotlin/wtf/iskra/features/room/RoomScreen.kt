@@ -1234,6 +1234,8 @@ private fun Bubble(
                         Spacer(Modifier.width(Theme.Size.avatarSmall))
                     }
                 }
+                // Имя и реакции начинаются там же, где слова сообщения: пузырь отступает от своего края, картинка и компактная строка — нет.
+                val textInset = if (compact || message.album != null || message.kind.picture != null) Dp(0f) else Theme.Spacing.roomy
                 Column(
                     modifier = Modifier.weight(1f, fill = compact),
                     horizontalAlignment = if (atEnd) Alignment.End else Alignment.Start,
@@ -1249,7 +1251,7 @@ private fun Bubble(
                             maxLines = 1,
                             modifier = Modifier
                                 .then(if (openProfile != null && message.senderId != null) Modifier.clickable(role = Role.Button) { openProfile(message.senderId!!) } else Modifier)
-                                .padding(start = Theme.Spacing.close),
+                                .padding(start = textInset),
                         )
                     }
                     val anchor = remember { AnchorBox() }
@@ -1302,11 +1304,11 @@ private fun Bubble(
                     // Ответы, собранные под ним, — в одно нажатие.
                     val thread = message.thread
                     if (thread != null && onOpenThread != null) ThreadLine(thread) { onOpenThread(message) }
+                    if (message.reactions.isNotEmpty()) Reactions(message, onReact, Modifier.padding(horizontal = textInset))
                 }
                 if (!atEnd) MessageMarks(message)
             }
         }
-        if (message.reactions.isNotEmpty()) Reactions(message, onReact)
     }
 }
 
@@ -1722,13 +1724,14 @@ private fun MessageMenu(
     )
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun Reactions(message: Message, onReact: (String) -> Unit) {
+private fun Reactions(message: Message, onReact: (String) -> Unit, modifier: Modifier = Modifier) {
     val showReactors = LocalShowReactors.current
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.withinRun),
+    androidx.compose.foundation.layout.FlowRow(
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.tight, if (message.isOwn) Alignment.End else Alignment.Start),
+        verticalArrangement = Arrangement.spacedBy(Theme.Spacing.tight),
     ) {
         message.reactions.forEach { reaction ->
             Text(
