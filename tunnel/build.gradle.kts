@@ -107,15 +107,16 @@ abstract class CargoBindingsTask : CargoTask() {
 
     @TaskAction
     fun build() {
-        cargo("build", "--release", "--lib")
+        // Профиль bindings (Cargo.toml): release без strip, иначе на Linux генератору нечего читать.
+        cargo("build", "--profile", "bindings", "--lib")
         val name = System.mapLibraryName("iskra_tunnel_client")
-        val built = targetDir.get().file("release/$name").asFile
+        val built = targetDir.get().file("bindings/$name").asFile
         val host = hostLibDir.get().asFile.apply { deleteRecursively(); mkdirs() }
         built.copyTo(File(host, name), overwrite = true)
 
         val kotlin = kotlinDir.get().asFile.apply { deleteRecursively(); mkdirs() }
         cargo(
-            "run", "--release", "--quiet", "--features", "bindgen", "--bin", "uniffi-bindgen", "--",
+            "run", "--profile", "bindings", "--quiet", "--features", "bindgen", "--bin", "uniffi-bindgen", "--",
             "generate", "--library", built.path, "--language", "kotlin", "--no-format", "--out-dir", kotlin.path,
         )
     }

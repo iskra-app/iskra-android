@@ -44,3 +44,11 @@ codegen-units = 1
 opt-level = "z"
 strip = true
 panic = "abort"
+
+# Библиотека под эту машину и генератор биндингов: тот же release, но без strip. uniffi читает
+# метаданные из символов UNIFFI_META_* библиотеки, а strip на Linux их срезает («No UniFFI metadata
+# found»); на macOS глобальные символы остаются, поэтому локально это не видно. Свой профиль — свой
+# каталог target/bindings: сборки под телефон и cargo test его не трогают.
+[profile.bindings]
+inherits = "release"
+strip = false
