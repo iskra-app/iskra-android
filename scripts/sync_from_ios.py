@@ -486,7 +486,9 @@ def sync_icon(iskra: Repo, rev: str) -> None:
 _ALT_ICONS = {
     "chrome": {"background": "#14 1F25", "layers": [("Subtract2.svg", "#D8E1EE", 56)]},
     "garnet": {"background": "#70122A", "layers": [("Subtract2.svg", None, 56)]},
-    "pine": {"background": "#124233", "layers": [("Subtract2.svg", None, 56)]},
+    # Brat: в Icon Composer знак чёрный, а в тёмной теме — того же кислотного цвета, что фон; у adaptive icon тёмного
+    # варианта нет, берётся светлый.
+    "brat": {"background": "#B2FF01", "layers": [("Subtract2.svg", "#000000", 56)]},
     "rio": {"background": ("#5F3990", "#AD523F"), "layers": [("Subtract2.svg", "#FFFFFF", 56)]},
     "black_white": {"background": "#F0EBDE", "layers": [("Subtract2.svg", None, 56)]},
     "letters": {"background": "#FCF91E", "layers": [("Union2.svg", "#000000", 130)]},

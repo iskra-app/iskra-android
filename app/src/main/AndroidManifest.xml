@@ -156,11 +156,11 @@
             <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity-alias>
         <activity-alias
-            android:name="wtf.iskra.IconPine"
+            android:name="wtf.iskra.IconBrat"
             android:enabled="false"
             android:exported="true"
-            android:icon="@mipmap/ic_launcher_pine"
-            android:roundIcon="@mipmap/ic_launcher_pine"
+            android:icon="@mipmap/ic_launcher_brat"
+            android:roundIcon="@mipmap/ic_launcher_brat"
             android:label="@string/app_name"
             android:targetActivity=".MainActivity">
             <intent-filter>

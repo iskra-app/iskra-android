@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@5ff03dbbe58a: Sources/IskraFeatures/Resources/ru.lproj/Localizable.strings.
      Не править руками: строки правятся в iOS-репозитории и привозятся сюда. -->
 <resources>
     <string name="account_settings">Настройки</string>
@@ -66,7 +66,7 @@
     <string name="app_icon_spark">Искра</string>
     <string name="app_icon_chrome">Хром</string>
     <string name="app_icon_garnet">Гранат</string>
-    <string name="app_icon_pine">Хвоя</string>
+    <string name="app_icon_brat">Brat</string>
     <string name="app_icon_rio">Рио-де-Жанейро</string>
     <string name="app_icon_black_white">Ч/б</string>
     <string name="app_icon_retro">Ретро</string>

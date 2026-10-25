@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@af718bf4128d: icons/*.icon. -->
+<!-- Сгенерировано scripts/sync-from-ios.sh из iskra@5ff03dbbe58a: icons/*.icon. -->
 <resources>
     <color name="ic_launcher_chrome_background">#141F25</color>
     <color name="ic_launcher_garnet_background">#70122A</color>
-    <color name="ic_launcher_pine_background">#124233</color>
+    <color name="ic_launcher_brat_background">#B2FF01</color>
     <color name="ic_launcher_black_white_background">#F0EBDE</color>
     <color name="ic_launcher_letters_background">#FCF91E</color>
     <color name="ic_launcher_retro_background">#000000</color>

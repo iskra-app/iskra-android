@@ -18,7 +18,7 @@ internal enum class AppIcon(val alias: String, @StringRes val title: Int, @Drawa
     CHROME("wtf.iskra.IconChrome", R.string.app_icon_chrome, R.drawable.app_icon_chrome),
     GARNET("wtf.iskra.IconGarnet", R.string.app_icon_garnet, R.drawable.app_icon_garnet),
     LETTERS("wtf.iskra.IconLetters", R.string.app_icon_letters, R.drawable.app_icon_letters),
-    PINE("wtf.iskra.IconPine", R.string.app_icon_pine, R.drawable.app_icon_pine),
+    BRAT("wtf.iskra.IconBrat", R.string.app_icon_brat, R.drawable.app_icon_brat),
     RETRO("wtf.iskra.IconRetro", R.string.app_icon_retro, R.drawable.app_icon_retro),
     RIO("wtf.iskra.IconRio", R.string.app_icon_rio, R.drawable.app_icon_rio),
     BLACK_WHITE("wtf.iskra.IconBlackWhite", R.string.app_icon_black_white, R.drawable.app_icon_black_white),
