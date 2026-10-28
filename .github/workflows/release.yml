@@ -111,6 +111,7 @@ jobs:
             name=$(basename "$apk" .apk); name=${name#app-}; name=${name%-release}
             # 16 KB page size: .so, выровненные на 4 KB, не загрузятся на Android 15+ с 16 KB страницами.
             "$tools/zipalign" -c -P 16 4 "$apk"
+            scripts/check_elf_alignment.sh "$apk"
             cp "$apk" "dist/iskra-$version-$name.apk"
           done
           python3 scripts/release_json.py --dist dist \

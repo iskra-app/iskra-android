@@ -56,6 +56,10 @@ jobs:
         run: |
           zipalign=$(ls "$ANDROID_HOME"/build-tools/*/zipalign | tail -1)
           for apk in app/build/outputs/apk/*/release/*.apk; do "$zipalign" -c -P 16 -v 4 "$apk" > /dev/null; done
+      # zipalign смотрит, где .so лежат в архиве; телефон смотрит ещё и в саму библиотеку — LOAD-сегменты
+      # SDK, :tunnel и MapLibre тоже должны быть на 16 KB.
+      - name: LOAD-сегменты .so на 16 KB
+        run: scripts/check_elf_alignment.sh app/build/outputs/apk/*/release/*.apk
 
   # Сгенерированное не правится руками: синхронизация с iOS на том же коммите не меняет дерево.
   # iOS-репозиторий закрыт, поэтому шаг идёт только там, где есть токен на чтение (не в PR).
