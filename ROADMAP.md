@@ -137,7 +137,8 @@
       фото. Слайдера с примерами и вопроса на первом запуске, как раньше на iOS, нет: iOS его убрал, режим спрашивается только в «Бета»
 - [x] Демо-сервер (`MockHomeserver`, `MockWorld`, `MockMedia`, `DemoBackend`) на своём loopback-HTTP;
       `./android.sh -- --ez mock_backend true`; стикеры «Искорки» привозит `sync-from-ios`
-- [ ] Демо из «Бета» в настройках (этап 8) и инструментальный `DemoBackendTest` с настоящим SDK
+- [x] Демо из «Бета» в настройках (этап 8) и инструментальный `DemoBackendTest` с настоящим SDK: вход, sliding sync до списка
+      (личный чат с непрочитанным, упоминание, приглашение, пространство) и первая страница ленты; на эмуляторе — три прогона подряд
 - [x] Демо-сервер и сервер входа — только в debug: `core/mock/` в source set `debug`, экстры
       `mock_backend` / `mock_signin` и пункт в «Бета» не работают в release (как на iOS — `#if DEBUG`);
       в main — только шов `DemoServers` (в release `null`) и `JsonValues`, нужный стикерам
