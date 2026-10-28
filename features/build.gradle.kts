@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -13,6 +14,13 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    // Скриншот-тесты (`ScreenshotTest`) рисуют настоящие ресурсы — строки, значки — под Robolectric.
+    testOptions.unitTests.isIncludeAndroidResources = true
+    // Robolectric на JDK 21 трогает поля FileDescriptor (ApplicationSharedMemory SDK 36).
+    testOptions.unitTests.all {
+        it.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
     }
 
     lint {
@@ -64,4 +72,16 @@ dependencies {
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(platform(libs.compose.bom))
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.compose.ui.test.manifest)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+}
+
+// Эталоны — как в `:design`: `recordRoborazziDebug` записывает, `verifyRoborazziDebug` сверяет.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }

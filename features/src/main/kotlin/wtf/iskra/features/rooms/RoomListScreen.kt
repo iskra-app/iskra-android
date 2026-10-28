@@ -433,7 +433,7 @@ private fun rowDescription(room: RoomSummary): String {
 }
 
 @Composable
-private fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onHold: (() -> Unit)? = null, onOpen: () -> Unit) {
+internal fun RoomRow(room: RoomSummary, now: Instant, typing: Boolean, actions: RoomActions, selected: Boolean = false, onHold: (() -> Unit)? = null, onOpen: () -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
     var menu by remember { mutableStateOf(false) }
     val scheme = MaterialTheme.colorScheme
@@ -666,7 +666,7 @@ private fun Face(room: RoomSummary) {
 }
 
 @Composable
-private fun InviteRow(room: RoomSummary, onAccept: () -> Unit, onDecline: () -> Unit) {
+internal fun InviteRow(room: RoomSummary, onAccept: () -> Unit, onDecline: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Theme.Spacing.roomy, vertical = Theme.Spacing.close),
         horizontalArrangement = Arrangement.spacedBy(Theme.Spacing.normal),
@@ -694,7 +694,7 @@ private fun InviteRow(room: RoomSummary, onAccept: () -> Unit, onDecline: () -> 
 }
 
 /** Что можно сделать с чатом из списка — то, что на iOS под свайпами. */
-private class RoomActions(
+internal class RoomActions(
     val onRead: (RoomSummary) -> Unit,
     val onUnread: (RoomSummary) -> Unit,
     val onPin: (RoomSummary) -> Unit,
@@ -741,7 +741,7 @@ private fun RoomMenu(room: RoomSummary, expanded: Boolean, onDismiss: () -> Unit
 }
 
 @Composable
-private fun ArchiveRow(count: Int, hasUnread: Boolean, onOpen: () -> Unit) {
+internal fun ArchiveRow(count: Int, hasUnread: Boolean, onOpen: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

@@ -1297,7 +1297,7 @@ private fun stringsOf(): wtf.iskra.core.support.Strings {
 }
 
 @Composable
-private fun Bubble(
+internal fun Bubble(
     message: Message,
     showsSender: Boolean,
     onReact: (String) -> Unit,
