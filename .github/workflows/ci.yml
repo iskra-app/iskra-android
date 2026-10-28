@@ -45,6 +45,16 @@ jobs:
       # foss без Google (checkModuleRules) и cargo test крейта моста вместе с вендоренным proto. Релизная сборка — потому что keep-правила R8 для
       # uniffi/JNA ломаются только в ней.
       - run: ./gradlew check assembleFossRelease --no-daemon
+      # Скриншот-тесты `:design`: снимки против эталонов в design/src/test/screenshots. Эталоны записаны
+      # на macOS; порог в тесте покрывает сглаживание краёв на Linux. Разошлось на шрифте целиком —
+      # перезаписать здесь (`recordRoborazziDebug`) и закоммитить.
+      - run: ./gradlew :design:verifyRoborazziDebug --no-daemon
+      - name: Отчёт снимков
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: roborazzi
+          path: design/build/outputs/roborazzi
       - name: Размер APK
         run: |
           for apk in app/build/outputs/apk/*/release/*.apk; do

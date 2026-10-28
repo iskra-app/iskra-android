@@ -57,7 +57,9 @@
       на подписанных тестовым ключом APK). Ключ, секреты, «Что нового» и открытие репозитория — автор
 - [x] `app.cash.licensee` в `check` (Apache/MIT/BSD; Play services и Firebase — только в `gms`, адресом
       условий Android SDK) и `aboutlibraries`: «О приложении → Открытые библиотеки» с текстами лицензий
-- [ ] Скриншот-тесты (Roborazzi)
+- [x] Скриншот-тесты (Roborazzi 1.77 на Robolectric 4.17, `:design/ScreenshotTest`): главная и вторая кнопка в светлой и тёмной теме, поля,
+      все восемь акцентов, существа без подложки и на круге; эталоны в `design/src/test/screenshots`, сверка — `verifyRoborazziDebug`, в CI.
+      Экраны `:features` (им нужен сеанс SDK) — дальше, на фейковом состоянии
 
 ## 2. Вход и сессия
 

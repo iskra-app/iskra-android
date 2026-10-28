@@ -67,6 +67,10 @@ googleServices = "4.4.4"
 licensee = "1.14.1"
 aboutLibraries = "15.3.0"
 
+# Скриншот-тесты (этап 1): Roborazzi (Apache-2.0) поверх Robolectric (MIT) — только в тестах, в APK не едут.
+roborazzi = "1.77.0"
+robolectric = "4.17"
+
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
 turbine = "1.2.1"
@@ -125,6 +129,11 @@ compose-material-icons = { module = "androidx.compose.material:material-icons-ex
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExt" }
+compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
+compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 
 [plugins]
@@ -134,4 +143,5 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
 licensee = { id = "app.cash.licensee", version.ref = "licensee" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 aboutlibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutLibraries" }
